@@ -68,6 +68,20 @@ configured on your system:
       pip install -r tests/requirements.txt
       ```
 
+## Linting and Formatting
+
+To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To setup Ruff install it using 
+```shell
+
+pip install -r dev-requirements.txt       
+```
+
+Then once installed, you can use 
+```shell
+
+ruff format && ruff check
+```
+
 ## Local testing
 
 To test this locally, you first need to set up dynamodb to run locally; it is currently set up to use Docker by running:
