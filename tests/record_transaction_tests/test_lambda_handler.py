@@ -451,3 +451,4 @@ class TestLambdaHandler:
         assert transaction["accountId"] == account_id
         assert transaction["amount"] == Decimal("50.25")
         assert transaction["type"] == "DEPOSIT"
+        assert transaction["description"] == "Test deposit transaction"

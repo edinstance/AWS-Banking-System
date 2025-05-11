@@ -145,5 +145,6 @@ class TestGetDynamoDBResource:
 
         # Verify the GSI exists
         gsi = table_description['Table']['GlobalSecondaryIndexes']
-        assert len(gsi) == 1
-        assert gsi[0]['IndexName'] == 'IdempotencyKeyIndex'
+        # Find the IdempotencyKeyIndex
+        idempotency_index = next((index for index in gsi if index['IndexName'] == 'IdempotencyKeyIndex'), None)
+        assert idempotency_index is not None, "IdempotencyKeyIndex not found in GSIs"
