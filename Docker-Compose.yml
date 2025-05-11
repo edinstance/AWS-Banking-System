@@ -1,0 +1,21 @@
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    networks:
+      - sam-network
+
+networks:
+  sam-network:
+    driver: bridge
+    name: sam-network
+
+
+volumes:
+  dynamodb-data:
