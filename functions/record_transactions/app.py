@@ -50,6 +50,7 @@ POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
 IDEMPOTENCY_EXPIRATION_DAYS = int(os.environ.get("IDEMPOTENCY_EXPIRATION_DAYS", "7"))
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT')
+AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 
 # --- Logger Setup using AWS Lambda Powertools ---
 logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
@@ -63,7 +64,11 @@ def get_dynamodb_resource():
     """
     if DYNAMODB_ENDPOINT:
         logger.debug(f"Using custom DynamoDB endpoint: {DYNAMODB_ENDPOINT}")
-        return boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
+        return boto3.resource(
+            "dynamodb",
+            endpoint_url=DYNAMODB_ENDPOINT,
+            region_name=AWS_REGION,
+        )
     logger.debug("Using default DynamoDB endpoint")
     return boto3.resource('dynamodb')
 

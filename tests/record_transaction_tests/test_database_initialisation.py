@@ -128,7 +128,30 @@ class TestGetDynamoDBResource:
                 patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint):
             result = app.get_dynamodb_resource()
 
-            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint)
+            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint, region_name='eu-west-2')
+            mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
+            assert result == mock_resource
+
+    def test_custom_region(self, monkeypatch):
+        """Test that the function uses a custom endpoint with a custom region when specified in environment variables."""
+        # Setup
+        custom_endpoint = "http://localhost:8000"
+        custom_region = "us-east-1"
+
+        # Mocks
+        mock_boto3 = MagicMock()
+        mock_resource = MagicMock()
+        mock_logger = MagicMock()
+        mock_boto3.resource.return_value = mock_resource
+
+        # Patch dependencies and environment variable directly within the application
+        with patch('functions.record_transactions.app.boto3', mock_boto3), \
+                patch('functions.record_transactions.app.logger', mock_logger), \
+                patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint), \
+                patch('functions.record_transactions.app.AWS_REGION', custom_region):
+            result = app.get_dynamodb_resource()
+
+            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint, region_name='us-east-1')
             mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
             assert result == mock_resource
 
