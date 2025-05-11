@@ -36,7 +36,9 @@ class TestCheckExistingTransaction:
         assert result["idempotencyKey"] == idempotency_key
 
     def test_no_transaction_found(self, app_with_mocked_table):
-        """Test when no transaction exists with the given idempotency key."""
+        """
+        Tests that querying with a non-existent idempotency key returns None, indicating no transaction is found.
+        """
         # Call the function with a non-existent key
         result = app_with_mocked_table.check_existing_transaction("non-existent-key")
 
@@ -44,7 +46,13 @@ class TestCheckExistingTransaction:
         assert result is None
 
     def test_expired_transaction(self, app_with_mocked_table):
-        """Test handling of expired transactions."""
+        """
+        Tests that an expired transaction is not returned by check_existing_transaction.
+        
+        Inserts a transaction with an idempotency expiration timestamp in the past and
+        verifies that the function returns None, indicating expired transactions are
+        ignored.
+        """
         # Create a test transaction with an expired idempotency key
         idempotency_key = "expired-idempotency-key"
         now = datetime.now(timezone.utc)
@@ -93,7 +101,11 @@ class TestCheckExistingTransaction:
                     mock_warning.assert_called_once()
 
     def test_other_client_error(self, app_with_mocked_table):
-        """Test handling of other types of ClientError."""
+        """
+        Tests that check_existing_transaction raises a ClientError and logs an error when a non-throughput DynamoDB ClientError occurs.
+        
+        Simulates a ResourceNotFoundException from DynamoDB and verifies that the error is logged, no warning is issued, and the exception is propagated.
+        """
         # Mock the table.query method to raise a different ClientError
         with patch.object(app_with_mocked_table.table, 'query') as mock_query:
             error_response = {
@@ -118,7 +130,12 @@ class TestCheckExistingTransaction:
 
 class TestSaveTransaction:
     def test_successful_save(self, app_with_mocked_table):
-        """Test successful transaction save."""
+        """
+        Tests that a transaction is saved successfully and can be retrieved from the database.
+        
+        Creates a sample transaction, saves it using the application's save method, and verifies
+        that the transaction is present in the mocked database table.
+        """
         # Create a test transaction
         transaction_id = "test-save-id"
         transaction_item = {
@@ -144,7 +161,9 @@ class TestSaveTransaction:
         assert response["Item"]["id"] == transaction_id
 
     def test_throughput_exceeded_error(self, app_with_mocked_table):
-        """Test handling of ProvisionedThroughputExceededException."""
+        """
+        Tests that save_transaction raises an exception with an appropriate message and logs an error when a ProvisionedThroughputExceededException occurs during a DynamoDB save operation.
+        """
         # Mock the table.put_item method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
             error_response = {
@@ -192,7 +211,10 @@ class TestSaveTransaction:
                 mock_error.assert_called_once()
 
     def test_other_client_error(self, app_with_mocked_table):
-        """Test handling of other types of ClientError."""
+        """
+        Tests that save_transaction raises an exception and logs an error when a non-specific
+        ClientError (such as InternalServerError) occurs during a database save operation.
+        """
         # Mock the table.put_item method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
             error_response = {

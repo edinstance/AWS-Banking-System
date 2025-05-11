@@ -24,7 +24,9 @@ class TestIsValidUUID:
         assert is_valid_uuid(valid_uuid) is True
 
     def test_invalid_uuid_format(self):
-        """Test that an improperly formatted UUID returns False."""
+        """
+        Tests that is_valid_uuid returns False for an improperly formatted UUID string.
+        """
         invalid_uuid = "not-a-uuid"
         assert is_valid_uuid(invalid_uuid) is False
 
@@ -34,7 +36,9 @@ class TestIsValidUUID:
         assert is_valid_uuid(too_short) is False
 
     def test_uuid_with_invalid_characters(self):
-        """Test that a UUID with invalid characters returns False."""
+        """
+        Tests that a UUID string containing invalid characters is correctly identified as invalid.
+        """
         invalid_chars = "123e4567-e89b-12d3-a456-42661417400G"  # 'G' is not hex
         assert is_valid_uuid(invalid_chars) is False
 
@@ -47,7 +51,9 @@ class TestIsValidUUID:
         assert is_valid_uuid("") is False
 
     def test_numeric_input(self):
-        """Test that a numeric input returns False."""
+        """
+        Tests that passing a numeric input to is_valid_uuid returns False.
+        """
         assert is_valid_uuid(12345) is False
 
 
@@ -63,7 +69,9 @@ class TestCreateResponse:
         assert response["headers"]["Content-Type"] == "application/json"
 
     def test_error_response(self):
-        """Test creating an error response."""
+        """
+        Tests that an error HTTP response is correctly constructed with the expected status code and body.
+        """
         status_code = 400
         body = {"error": "Bad Request"}
         response = create_response(status_code, body)
@@ -72,7 +80,9 @@ class TestCreateResponse:
         assert json.loads(response["body"]) == body
 
     def test_security_headers(self):
-        """Test that security headers are included in the response."""
+        """
+        Verifies that the HTTP response includes required security headers.
+        """
         response = create_response(200, {})
 
         assert "X-Content-Type-Options" in response["headers"]
@@ -80,7 +90,9 @@ class TestCreateResponse:
         assert "Strict-Transport-Security" in response["headers"]
 
     def test_json_serialization(self):
-        """Test that complex JSON is properly serialized."""
+        """
+        Tests that complex nested JSON objects are correctly serialised and deserialised in HTTP responses.
+        """
         body = {
             "id": "12345",
             "nested": {"key": "value"},
@@ -152,7 +164,9 @@ class TestValidateTransactionData:
             assert valid_type in error
 
     def test_invalid_amount_format(self):
-        """Test that non-numeric amounts are rejected."""
+        """
+        Tests that the validation rejects transactions with a non-numeric amount field.
+        """
         data = {
             "accountId": str(uuid.uuid4()),
             "amount": "not-a-number",
@@ -191,7 +205,12 @@ class TestValidateTransactionData:
         assert "Amount must be a positive number" in error
 
     def test_invalid_account_id(self):
-        """Test that invalid account IDs are rejected."""
+        """
+        Tests that transactions with invalid account IDs are correctly rejected.
+        
+        Verifies that account IDs which are too short or not strings cause validation to fail,
+        and that the appropriate error message is returned.
+        """
         # Account ID too short
         data = {
             "accountId": "abs121",
@@ -255,7 +274,9 @@ class TestValidateTransactionData:
         assert error is None
 
     def test_valid_without_description(self):
-        """Test that description is optional."""
+        """
+        Verifies that a transaction is valid when the optional description field is omitted.
+        """
         data = {
             "accountId": str(uuid.uuid4()),
             "amount": 100,

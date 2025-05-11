@@ -6,7 +6,13 @@ import pytest
 
 @pytest.fixture(scope="function")
 def app_with_mocked_table(monkeypatch, dynamo_resource, dynamo_table):
-    """Create a fixture that reloads the app module with a mocked table."""
+    """
+    Pytest fixture that provides the app module with a mocked DynamoDB table.
+    
+    Sets environment variables and patches AWS resources so that the app module uses
+    a provided mocked DynamoDB table for testing. The fixture yields the reloaded
+    app module with the mocked table assigned.
+    """
     # First, set the environment variable
     table_name = dynamo_table
     monkeypatch.setenv("TRANSACTIONS_TABLE_NAME", table_name)
@@ -27,7 +33,12 @@ def app_with_mocked_table(monkeypatch, dynamo_resource, dynamo_table):
 
 @pytest.fixture(scope="function")
 def app_without_table(monkeypatch):
-    """Create a fixture that reloads the app module without a table."""
+    """
+    Pytest fixture that reloads the app module without a configured DynamoDB table.
+    
+    Removes the TRANSACTIONS_TABLE_NAME environment variable and sets test-specific
+    environment variables before reloading and yielding the app module for use in tests.
+    """
     # Remove the environment variable
     monkeypatch.delenv("TRANSACTIONS_TABLE_NAME", raising=False)
     monkeypatch.setenv("ENVIRONMENT_NAME", "test")
