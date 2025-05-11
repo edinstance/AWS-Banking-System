@@ -86,6 +86,8 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
       KeySchema:
         - AttributeName: id
           KeyType: HASH
