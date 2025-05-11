@@ -424,7 +424,7 @@ class TestLambdaHandler:
         idempotency_key = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event for a DEBIT transaction
+        # Create a valid request event for a DEPOSIT transaction
         event = {
             "headers": {
                 "Idempotency-Key": idempotency_key
