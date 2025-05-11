@@ -8,7 +8,13 @@ from botocore.exceptions import ClientError
 
 class TestCheckExistingTransaction:
     def test_existing_transaction_found(self, app_with_mocked_table):
-        """Test successful retrieval of an existing transaction."""
+        """
+        Tests that an existing transaction with a valid idempotency key is retrieved successfully.
+        
+        Inserts a transaction with a future expiration timestamp into the mocked table, calls
+        the transaction retrieval function, and asserts that the returned transaction matches
+        the inserted data.
+        """
         # Create a test transaction with an idempotency key
         idempotency_key = "test-idempotency-key"
         now = datetime.now(timezone.utc)
@@ -36,7 +42,9 @@ class TestCheckExistingTransaction:
         assert result["idempotencyKey"] == idempotency_key
 
     def test_no_transaction_found(self, app_with_mocked_table):
-        """Test when no transaction exists with the given idempotency key."""
+        """
+        Tests that check_existing_transaction returns None when no transaction matches the given idempotency key.
+        """
         # Call the function with a non-existent key
         result = app_with_mocked_table.check_existing_transaction("non-existent-key")
 
@@ -44,7 +52,12 @@ class TestCheckExistingTransaction:
         assert result is None
 
     def test_expired_transaction(self, app_with_mocked_table):
-        """Test handling of expired transactions."""
+        """
+        Tests that an expired transaction is not returned by check_existing_transaction.
+        
+        Inserts a transaction with an idempotency expiration timestamp in the past and
+        verifies that the function returns None, indicating expired transactions are ignored.
+        """
         # Create a test transaction with an expired idempotency key
         idempotency_key = "expired-idempotency-key"
         now = datetime.now(timezone.utc)
@@ -70,7 +83,9 @@ class TestCheckExistingTransaction:
         assert result is None
 
     def test_client_error_handling(self, app_with_mocked_table):
-        """Test error handling when a DynamoDB client raises an error."""
+        """
+        Tests that a DynamoDB client error during a transaction query raises the exception and logs both an error and a warning.
+        """
         # Mock the table.query method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'query') as mock_query:
             error_response = {
@@ -93,7 +108,11 @@ class TestCheckExistingTransaction:
                     mock_warning.assert_called_once()
 
     def test_other_client_error(self, app_with_mocked_table):
-        """Test handling of other types of ClientError."""
+        """
+        Tests that check_existing_transaction raises a ClientError and logs an error when a non-throughput DynamoDB ClientError occurs.
+        
+        Simulates a ResourceNotFoundException from DynamoDB and verifies that the error is logged and no warning is issued.
+        """
         # Mock the table.query method to raise a different ClientError
         with patch.object(app_with_mocked_table.table, 'query') as mock_query:
             error_response = {
@@ -144,7 +163,10 @@ class TestSaveTransaction:
         assert response["Item"]["id"] == transaction_id
 
     def test_throughput_exceeded_error(self, app_with_mocked_table):
-        """Test handling of ProvisionedThroughputExceededException."""
+        """
+        Tests that save_transaction raises an exception and logs an error when a
+        ProvisionedThroughputExceededException occurs during a DynamoDB put_item operation.
+        """
         # Mock the table.put_item method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
             error_response = {
@@ -168,7 +190,9 @@ class TestSaveTransaction:
                 mock_error.assert_called_once()
 
     def test_resource_not_found_error(self, app_with_mocked_table):
-        """Test handling of ResourceNotFoundException."""
+        """
+        Tests that save_transaction raises an exception and logs an error when a ResourceNotFoundException occurs during a DynamoDB save operation.
+        """
         # Mock the table.put_item method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
             error_response = {
@@ -192,7 +216,10 @@ class TestSaveTransaction:
                 mock_error.assert_called_once()
 
     def test_other_client_error(self, app_with_mocked_table):
-        """Test handling of other types of ClientError."""
+        """
+        Tests that save_transaction raises an exception and logs an error when a non-specific
+        ClientError (such as InternalServerError) occurs during a DynamoDB put_item operation.
+        """
         # Mock the table.put_item method to raise a ClientError
         with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
             error_response = {

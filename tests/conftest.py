@@ -9,7 +9,13 @@ AWS_REGION = "eu-west-2"
 
 @pytest.fixture(scope="function")
 def aws_credentials():
-    """Mocked AWS Credentials for moto."""
+    """
+    Sets environment variables to provide mock AWS credentials and region for testing.
+    
+    This fixture ensures that AWS SDK clients use dummy credentials and a predefined
+    region, enabling safe and isolated testing of AWS interactions without real
+    credentials.
+    """
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
@@ -19,14 +25,26 @@ def aws_credentials():
 
 @pytest.fixture(scope="function")
 def dynamo_resource(aws_credentials):
-    """Create a mocked DynamoDB resource."""
+    """
+    Provides a mocked DynamoDB resource for use in tests.
+    
+    Yields:
+        A boto3 DynamoDB resource object configured for the mocked AWS environment.
+    """
     with mock_aws():
         yield boto3.resource("dynamodb", region_name=AWS_REGION)
 
 
 @pytest.fixture(scope="function")
 def dynamo_table(dynamo_resource):
-    """Create a mocked DynamoDB table that matches your application's expectations."""
+    """
+    Creates a mocked DynamoDB table with a primary key and a global secondary index for testing.
+    
+    The table is named "test-transactions-table" and includes a primary hash key "id" (string type) and a global secondary index "IdempotencyKeyIndex" on the "idempotencyKey" attribute. The function waits until the table is fully created before returning its name.
+    
+    Returns:
+        str: The name of the created DynamoDB table.
+    """
     table_name = "test-transactions-table"
 
     # Create the table with just a hash key for 'id'

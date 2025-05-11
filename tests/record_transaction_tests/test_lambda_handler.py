@@ -12,7 +12,13 @@ class TestLambdaHandler:
     """Test cases for the lambda_handler function."""
 
     def test_successful_transaction_creation(self, app_with_mocked_table):
-        """Test the successful creation of a new transaction."""
+        """
+        Tests that a new transaction is successfully created and persisted with valid input.
+        
+        Verifies that the lambda handler returns a 201 response with the correct transaction
+        fields and that the transaction is saved in the mocked DynamoDB table with expected
+        values when provided with a valid idempotency key and transaction data.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -56,7 +62,11 @@ class TestLambdaHandler:
         assert transaction["idempotencyKey"] == idempotency_key
 
     def test_idempotent_request(self, app_with_mocked_table):
-        """Test handling of an idempotent request (same idempotency key)."""
+        """
+        Tests that repeated requests with the same idempotency key return the original transaction.
+        
+        Ensures that when a transaction with a given idempotency key already exists, a subsequent request with the same key returns the existing transaction without creating a duplicate. Verifies that the response indicates idempotency and no new transaction is added to the database.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -109,7 +119,11 @@ class TestLambdaHandler:
         assert len(transactions) == 1
 
     def test_missing_idempotency_key(self, app_with_mocked_table):
-        """Test handling of a request without an idempotency key."""
+        """
+        Tests that the lambda handler returns a 400 error when the Idempotency-Key header is missing.
+        
+        Verifies that the response includes an appropriate error message, suggestion, and example.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -137,7 +151,12 @@ class TestLambdaHandler:
         assert "example" in response_body
 
     def test_invalid_idempotency_key_format(self, app_with_mocked_table):
-        """Test handling of a request with an invalid idempotency key format."""
+        """
+        Tests that requests with idempotency keys of invalid length are rejected with a 400 error.
+        
+        Sends requests with idempotency keys that are too short or too long and asserts that
+        the response contains an appropriate error message about the valid length range.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -172,7 +191,11 @@ class TestLambdaHandler:
         assert "Idempotency-Key must be between 10 and 64 characters" in response_body["error"]
 
     def test_non_uuid_idempotency_key(self, app_with_mocked_table):
-        """Test handling of a request with a non-UUID idempotency key."""
+        """
+        Tests that a request with a non-UUID idempotency key returns a 400 error with an appropriate message.
+        
+        Verifies that the lambda handler responds with a client error when the 'Idempotency-Key' header is present and of valid length but not a valid UUID, and that the response includes an error message and example.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -201,7 +224,11 @@ class TestLambdaHandler:
         assert "example" in response_body
 
     def test_invalid_json_in_request_body(self, app_with_mocked_table):
-        """Test handling of a request with invalid JSON in the body."""
+        """
+        Tests that the lambda handler returns a 400 error when the request body contains invalid JSON.
+        
+        Verifies that an appropriate error message is included in the response when the request body cannot be parsed as valid JSON.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -224,7 +251,11 @@ class TestLambdaHandler:
         assert "Invalid JSON format in request body" in response_body["error"]
 
     def test_validation_errors(self, app_with_mocked_table):
-        """Test handling of validation errors in transaction data."""
+        """
+        Tests that the lambda handler returns appropriate errors for invalid or incomplete transaction data.
+        
+        This includes verifying that missing required fields or invalid transaction types result in HTTP 400 responses with descriptive error messages.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -263,7 +294,12 @@ class TestLambdaHandler:
         assert "Invalid transaction type" in response_body["error"]
 
     def test_database_error_during_idempotency_check(self, app_with_mocked_table):
-        """Test handling of database errors during idempotency check."""
+        """
+        Tests that a database error during the idempotency check results in a 500 response.
+        
+        Simulates an exception when checking for an existing transaction and verifies that
+        the lambda handler returns an appropriate error message and status code.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -295,7 +331,11 @@ class TestLambdaHandler:
             assert "Unable to verify transaction uniqueness" in response_body["error"]
 
     def test_database_error_during_save(self, app_with_mocked_table):
-        """Test handling of database errors during transaction save."""
+        """
+        Tests that the lambda handler returns a 500 error when a database exception occurs during transaction saving.
+        
+        Simulates a failure in the transaction persistence layer and verifies that the response indicates an internal server error with an appropriate error message.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -327,7 +367,11 @@ class TestLambdaHandler:
             assert "Failed to process transaction" in response_body["error"]
 
     def test_unhandled_exception(self, app_with_mocked_table):
-        """Test handling of unhandled exceptions."""
+        """
+        Tests that the lambda_handler returns a 500 response for unexpected exceptions during transaction processing.
+        
+        Simulates an unhandled exception in the transaction validation step and verifies that the response contains a generic internal server error message.
+        """
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -359,7 +403,11 @@ class TestLambdaHandler:
             assert "Internal server error" in response_body["error"]
 
     def test_table_not_initialized(self, monkeypatch):
-        """Test handling when the DynamoDB table is not initialized."""
+        """
+        Tests that the lambda handler returns a 500 error when the DynamoDB table is not configured.
+        
+        Removes the required environment variable, reloads the app, and verifies that a server configuration error is returned for a valid transaction request.
+        """
         # Ensure TRANSACTIONS_TABLE_NAME is not set
         monkeypatch.delenv("TRANSACTIONS_TABLE_NAME", raising=False)
 
@@ -393,7 +441,11 @@ class TestLambdaHandler:
         assert "Server configuration error" in response_body["error"]
 
     def test_debit_transaction(self, monkeypatch, dynamo_table):
-        """Test the successful creation of a DEBIT transaction."""
+        """
+        Tests that a DEPOSIT transaction is successfully created and persisted in DynamoDB.
+        
+        This test sets up the environment to use a mocked DynamoDB table, sends a valid DEPOSIT transaction request with a proper idempotency key, and verifies that the response indicates success and the transaction is correctly saved with expected values.
+        """
         table_name = dynamo_table
         monkeypatch.setenv("TRANSACTIONS_TABLE_NAME", table_name)
 

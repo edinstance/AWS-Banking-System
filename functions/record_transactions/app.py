@@ -56,7 +56,11 @@ logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
 
 
 def get_dynamodb_resource():
-    """Get DynamoDB resource with appropriate endpoint configuration."""
+    """
+    Returns a DynamoDB resource using a custom endpoint if specified in the environment.
+    
+    If a custom DynamoDB endpoint is set via environment variable, the resource is initialized with that endpoint; otherwise, the default AWS endpoint is used.
+    """
     if DYNAMODB_ENDPOINT:
         logger.debug(f"Using custom DynamoDB endpoint: {DYNAMODB_ENDPOINT}")
         return boto3.resource('dynamodb', endpoint_url=DYNAMODB_ENDPOINT)
@@ -76,13 +80,13 @@ else:
 
 def is_valid_uuid(val):
     """
-    Check if a string is a valid UUID.
-
+    Determines whether the given string is a valid UUID.
+    
     Args:
-        val (str): String to validate
-
+        val: The string to validate.
+    
     Returns:
-        bool: True if string is a valid UUID, False otherwise
+        True if the string is a valid UUID, otherwise False.
     """
     try:
         uuid_obj = uuid.UUID(str(val))
@@ -93,14 +97,14 @@ def is_valid_uuid(val):
 
 def create_response(status_code, body_dict):
     """
-    Create a standardized API Gateway response.
-
+    Constructs a standardized JSON response dictionary for API Gateway.
+    
     Args:
-        status_code (int): HTTP status code
-        body_dict (dict): Response body as dictionary
-
+        status_code: HTTP status code for the response.
+        body_dict: Dictionary to be serialized as the JSON response body.
+    
     Returns:
-        dict: Formatted response for API Gateway
+        A dictionary formatted for API Gateway responses, including security headers.
     """
     return {
         "statusCode": status_code,
@@ -115,13 +119,15 @@ def create_response(status_code, body_dict):
 
 def validate_transaction_data(data):
     """
-    Validate transaction data against business rules.
-
+    Validates transaction data against required fields and business rules.
+    
+    Checks for presence and format of required fields, ensures the transaction type is valid, verifies the amount is a positive number, validates the accountId format, and confirms the description (if present) is a string.
+    
     Args:
-        data (dict): Transaction data to validate
-
+        data (dict): The transaction data to validate.
+    
     Returns:
-        tuple: (is_valid, error_message)
+        tuple: A tuple (is_valid, error_message) where is_valid is True if validation passes, otherwise False, and error_message contains the reason for failure or None if valid.
     """
     required_fields = ["accountId", "amount", "type"]
     missing_fields = [field for field in required_fields if field not in data]
@@ -158,13 +164,19 @@ def validate_transaction_data(data):
 
 def check_existing_transaction(idempotency_key):
     """
-    Check if a transaction with the given idempotency key already exists.
-
+    Checks DynamoDB for an existing transaction with the specified idempotency key.
+    
+    Queries the table's "IdempotencyKeyIndex" and returns the first transaction whose
+    idempotency expiration timestamp is still valid. Returns None if no such transaction exists.
+    
     Args:
-        idempotency_key (str): Idempotency key to check
-
+        idempotency_key: The idempotency key to search for.
+    
     Returns:
-        dict or None: Existing transaction or None if not found
+        The existing transaction item as a dictionary if found and valid; otherwise, None.
+    
+    Raises:
+        ClientError: If a DynamoDB client error occurs during the query.
     """
     try:
         response = table.query(
@@ -192,13 +204,16 @@ def check_existing_transaction(idempotency_key):
 
 def save_transaction(transaction_item):
     """
-    Save a transaction to DynamoDB with error handling.
-
+    Saves a transaction record to DynamoDB, raising exceptions on failure.
+    
     Args:
-        transaction_item (dict): Transaction data to save
-
+        transaction_item (dict): The transaction data to be stored.
+    
     Returns:
-        bool: True if successful, raises exception otherwise
+        True if the transaction is saved successfully.
+    
+    Raises:
+        Exception: If the operation fails due to throughput, missing table, or other database errors.
     """
     try:
         table.put_item(Item=transaction_item)
@@ -218,14 +233,16 @@ def save_transaction(transaction_item):
 @logger.inject_lambda_context
 def lambda_handler(event, context):
     """
-    Main Lambda handler function for processing transaction requests.
-
+    Handles incoming API Gateway requests to record financial transactions with idempotency.
+    
+    Validates request headers and body, enforces idempotency using a unique key, checks for existing transactions, and stores new transactions in DynamoDB. Returns standardized JSON responses with appropriate status codes for success, validation errors, or server errors.
+    
     Args:
-        event (dict): API Gateway event
-        context (LambdaContext): Lambda context
-
+        event (dict): The API Gateway event payload.
+        context (LambdaContext): The Lambda execution context.
+    
     Returns:
-        dict: API Gateway response
+        dict: A response object formatted for API Gateway.
     """
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
