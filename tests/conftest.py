@@ -21,8 +21,8 @@ def aws_credentials():
 def dynamo_resource(aws_credentials):
     """Create a mocked DynamoDB resource."""
     with mock_aws():
-        yield boto3.resource("dynamodb", region_name=AWS_REGION)
-
+        resource = boto3.resource("dynamodb", region_name=AWS_REGION)
+        yield resource
 
 @pytest.fixture(scope="function")
 def dynamo_table(dynamo_resource):
