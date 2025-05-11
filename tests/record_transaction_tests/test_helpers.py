@@ -11,7 +11,6 @@ from functions.record_transactions.app import (
 
 
 class TestIsValidUUID:
-
     def test_valid_uuid_v4(self):
         """Test that a valid UUID v4 string returns True."""
         # Generate a real UUID v4
@@ -93,11 +92,7 @@ class TestCreateResponse:
         """
         Tests that complex nested JSON objects are correctly serialised and deserialised in HTTP responses.
         """
-        body = {
-            "id": "12345",
-            "nested": {"key": "value"},
-            "list": [1, 2, 3]
-        }
+        body = {"id": "12345", "nested": {"key": "value"}, "list": [1, 2, 3]}
         response = create_response(200, body)
 
         # Deserialize to verify integrity
@@ -112,7 +107,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 100.50,
             "type": "DEPOSIT",
-            "description": "Test deposit"
+            "description": "Test deposit",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -124,7 +119,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 50.25,
             "type": "WITHDRAWAL",
-            "description": "Test withdrawal"
+            "description": "Test withdrawal",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -132,10 +127,7 @@ class TestValidateTransactionData:
 
     def test_missing_required_fields(self):
         """Test that missing required fields are detected."""
-        data = {
-            "amount": 100,
-            "type": "DEPOSIT"
-        }
+        data = {"amount": 100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Missing required fields" in error
@@ -150,11 +142,7 @@ class TestValidateTransactionData:
 
     def test_invalid_transaction_type(self):
         """Test that invalid transaction types are rejected."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 100,
-            "type": "INVALID_TYPE"
-        }
+        data = {"accountId": str(uuid.uuid4()), "amount": 100, "type": "INVALID_TYPE"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Invalid transaction type" in error
@@ -170,7 +158,7 @@ class TestValidateTransactionData:
         data = {
             "accountId": str(uuid.uuid4()),
             "amount": "not-a-number",
-            "type": "DEPOSIT"
+            "type": "DEPOSIT",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
@@ -178,11 +166,7 @@ class TestValidateTransactionData:
 
     def test_negative_amount(self):
         """Test that negative amounts are rejected for all transaction types."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": -100,
-            "type": "DEPOSIT"
-        }
+        data = {"accountId": str(uuid.uuid4()), "amount": -100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Amount must be a positive number" in error
@@ -195,11 +179,7 @@ class TestValidateTransactionData:
 
     def test_zero_amount(self):
         """Test that zero amounts are rejected."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 0,
-            "type": "DEPOSIT"
-        }
+        data = {"accountId": str(uuid.uuid4()), "amount": 0, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Amount must be a positive number" in error
@@ -207,26 +187,18 @@ class TestValidateTransactionData:
     def test_invalid_account_id(self):
         """
         Tests that transactions with invalid account IDs are correctly rejected.
-        
+
         Verifies that account IDs which are too short or not strings cause validation to fail,
         and that the appropriate error message is returned.
         """
         # Account ID too short
-        data = {
-            "accountId": "abs121",
-            "amount": 100,
-            "type": "DEPOSIT"
-        }
+        data = {"accountId": "abs121", "amount": 100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Invalid accountId, accountId must be a valid UUID" in error
 
         # Account ID not a string
-        data = {
-            "accountId": 12345,
-            "amount": 100,
-            "type": "DEPOSIT"
-        }
+        data = {"accountId": 12345, "amount": 100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Invalid accountId, accountId must be a valid UUID" in error
@@ -237,7 +209,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "DEPOSIT",
-            "description": 12345  # Not a string
+            "description": 12345,  # Not a string
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
@@ -249,7 +221,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": Decimal("100.50"),
             "type": "DEPOSIT",
-            "description": "Test with Decimal"
+            "description": "Test with Decimal",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -261,7 +233,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "deposit",
-            "description": "Test with lowercase type"
+            "description": "Test with lowercase type",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -280,7 +252,7 @@ class TestValidateTransactionData:
         data = {
             "accountId": str(uuid.uuid4()),
             "amount": 100,
-            "type": "DEPOSIT"
+            "type": "DEPOSIT",
             # No description
         }
         is_valid, error = validate_transaction_data(data)
@@ -293,7 +265,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 75.00,
             "type": "TRANSFER",
-            "description": "Transfer to savings"
+            "description": "Transfer to savings",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -305,7 +277,7 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 25.75,
             "type": "ADJUSTMENT",
-            "description": "Fee reversal"
+            "description": "Fee reversal",
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True

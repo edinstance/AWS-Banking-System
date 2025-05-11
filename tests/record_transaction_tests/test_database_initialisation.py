@@ -26,7 +26,7 @@ def test_table_initialization_without_environment_variable(app_without_table):
 def test_lambda_handler_with_uninitialized_table(app_without_table):
     """
     Tests that the lambda handler returns a 500 error and logs an appropriate message when the DynamoDB table resource is uninitialized.
-    
+
     Verifies that the response contains a server configuration error and that an error log is emitted about the missing table resource.
     """
     # Create a mock context
@@ -35,7 +35,7 @@ def test_lambda_handler_with_uninitialized_table(app_without_table):
     mock_context.function_name = "test-function"
 
     # Patch the logger to capture calls
-    with patch.object(app_without_table, 'logger') as mock_logger:
+    with patch.object(app_without_table, "logger") as mock_logger:
         # Make sure the inject_lambda_context decorator works
         mock_logger.inject_lambda_context.return_value = lambda f: f
 
@@ -47,13 +47,15 @@ def test_lambda_handler_with_uninitialized_table(app_without_table):
         assert "Server configuration error" in response["body"]
 
         # Verify the logger was called
-        mock_logger.error.assert_called_with("DynamoDB table resource is not initialized")
+        mock_logger.error.assert_called_with(
+            "DynamoDB table resource is not initialized"
+        )
 
 
 def test_lambda_handler_with_initialized_table(app_with_mocked_table):
     """
     Tests the lambda handler's response when the DynamoDB table is initialized but the request lacks the required Idempotency-Key header.
-    
+
     Asserts that the handler returns a 400 status code with an appropriate error message and confirms the table resource is initialized.
     """
     # Create a mock context
@@ -62,7 +64,7 @@ def test_lambda_handler_with_initialized_table(app_with_mocked_table):
     mock_context.function_name = "test-function"
 
     # Patch the logger to capture calls
-    with patch.object(app_with_mocked_table, 'logger') as mock_logger:
+    with patch.object(app_with_mocked_table, "logger") as mock_logger:
         # Make sure the inject_lambda_context decorator works
         mock_logger.inject_lambda_context.return_value = lambda f: f
 
@@ -81,11 +83,10 @@ def test_lambda_handler_with_initialized_table(app_with_mocked_table):
 
 
 class TestGetDynamoDBResource:
-
     def test_default_endpoint(self, aws_credentials, monkeypatch):
         """
         Tests that get_dynamodb_resource uses the default DynamoDB endpoint when no custom endpoint is set.
-        
+
         Ensures the DYNAMODB_ENDPOINT environment variable is unset, verifies the logger records the use of the default endpoint, and confirms the returned resource is a valid boto3 DynamoDB ServiceResource.
         """
         # Ensure DYNAMODB_ENDPOINT is not set
@@ -93,7 +94,7 @@ class TestGetDynamoDBResource:
 
         # Mock the logger to verify it's called correctly
         mock_logger = MagicMock()
-        with patch('functions.record_transactions.app.logger', mock_logger), mock_aws():
+        with patch("functions.record_transactions.app.logger", mock_logger), mock_aws():
             # Call the function
             resource = get_dynamodb_resource()
 
@@ -110,7 +111,7 @@ class TestGetDynamoDBResource:
     def test_custom_endpoint(self, monkeypatch):
         """
         Tests that get_dynamodb_resource uses a custom DynamoDB endpoint when specified via environment variables.
-        
+
         Verifies that the function calls boto3.resource with the custom endpoint URL, logs the correct debug message, and returns the mocked resource.
         """
         # Setup
@@ -123,13 +124,21 @@ class TestGetDynamoDBResource:
         mock_boto3.resource.return_value = mock_resource
 
         # Patch dependencies and environment variable directly within the application
-        with patch('functions.record_transactions.app.boto3', mock_boto3), \
-                patch('functions.record_transactions.app.logger', mock_logger), \
-                patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint):
+        with (
+            patch("functions.record_transactions.app.boto3", mock_boto3),
+            patch("functions.record_transactions.app.logger", mock_logger),
+            patch(
+                "functions.record_transactions.app.DYNAMODB_ENDPOINT", custom_endpoint
+            ),
+        ):
             result = app.get_dynamodb_resource()
 
-            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint, region_name='eu-west-2')
-            mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
+            mock_boto3.resource.assert_called_once_with(
+                "dynamodb", endpoint_url=custom_endpoint, region_name="eu-west-2"
+            )
+            mock_logger.debug.assert_called_with(
+                f"Using custom DynamoDB endpoint: {custom_endpoint}"
+            )
             assert result == mock_resource
 
     def test_custom_region(self, monkeypatch):
@@ -145,21 +154,29 @@ class TestGetDynamoDBResource:
         mock_boto3.resource.return_value = mock_resource
 
         # Patch dependencies and environment variable directly within the application
-        with patch('functions.record_transactions.app.boto3', mock_boto3), \
-                patch('functions.record_transactions.app.logger', mock_logger), \
-                patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint), \
-                patch('functions.record_transactions.app.AWS_REGION', custom_region):
+        with (
+            patch("functions.record_transactions.app.boto3", mock_boto3),
+            patch("functions.record_transactions.app.logger", mock_logger),
+            patch(
+                "functions.record_transactions.app.DYNAMODB_ENDPOINT", custom_endpoint
+            ),
+            patch("functions.record_transactions.app.AWS_REGION", custom_region),
+        ):
             result = app.get_dynamodb_resource()
 
-            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint, region_name='us-east-1')
-            mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
+            mock_boto3.resource.assert_called_once_with(
+                "dynamodb", endpoint_url=custom_endpoint, region_name="us-east-1"
+            )
+            mock_logger.debug.assert_called_with(
+                f"Using custom DynamoDB endpoint: {custom_endpoint}"
+            )
             assert result == mock_resource
 
     def test_empty_endpoint_string(self, aws_credentials, monkeypatch):
         """
         Tests that get_dynamodb_resource defaults to the standard DynamoDB endpoint when the
         DYNAMODB_ENDPOINT environment variable is set to an empty string.
-        
+
         Verifies that a debug log is emitted for using the default endpoint and that the
         returned resource supports table listing.
         """
@@ -167,7 +184,7 @@ class TestGetDynamoDBResource:
 
         mock_logger = MagicMock()
 
-        with patch('functions.record_transactions.app.logger', mock_logger), mock_aws():
+        with patch("functions.record_transactions.app.logger", mock_logger), mock_aws():
             # Call the function
             resource = get_dynamodb_resource()
 
@@ -179,7 +196,7 @@ class TestGetDynamoDBResource:
     def test_integration_with_dynamo_table(self, app_with_mocked_table, dynamo_table):
         """
         Verifies integration with a mocked DynamoDB table, ensuring correct table access and structure.
-        
+
         This test checks that the `get_dynamodb_resource` function can retrieve a mocked DynamoDB table, confirms the table's name, and asserts the presence of a Global Secondary Index named `IdempotencyKeyIndex`.
         """
 
@@ -192,10 +209,13 @@ class TestGetDynamoDBResource:
 
         # Verify the table exists and has the expected structure
         table_description = table.meta.client.describe_table(TableName=dynamo_table)
-        assert table_description['Table']['TableName'] == dynamo_table
+        assert table_description["Table"]["TableName"] == dynamo_table
 
         # Verify the GSI exists
-        gsi = table_description['Table']['GlobalSecondaryIndexes']
+        gsi = table_description["Table"]["GlobalSecondaryIndexes"]
         # Find the IdempotencyKeyIndex
-        idempotency_index = next((index for index in gsi if index['IndexName'] == 'IdempotencyKeyIndex'), None)
+        idempotency_index = next(
+            (index for index in gsi if index["IndexName"] == "IdempotencyKeyIndex"),
+            None,
+        )
         assert idempotency_index is not None, "IdempotencyKeyIndex not found in GSIs"

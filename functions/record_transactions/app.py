@@ -49,7 +49,7 @@ ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
 IDEMPOTENCY_EXPIRATION_DAYS = int(os.environ.get("IDEMPOTENCY_EXPIRATION_DAYS", "7"))
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
-DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT')
+DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 
 # --- Logger Setup using AWS Lambda Powertools ---
@@ -59,7 +59,7 @@ logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
 def get_dynamodb_resource():
     """
     Returns a DynamoDB resource configured with a custom endpoint if specified.
-    
+
     If a custom DynamoDB endpoint is set via environment variable, the resource is initialised with that endpoint; otherwise, the default AWS endpoint is used.
     """
     if DYNAMODB_ENDPOINT:
@@ -70,7 +70,7 @@ def get_dynamodb_resource():
             region_name=AWS_REGION,
         )
     logger.debug("Using default DynamoDB endpoint")
-    return boto3.resource('dynamodb')
+    return boto3.resource("dynamodb")
 
 
 # Initialize DynamoDB resource and table
@@ -86,10 +86,10 @@ else:
 def is_valid_uuid(val):
     """
     Determines whether the provided string is a valid UUID.
-    
+
     Args:
         val: The string to validate.
-    
+
     Returns:
         True if the string is a valid UUID, otherwise False.
     """
@@ -103,11 +103,11 @@ def is_valid_uuid(val):
 def create_response(status_code, body_dict):
     """
     Constructs a standard HTTP response dictionary for API Gateway with JSON body and security headers.
-    
+
     Args:
         status_code: The HTTP status code to return.
         body_dict: The response body as a dictionary to be serialised as JSON.
-    
+
     Returns:
         A dictionary formatted for API Gateway responses, including headers and JSON body.
     """
@@ -125,12 +125,12 @@ def create_response(status_code, body_dict):
 def validate_transaction_data(data):
     """
     Validates transaction data against required fields and business rules.
-    
+
     Checks for presence of required fields, valid transaction type, positive numeric amount, valid UUID for accountId, and ensures description is a string if provided.
-    
+
     Args:
         data (dict): The transaction data to validate.
-    
+
     Returns:
         tuple: A tuple (is_valid, error_message), where is_valid is True if the data is valid, otherwise False, and error_message contains the reason for invalidity or None if valid.
     """
@@ -170,16 +170,16 @@ def validate_transaction_data(data):
 def check_existing_transaction(idempotency_key):
     """
     Checks for an existing, non-expired transaction with the specified idempotency key.
-    
+
     Queries the DynamoDB table using a secondary index to find a transaction matching the
     given idempotency key whose idempotency expiration timestamp is in the future.
-    
+
     Args:
         idempotency_key: The idempotency key to search for.
-    
+
     Returns:
         The existing transaction item as a dictionary if found and not expired; otherwise, None.
-    
+
     Raises:
         ClientError: If a DynamoDB error occurs during the query.
     """
@@ -210,13 +210,13 @@ def check_existing_transaction(idempotency_key):
 def save_transaction(transaction_item):
     """
     Attempts to save a transaction record to DynamoDB, raising exceptions on failure.
-    
+
     Args:
         transaction_item (dict): The transaction data to be stored.
-    
+
     Returns:
         True if the transaction is saved successfully.
-    
+
     Raises:
         Exception: If the operation fails due to throughput limits, missing resources, or other database errors.
     """
@@ -227,9 +227,7 @@ def save_transaction(transaction_item):
         error_code = e.response.get("Error", {}).get("Code")
         logger.error(f"Failed to save transaction: {error_code}", exc_info=True)
         if error_code == "ProvisionedThroughputExceededException":
-            raise Exception(
-                "Service temporarily unavailable due to high load"
-            ) from e
+            raise Exception("Service temporarily unavailable due to high load") from e
         elif error_code == "ResourceNotFoundException":
             raise Exception("Transaction database configuration error") from e
         else:
@@ -240,13 +238,13 @@ def save_transaction(transaction_item):
 def lambda_handler(event, context):
     """
     Handles incoming API Gateway requests to record financial transactions with idempotency.
-    
+
     Validates the presence and format of the Idempotency-Key header, checks for duplicate transactions, validates and parses the request body, and stores new transactions in DynamoDB. Returns appropriate HTTP responses for validation errors, duplicate requests, and server errors.
-    
+
     Args:
         event: The API Gateway event payload.
         context: The Lambda execution context.
-    
+
     Returns:
         A dictionary formatted as an API Gateway HTTP response.
     """
