@@ -146,8 +146,8 @@ def validate_transaction_data(data):
         return False, "Amount must be a positive number"
 
     # Validate accountId format (assuming UUID format)
-    if not isinstance(data["accountId"], str) or len(data["accountId"]) < 5:
-        return False, "Invalid accountId format"
+    if not is_valid_uuid(data["accountId"]):
+        return False, "Invalid accountId, accountId must be a valid UUID"
 
     # Sanitize description to prevent injection
     if "description" in data and not isinstance(data["description"], str):

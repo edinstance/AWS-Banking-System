@@ -15,12 +15,12 @@ class TestIsValidUUID:
     def test_valid_uuid_v4(self):
         """Test that a valid UUID v4 string returns True."""
         # Generate a real UUID v4
-        valid_uuid = str(uuid.uuid4())
+        valid_uuid = str(str(uuid.uuid4()))
         assert is_valid_uuid(valid_uuid) is True
 
     def test_valid_uuid_uppercase(self):
         """Test that a valid UUID in uppercase still works."""
-        valid_uuid = str(uuid.uuid4()).upper()
+        valid_uuid = str(str(uuid.uuid4())).upper()
         assert is_valid_uuid(valid_uuid) is True
 
     def test_invalid_uuid_format(self):
@@ -97,7 +97,7 @@ class TestValidateTransactionData:
     def test_valid_deposit_transaction(self):
         """Test a valid DEPOSIT transaction passes validation."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 100.50,
             "type": "DEPOSIT",
             "description": "Test deposit"
@@ -109,8 +109,8 @@ class TestValidateTransactionData:
     def test_valid_withdrawal_transaction(self):
         """Test a valid WITHDRAWAL transaction passes validation."""
         data = {
-            "accountId": "account-12345",
-            "amount": 50.25,  # Now positive
+            "accountId": str(uuid.uuid4()),
+            "amount": 50.25,
             "type": "WITHDRAWAL",
             "description": "Test withdrawal"
         }
@@ -120,7 +120,6 @@ class TestValidateTransactionData:
 
     def test_missing_required_fields(self):
         """Test that missing required fields are detected."""
-        # Missing accountId
         data = {
             "amount": 100,
             "type": "DEPOSIT"
@@ -140,7 +139,7 @@ class TestValidateTransactionData:
     def test_invalid_transaction_type(self):
         """Test that invalid transaction types are rejected."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "INVALID_TYPE"
         }
@@ -155,7 +154,7 @@ class TestValidateTransactionData:
     def test_invalid_amount_format(self):
         """Test that non-numeric amounts are rejected."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": "not-a-number",
             "type": "DEPOSIT"
         }
@@ -166,7 +165,7 @@ class TestValidateTransactionData:
     def test_negative_amount(self):
         """Test that negative amounts are rejected for all transaction types."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": -100,
             "type": "DEPOSIT"
         }
@@ -183,7 +182,7 @@ class TestValidateTransactionData:
     def test_zero_amount(self):
         """Test that zero amounts are rejected."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 0,
             "type": "DEPOSIT"
         }
@@ -195,13 +194,13 @@ class TestValidateTransactionData:
         """Test that invalid account IDs are rejected."""
         # Account ID too short
         data = {
-            "accountId": "abc",  # Less than 5 characters
+            "accountId": "abs121",
             "amount": 100,
             "type": "DEPOSIT"
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
-        assert "Invalid accountId format" in error
+        assert "Invalid accountId, accountId must be a valid UUID" in error
 
         # Account ID not a string
         data = {
@@ -211,12 +210,12 @@ class TestValidateTransactionData:
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
-        assert "Invalid accountId format" in error
+        assert "Invalid accountId, accountId must be a valid UUID" in error
 
     def test_invalid_description_type(self):
         """Test that non-string descriptions are rejected."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "DEPOSIT",
             "description": 12345  # Not a string
@@ -228,7 +227,7 @@ class TestValidateTransactionData:
     def test_valid_with_decimal_amount(self):
         """Test that Decimal amounts are accepted."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": Decimal("100.50"),
             "type": "DEPOSIT",
             "description": "Test with Decimal"
@@ -240,7 +239,7 @@ class TestValidateTransactionData:
     def test_case_insensitive_transaction_type(self):
         """Test that transaction types are case-insensitive."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "deposit",  # Lowercase
             "description": "Test with lowercase type"
@@ -258,7 +257,7 @@ class TestValidateTransactionData:
     def test_valid_without_description(self):
         """Test that description is optional."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "DEPOSIT"
             # No description
@@ -270,7 +269,7 @@ class TestValidateTransactionData:
     def test_valid_transfer_transaction(self):
         """Test a valid TRANSFER transaction passes validation."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 75.00,
             "type": "TRANSFER",
             "description": "Transfer to savings"
@@ -282,7 +281,7 @@ class TestValidateTransactionData:
     def test_valid_adjustment_transaction(self):
         """Test a valid ADJUSTMENT transaction passes validation."""
         data = {
-            "accountId": "account-12345",
+            "accountId": str(uuid.uuid4()),
             "amount": 25.75,
             "type": "ADJUSTMENT",
             "description": "Fee reversal"

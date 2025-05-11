@@ -19,6 +19,7 @@ class TestLambdaHandler:
 
         # Create a valid idempotency key
         idempotency_key = str(uuid.uuid4())
+        account_id = str(uuid.uuid4())
 
         # Create a valid request event
         event = {
@@ -26,7 +27,7 @@ class TestLambdaHandler:
                 "Idempotency-Key": idempotency_key
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "DEPOSIT",
                 "description": "Test transaction"
@@ -49,7 +50,7 @@ class TestLambdaHandler:
         transactions = app_with_mocked_table.table.scan()["Items"]
         assert len(transactions) == 1
         transaction = transactions[0]
-        assert transaction["accountId"] == "test-account-123"
+        assert transaction["accountId"] == account_id
         assert transaction["amount"] == Decimal("100.5")
         assert transaction["type"] == "DEPOSIT"
         assert transaction["description"] == "Test transaction"
@@ -61,8 +62,9 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a valid idempotency key
+        # Create a valid idempotency key and account id
         idempotency_key = str(uuid.uuid4())
+        account_id = str(uuid.uuid4())
 
         # Create a test transaction with the idempotency key
         now = datetime.now(timezone.utc)
@@ -71,7 +73,7 @@ class TestLambdaHandler:
         transaction_item = {
             "id": "existing-transaction-id",
             "createdAt": now.isoformat(),
-            "accountId": "test-account",
+            "accountId": account_id,
             "amount": Decimal("100.0"),
             "type": "CREDIT",
             "idempotencyKey": idempotency_key,
@@ -88,7 +90,7 @@ class TestLambdaHandler:
                 "Idempotency-Key": idempotency_key
             },
             "body": json.dumps({
-                "accountId": "different-account",  # Different data shouldn't matter
+                "accountId": account_id,
                 "amount": 200.75,
                 "type": "CREDIT",
                 "description": "Different transaction"
@@ -113,6 +115,8 @@ class TestLambdaHandler:
         # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
+
+
 
         # Create a request event without an idempotency key
         event = {
@@ -142,13 +146,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a request event with an invalid idempotency key (too short)
         event = {
             "headers": {
                 "Idempotency-Key": "short"
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "CREDIT",
                 "description": "Test transaction"
@@ -177,13 +183,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a request event with a non-UUID idempotency key
         event = {
             "headers": {
                 "Idempotency-Key": "not-a-uuid-but-long-enough-12345"
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "CREDIT",
                 "description": "Test transaction"
@@ -268,13 +276,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a valid request event
         event = {
             "headers": {
                 "Idempotency-Key": str(uuid.uuid4())
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "CREDIT",
                 "description": "Test transaction"
@@ -300,13 +310,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a valid request event
         event = {
             "headers": {
                 "Idempotency-Key": str(uuid.uuid4())
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "DEPOSIT",
                 "description": "Test transaction"
@@ -332,13 +344,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a valid request event
         event = {
             "headers": {
                 "Idempotency-Key": str(uuid.uuid4())
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "DEPOSIT",
                 "description": "Test transaction"
@@ -370,13 +384,15 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
+        account_id = str(uuid.uuid4())
+
         # Create a valid request event
         event = {
             "headers": {
                 "Idempotency-Key": str(uuid.uuid4())
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 100.50,
                 "type": "CREDIT",
                 "description": "Test transaction"
@@ -404,8 +420,9 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a valid idempotency key
+        # Create a valid idempotency key and account id
         idempotency_key = str(uuid.uuid4())
+        account_id = str(uuid.uuid4())
 
         # Create a valid request event for a DEBIT transaction
         event = {
@@ -413,7 +430,7 @@ class TestLambdaHandler:
                 "Idempotency-Key": idempotency_key
             },
             "body": json.dumps({
-                "accountId": "test-account-123",
+                "accountId": account_id,
                 "amount": 50.25,
                 "type": "DEPOSIT",
                 "description": "Test deposit transaction"
@@ -433,6 +450,6 @@ class TestLambdaHandler:
         transactions = app.table.scan()["Items"]
         assert len(transactions) == 1
         transaction = transactions[0]
-        assert transaction["accountId"] == "test-account-123"
+        assert transaction["accountId"] == account_id
         assert transaction["amount"] == Decimal("50.25")
         assert transaction["type"] == "DEPOSIT"
