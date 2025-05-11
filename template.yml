@@ -19,8 +19,6 @@ Globals:
     MemorySize: 128
     Timeout: 90
     Tracing: Active
-    Architectures:
-      - arm64
     Environment:
       Variables:
         POWERTOOLS_LOG_LEVEL: INFO
