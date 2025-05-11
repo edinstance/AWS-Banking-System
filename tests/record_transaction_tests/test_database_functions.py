@@ -21,7 +21,7 @@ class TestCheckExistingTransaction:
             "amount": Decimal("100.0"),
             "type": "CREDIT",
             "idempotencyKey": idempotency_key,
-            "idempotencyExpiration": future_expiration
+            "idempotencyExpiration": future_expiration,
         }
 
         # Insert the item directly into the table
@@ -48,7 +48,7 @@ class TestCheckExistingTransaction:
     def test_expired_transaction(self, app_with_mocked_table):
         """
         Tests that an expired transaction is not returned by check_existing_transaction.
-        
+
         Inserts a transaction with an idempotency expiration timestamp in the past and
         verifies that the function returns None, indicating expired transactions are
         ignored.
@@ -56,7 +56,9 @@ class TestCheckExistingTransaction:
         # Create a test transaction with an expired idempotency key
         idempotency_key = "expired-idempotency-key"
         now = datetime.now(timezone.utc)
-        past_expiration = int((now - timedelta(days=1)).timestamp())  # Expired 1 day ago
+        past_expiration = int(
+            (now - timedelta(days=1)).timestamp()
+        )  # Expired 1 day ago
 
         transaction_item = {
             "id": "expired-transaction-id",
@@ -65,7 +67,7 @@ class TestCheckExistingTransaction:
             "amount": Decimal("100.0"),
             "type": "CREDIT",
             "idempotencyKey": idempotency_key,
-            "idempotencyExpiration": past_expiration
+            "idempotencyExpiration": past_expiration,
         }
 
         # Insert the item directly into the table
@@ -80,18 +82,20 @@ class TestCheckExistingTransaction:
     def test_client_error_handling(self, app_with_mocked_table):
         """Test error handling when a DynamoDB client raises an error."""
         # Mock the table.query method to raise a ClientError
-        with patch.object(app_with_mocked_table.table, 'query') as mock_query:
+        with patch.object(app_with_mocked_table.table, "query") as mock_query:
             error_response = {
                 "Error": {
                     "Code": "ProvisionedThroughputExceededException",
-                    "Message": "Rate exceeded"
+                    "Message": "Rate exceeded",
                 }
             }
             mock_query.side_effect = ClientError(error_response, "Query")
 
             # Mock the logger to capture log messages
-            with patch.object(app_with_mocked_table.logger, 'error') as mock_error:
-                with patch.object(app_with_mocked_table.logger, 'warning') as mock_warning:
+            with patch.object(app_with_mocked_table.logger, "error") as mock_error:
+                with patch.object(
+                    app_with_mocked_table.logger, "warning"
+                ) as mock_warning:
                     # Call the function and expect it to raise the exception
                     with pytest.raises(ClientError):
                         app_with_mocked_table.check_existing_transaction("test-key")
@@ -103,22 +107,24 @@ class TestCheckExistingTransaction:
     def test_other_client_error(self, app_with_mocked_table):
         """
         Tests that check_existing_transaction raises a ClientError and logs an error when a non-throughput DynamoDB ClientError occurs.
-        
+
         Simulates a ResourceNotFoundException from DynamoDB and verifies that the error is logged, no warning is issued, and the exception is propagated.
         """
         # Mock the table.query method to raise a different ClientError
-        with patch.object(app_with_mocked_table.table, 'query') as mock_query:
+        with patch.object(app_with_mocked_table.table, "query") as mock_query:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFoundException",
-                    "Message": "Table not found"
+                    "Message": "Table not found",
                 }
             }
             mock_query.side_effect = ClientError(error_response, "Query")
 
             # Mock the logger to capture log messages
-            with patch.object(app_with_mocked_table.logger, 'error') as mock_error:
-                with patch.object(app_with_mocked_table.logger, 'warning') as mock_warning:
+            with patch.object(app_with_mocked_table.logger, "error") as mock_error:
+                with patch.object(
+                    app_with_mocked_table.logger, "warning"
+                ) as mock_warning:
                     # Call the function and expect it to raise the exception
                     with pytest.raises(ClientError):
                         app_with_mocked_table.check_existing_transaction("test-key")
@@ -132,7 +138,7 @@ class TestSaveTransaction:
     def test_successful_save(self, app_with_mocked_table):
         """
         Tests that a transaction is saved successfully and can be retrieved from the database.
-        
+
         Creates a sample transaction, saves it using the application's save method, and verifies
         that the transaction is present in the mocked database table.
         """
@@ -143,7 +149,7 @@ class TestSaveTransaction:
             "createdAt": datetime.now(timezone.utc).isoformat(),
             "accountId": "test-account",
             "amount": Decimal("200.0"),
-            "type": "CREDIT"
+            "type": "CREDIT",
         }
 
         # Call the function
@@ -153,9 +159,7 @@ class TestSaveTransaction:
         assert result is True
 
         # Verify the item was saved by retrieving it
-        response = app_with_mocked_table.table.get_item(
-            Key={"id": transaction_id}
-        )
+        response = app_with_mocked_table.table.get_item(Key={"id": transaction_id})
 
         assert "Item" in response
         assert response["Item"]["id"] == transaction_id
@@ -165,23 +169,25 @@ class TestSaveTransaction:
         Tests that save_transaction raises an exception with an appropriate message and logs an error when a ProvisionedThroughputExceededException occurs during a DynamoDB save operation.
         """
         # Mock the table.put_item method to raise a ClientError
-        with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
+        with patch.object(app_with_mocked_table.table, "put_item") as mock_put_item:
             error_response = {
                 "Error": {
                     "Code": "ProvisionedThroughputExceededException",
-                    "Message": "Rate exceeded"
+                    "Message": "Rate exceeded",
                 }
             }
             mock_put_item.side_effect = ClientError(error_response, "PutItem")
 
             # Mock the logger to capture log messages
-            with patch.object(app_with_mocked_table.logger, 'error') as mock_error:
+            with patch.object(app_with_mocked_table.logger, "error") as mock_error:
                 # Call the function and expect it to raise the specific exception
                 with pytest.raises(Exception) as exc_info:
                     app_with_mocked_table.save_transaction({"id": "test-id"})
 
                 # Verify the exception message
-                assert "Service temporarily unavailable due to high load" in str(exc_info.value)
+                assert "Service temporarily unavailable due to high load" in str(
+                    exc_info.value
+                )
 
                 # Verify logging
                 mock_error.assert_called_once()
@@ -189,17 +195,17 @@ class TestSaveTransaction:
     def test_resource_not_found_error(self, app_with_mocked_table):
         """Test handling of ResourceNotFoundException."""
         # Mock the table.put_item method to raise a ClientError
-        with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
+        with patch.object(app_with_mocked_table.table, "put_item") as mock_put_item:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFoundException",
-                    "Message": "Table not found"
+                    "Message": "Table not found",
                 }
             }
             mock_put_item.side_effect = ClientError(error_response, "PutItem")
 
             # Mock the logger to capture log messages
-            with patch.object(app_with_mocked_table.logger, 'error') as mock_error:
+            with patch.object(app_with_mocked_table.logger, "error") as mock_error:
                 # Call the function and expect it to raise the specific exception
                 with pytest.raises(Exception) as exc_info:
                     app_with_mocked_table.save_transaction({"id": "test-id"})
@@ -216,17 +222,14 @@ class TestSaveTransaction:
         ClientError (such as InternalServerError) occurs during a database save operation.
         """
         # Mock the table.put_item method to raise a ClientError
-        with patch.object(app_with_mocked_table.table, 'put_item') as mock_put_item:
+        with patch.object(app_with_mocked_table.table, "put_item") as mock_put_item:
             error_response = {
-                "Error": {
-                    "Code": "InternalServerError",
-                    "Message": "Internal error"
-                }
+                "Error": {"Code": "InternalServerError", "Message": "Internal error"}
             }
             mock_put_item.side_effect = ClientError(error_response, "PutItem")
 
             # Mock the logger to capture log messages
-            with patch.object(app_with_mocked_table.logger, 'error') as mock_error:
+            with patch.object(app_with_mocked_table.logger, "error") as mock_error:
                 # Call the function and expect it to raise the specific exception
                 with pytest.raises(Exception) as exc_info:
                     app_with_mocked_table.save_transaction({"id": "test-id"})
