@@ -116,8 +116,6 @@ class TestLambdaHandler:
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-
-
         # Create a request event without an idempotency key
         event = {
             "headers": {},

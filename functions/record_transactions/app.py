@@ -232,10 +232,6 @@ def lambda_handler(event, context):
     logger.append_keys(request_id=request_id)
     logger.info(f"Processing transaction request in {ENVIRONMENT_NAME} environment")
 
-    # Debug environment variables
-    logger.debug(f"TRANSACTIONS_TABLE_NAME: {TRANSACTIONS_TABLE_NAME}")
-    logger.debug(f"DYNAMODB_ENDPOINT: {os.environ.get('DYNAMODB_ENDPOINT')}")
-
     if not table:
         logger.error("DynamoDB table resource is not initialized")
         return create_response(500, {"error": "Server configuration error"})
@@ -356,7 +352,7 @@ def lambda_handler(event, context):
             "rawRequest": json.dumps(
                 {
                     "accountId": account_id,
-                    "amount": float(amount),
+                    "amount": str(amount),
                     "type": transaction_type,
                     "description": description,
                 }

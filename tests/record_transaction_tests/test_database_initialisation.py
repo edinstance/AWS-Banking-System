@@ -79,20 +79,19 @@ class TestGetDynamoDBResource:
 
         # Mock the logger to verify it's called correctly
         mock_logger = MagicMock()
-        with patch('functions.record_transactions.app.logger', mock_logger):
-            with mock_aws():
-                # Call the function
-                resource = get_dynamodb_resource()
+        with patch('functions.record_transactions.app.logger', mock_logger), mock_aws():
+            # Call the function
+            resource = get_dynamodb_resource()
 
-                # Verify the resource is a boto3 DynamoDB resource
-                assert isinstance(resource, ServiceResource)
+            # Verify the resource is a boto3 DynamoDB resource
+            assert isinstance(resource, ServiceResource)
 
-                # Verify the logger was called correctly
-                mock_logger.debug.assert_called_with("Using default DynamoDB endpoint")
+            # Verify the logger was called correctly
+            mock_logger.debug.assert_called_with("Using default DynamoDB endpoint")
 
-                # Verify we can list tables (basic functionality check)
-                tables = list(resource.tables.all())
-                assert isinstance(tables, list)
+            # Verify we can list tables (basic functionality check)
+            tables = list(resource.tables.all())
+            assert isinstance(tables, list)
 
     def test_custom_endpoint(self, monkeypatch):
         """Test that the function uses a custom endpoint when specified in environment variables."""
@@ -106,14 +105,14 @@ class TestGetDynamoDBResource:
         mock_boto3.resource.return_value = mock_resource
 
         # Patch dependencies and environment variable directly within the application
-        with patch('functions.record_transactions.app.boto3', mock_boto3):
-            with patch('functions.record_transactions.app.logger', mock_logger):
-                with patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint):
-                    result = app.get_dynamodb_resource()
+        with patch('functions.record_transactions.app.boto3', mock_boto3), \
+                patch('functions.record_transactions.app.logger', mock_logger), \
+                patch('functions.record_transactions.app.DYNAMODB_ENDPOINT', custom_endpoint):
+            result = app.get_dynamodb_resource()
 
-                    mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint)
-                    mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
-                    assert result == mock_resource
+            mock_boto3.resource.assert_called_once_with('dynamodb', endpoint_url=custom_endpoint)
+            mock_logger.debug.assert_called_with(f"Using custom DynamoDB endpoint: {custom_endpoint}")
+            assert result == mock_resource
 
     def test_empty_endpoint_string(self, aws_credentials, monkeypatch):
         """Test that the function uses the default endpoint when an empty string is provided."""
@@ -121,20 +120,17 @@ class TestGetDynamoDBResource:
 
         mock_logger = MagicMock()
 
-        with patch('functions.record_transactions.app.logger', mock_logger):
-            with mock_aws():
-                # Call the function
-                resource = get_dynamodb_resource()
+        with patch('functions.record_transactions.app.logger', mock_logger), mock_aws():
+            # Call the function
+            resource = get_dynamodb_resource()
 
-                mock_logger.debug.assert_called_with("Using default DynamoDB endpoint")
+            mock_logger.debug.assert_called_with("Using default DynamoDB endpoint")
 
-                tables = list(resource.tables.all())
-                assert isinstance(tables, list)
+            tables = list(resource.tables.all())
+            assert isinstance(tables, list)
 
     def test_integration_with_dynamo_table(self, app_with_mocked_table, dynamo_table):
         """Test that the function works with the mocked DynamoDB table fixture."""
-        # Get the app module with the mocked table
-        app_with_mocked_table = app_with_mocked_table
 
         # Call get_dynamodb_resource directly
         resource = app_with_mocked_table.get_dynamodb_resource()

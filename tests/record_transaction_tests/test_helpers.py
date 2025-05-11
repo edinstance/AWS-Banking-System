@@ -241,7 +241,7 @@ class TestValidateTransactionData:
         data = {
             "accountId": str(uuid.uuid4()),
             "amount": 100,
-            "type": "deposit",  # Lowercase
+            "type": "deposit",
             "description": "Test with lowercase type"
         }
         is_valid, error = validate_transaction_data(data)
