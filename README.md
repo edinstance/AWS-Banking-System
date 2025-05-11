@@ -22,7 +22,6 @@ reliability, and modern cloud practices in mind. Key features and technologies i
 * **Local Development & Testing:** The project is set up for efficient local development and testing using `sam local`
   and a local instance of DynamoDB (via Docker), enabling developers to iterate quickly before deploying to the cloud.
 
-
 ## Prerequisites
 
 Before you begin setting up and running this project locally or deploying it, please ensure you have the following
@@ -65,22 +64,38 @@ configured on your system:
 5. **Project Dependencies:**
     * Once your Python virtual environment is activated, install the required Python packages:
       ```shell
+      # For the Lambda function itself
+      pip install -r functions/record_transactions/requirements.txt
+      # For running tests
       pip install -r tests/requirements.txt
+      # For development tools like Ruff
+      pip install -r dev-requirements.txt 
       ```
 
 ## Linting and Formatting
 
-To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To setup Ruff install it using 
+To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To setup Ruff
+install it using
+
 ```shell
 
 pip install -r dev-requirements.txt       
 ```
 
-Then once installed, you can use 
+Then once installed, you can use this to check if there are any issues
+
 ```shell
 
 ruff format && ruff check
 ```
+
+You can then also try to fix some issues by using
+```shell
+
+ruff --fix . && ruff format .
+```
+
+But this will not work for every issue.
 
 ## Local testing
 
@@ -125,11 +140,129 @@ Finally, you can now run the system using:
 
 ```shell
 
+sam build
 sam local start-api --docker-network sam-network --env-vars env.json 
 ```
 
 ## Deployment
 
+This project uses the AWS Serverless Application Model (SAM) for deployments. The deployment configurations for
+different environments (e.g., `dev`, `test`, `prod`) are managed in the `samconfig.toml` file.
+
+### Prerequisites for Deployment
+
+Ensure you have met all the items in the [Prerequisites](#prerequisites) section, especially:
+
+* An active AWS Account.
+* AWS CLI configured with credentials that have sufficient permissions to create the resources defined in
+  `template.yml` (CloudFormation, S3, Lambda, API Gateway, DynamoDB, IAM roles, etc.).
+* AWS SAM CLI installed.
+
+### S3 Bucket for Artifacts
+
+With the current config a managed SAM S3 bucket will be used; to use a different bucket, you can either set the bucket
+in the [samconfig.toml](samconfig.toml) or by using the `--s3-bucket` flag in the deployment command.
+
+### Build the Application
+
+Before deploying, you need to build your application. This command packages your Lambda function code, resolves
+dependencies, and creates deployment artifacts in the `.aws-sam/build` directory.
+
+```shell
+
+sam build
+```
+
+You can add the `--use-container` flag, and it is recommended to use it to ensure that the build environment closely
+matches the Lambda runtime environment,
+especially if the functions have compiled dependencies.
+
+### Deploying to an Environment
+
+You can deploy to any environment defined in the `samconfig.toml` (e.g., `dev`, `test`, `prod`).
+
+To deploy to the **development (`dev`)** environment use this command and then follow the instructions:
+
+```shell
+
+sam deploy --config-env dev
+```
+
+To deploy updates to the **development (`dev`)** environment run the same command.
+
+To deploy to the **production (`prod`)** environment:
+
+```shell
+
+sam deploy --config-env prod
+```
+
+To deploy to the **testing (`test`)** environment:
+
+```shell
+
+sam deploy --config-env test
+```
+
+**Deployment Process:**
+
+* The SAM CLI will use the parameters defined in `samconfig.toml` for the specified environment.
+* It uploads the built artifacts to the configured S3 bucket under the environment-specific prefix.
+* It creates an AWS CloudFormation changeset, which is a preview of the changes.
+* You will be prompted to review and confirm these changes before they are applied to your AWS environment (due to
+  `confirm_changeset = true`). **Always review these changes carefully, especially for production deployments.**
+* If confirmed, CloudFormation will create or update your stack and all associated resources.
+
+### Verifying the Deployment
+
+After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
+
+1. **AWS CloudFormation Console:**
+    * Navigate to the CloudFormation console in the AWS region you deployed to.
+    * Select your stack (e.g., `banking-app-dev`).
+    * Check the "Status", "Events", "Resources", and especially the **"Outputs"** tab. The "Outputs" tab will contain
+      important information like your `BankingApiGatewayEndpoint`.
+2. **Test the API Endpoint:**
+    * Use a tool like `curl` or Postman to send requests to the `BankingApiGatewayEndpoint` obtained from the
+      CloudFormation stack outputs.
+    * Example (replace with your actual endpoint and a valid idempotency key):
+     ```shell
+     API_ENDPOINT="YOUR_API_GATEWAY_ENDPOINT_FROM_OUTPUTS"
+
+    IDEMPOTENCY_KEY=$(uuidgen)
+    ACCOUNT_ID=$(uuidgen)
+
+    JSON_PAYLOAD=$(printf '{"accountId": "%s", "amount": 150.75, 
+    "type": "DEPOSIT", "description": "Initial cloud deposit"}' "$
+    ACCOUNT_ID")
+
+    curl -X POST \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+    -d "$JSON_PAYLOAD" \
+    "$API_ENDPOINT"
+    ```
+
+### Deleting a Deployed Environment
+
+To remove all resources associated with a deployed environment, you can delete its CloudFormation stack.
+
+**Caution:** This action is generally irreversible and will delete all resources created by the stack, including
+DynamoDB tables (and their data, unless `DeletionPolicy: Retain` is set on the table resource).
+
+Using SAM CLI:
+
+```shell
+# To delete the 'dev' environment stack
+sam delete --config-env dev
+
+# To delete the 'prod' environment stack (use extreme caution!)
+# sam delete --config-env prod
+```
+
+You will be prompted for confirmation.
+
+Monitor the deletion progress in the AWS CloudFormation console.
 
 ## API Idempotency Requirements
 
