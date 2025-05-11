@@ -206,13 +206,14 @@ def save_transaction(transaction_item):
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
         logger.error(f"Failed to save transaction: {error_code}", exc_info=True)
-
         if error_code == "ProvisionedThroughputExceededException":
-            raise Exception("Service temporarily unavailable due to high load")
+            raise Exception(
+                "Service temporarily unavailable due to high load"
+            ) from e
         elif error_code == "ResourceNotFoundException":
-            raise Exception("Transaction database configuration error")
+            raise Exception("Transaction database configuration error") from e
         else:
-            raise Exception(f"Database error: {error_code}")
+            raise Exception(f"Database error: {error_code}") from e
 
 
 @logger.inject_lambda_context
