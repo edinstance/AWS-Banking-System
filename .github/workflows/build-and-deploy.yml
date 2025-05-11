@@ -8,10 +8,17 @@ on:
       - dev
       - test
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.base.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
+
+    environment: ${{ (github.event.pull_request.base.ref == 'main' && 'production') || (github.event.pull_request.base.ref == 'dev' && 'development') || 'testing' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
