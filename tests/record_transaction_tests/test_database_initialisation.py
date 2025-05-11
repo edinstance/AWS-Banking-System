@@ -1,5 +1,6 @@
 from unittest.mock import patch, MagicMock
 
+from boto3.resources.base import ServiceResource
 from moto import mock_aws
 
 from functions.record_transactions import app
@@ -84,7 +85,7 @@ class TestGetDynamoDBResource:
                 resource = get_dynamodb_resource()
 
                 # Verify the resource is a boto3 DynamoDB resource
-                assert resource.__class__.__name__ == 'dynamodb.ServiceResource'
+                assert isinstance(resource, ServiceResource)
 
                 # Verify the logger was called correctly
                 mock_logger.debug.assert_called_with("Using default DynamoDB endpoint")
