@@ -83,6 +83,8 @@ Resources:
         - AttributeName: idempotencyKey
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       KeySchema:
         - AttributeName: id
           KeyType: HASH
