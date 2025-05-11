@@ -392,8 +392,8 @@ class TestLambdaHandler:
         assert "error" in response_body
         assert "Server configuration error" in response_body["error"]
 
-    def test_debit_transaction(self, monkeypatch, dynamo_table):
-        """Test the successful creation of a DEBIT transaction."""
+    def test_deposit_transaction(self, monkeypatch, dynamo_table):
+        """Test the successful creation of a DEPOSIT transaction."""
         table_name = dynamo_table
         monkeypatch.setenv("TRANSACTIONS_TABLE_NAME", table_name)
 
@@ -416,7 +416,7 @@ class TestLambdaHandler:
                 "accountId": "test-account-123",
                 "amount": 50.25,
                 "type": "DEPOSIT",
-                "description": "Test debit transaction"
+                "description": "Test deposit transaction"
             })
         }
 
