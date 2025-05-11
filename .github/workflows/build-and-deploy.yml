@@ -1,0 +1,64 @@
+name: Build and deploy
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - dev
+      - test
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.base.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    environment: ${{ (github.event.pull_request.base.ref == 'main' && 'production') || (github.event.pull_request.base.ref == 'dev' && 'development') || 'testing' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Upgrade pip and install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install aws-sam-cli
+
+      - name: Build
+        run: sam build --use-container
+
+      - name: Deploy
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.base.ref }}"
+          CONFIG_ENV=""
+
+          echo "Deploying from branch: $BRANCH_NAME"
+          echo "Commit SHA: ${{ github.sha }}"
+
+          if [ "$BRANCH_NAME" == "main" ]; then
+            CONFIG_ENV="prod"
+          elif [ "$BRANCH_NAME" == "dev" ]; then
+            CONFIG_ENV="dev"
+          elif [ "$BRANCH_NAME" == "test" ]; then
+            CONFIG_ENV="test"
+          else
+            echo "Branch $BRANCH_NAME is not configured for deployment."
+            exit 1
+          fi
+
+          echo "Deploying to SAM config environment: $CONFIG_ENV"
+          sam deploy --config-env "$CONFIG_ENV" --no-confirm-changeset --no-fail-on-empty-changeset --tags "GitCommit=${GITHUB_SHA}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "eu-west-2"

@@ -6,6 +6,8 @@ from moto import mock_aws
 
 AWS_REGION = "eu-west-2"
 
+boto3.setup_default_session(region_name=AWS_REGION)
+
 
 @pytest.fixture(scope="function")
 def aws_credentials():

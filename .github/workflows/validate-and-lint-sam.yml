@@ -1,0 +1,30 @@
+name: Validate and Lint SAM Template
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-and-lint-sam-template:
+    name: Validate & Lint SAM Template
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Upgrade pip and install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install aws-sam-cli cfn-lint
+
+      - name: Validate SAM Template
+        run: sam validate --lint
+
+      - name: Lint cloudformation using cfn-lint
+        run: cfn-lint template.yml
