@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-arm64
     if: github.event.pull_request.merged == true
 
     environment: ${{ (github.event.pull_request.base.ref == 'main' && 'production') || (github.event.pull_request.base.ref == 'dev' && 'development') || 'testing' }}
