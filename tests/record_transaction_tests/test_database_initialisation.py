@@ -15,14 +15,20 @@ def test_table_initialization_with_environment_variable(app_with_mocked_table):
 
 
 def test_table_initialization_without_environment_variable(app_without_table):
-    """Test behavior when TRANSACTIONS_TABLE_NAME is not set."""
+    """
+    Tests that the DynamoDB table resource remains uninitialized when the TRANSACTIONS_TABLE_NAME environment variable is not set.
+    """
     # The logger is already initialized, so we need to check if critical was called
     # during the module reload, which is hard to test directly
     assert app_without_table.table is None
 
 
 def test_lambda_handler_with_uninitialized_table(app_without_table):
-    """Test lambda_handler behavior when the table is not initialized."""
+    """
+    Tests that the lambda handler returns a 500 error and logs an appropriate message when the DynamoDB table resource is uninitialized.
+    
+    Verifies that the response contains a server configuration error and that an error log is emitted about the missing table resource.
+    """
     # Create a mock context
     mock_context = MagicMock()
     mock_context.aws_request_id = "test-request-id"
@@ -45,7 +51,11 @@ def test_lambda_handler_with_uninitialized_table(app_without_table):
 
 
 def test_lambda_handler_with_initialized_table(app_with_mocked_table):
-    """Test lambda_handler with initialized table but invalid request."""
+    """
+    Tests the lambda handler's response when the DynamoDB table is initialized but the request lacks the required Idempotency-Key header.
+    
+    Asserts that the handler returns a 400 status code with an appropriate error message and confirms the table resource is initialized.
+    """
     # Create a mock context
     mock_context = MagicMock()
     mock_context.aws_request_id = "test-request-id"
@@ -73,7 +83,11 @@ def test_lambda_handler_with_initialized_table(app_with_mocked_table):
 class TestGetDynamoDBResource:
 
     def test_default_endpoint(self, aws_credentials, monkeypatch):
-        """Test that the function uses the default endpoint when no custom endpoint is set."""
+        """
+        Tests that get_dynamodb_resource uses the default DynamoDB endpoint when no custom endpoint is set.
+        
+        Ensures the DYNAMODB_ENDPOINT environment variable is unset, verifies the logger records the use of the default endpoint, and confirms the returned resource is a valid boto3 DynamoDB ServiceResource.
+        """
         # Ensure DYNAMODB_ENDPOINT is not set
         monkeypatch.delenv("DYNAMODB_ENDPOINT", raising=False)
 
@@ -94,7 +108,11 @@ class TestGetDynamoDBResource:
             assert isinstance(tables, list)
 
     def test_custom_endpoint(self, monkeypatch):
-        """Test that the function uses a custom endpoint when specified in environment variables."""
+        """
+        Tests that get_dynamodb_resource uses a custom DynamoDB endpoint when specified via environment variables.
+        
+        Verifies that the function calls boto3.resource with the custom endpoint URL, logs the correct debug message, and returns the mocked resource.
+        """
         # Setup
         custom_endpoint = "http://localhost:8000"
 
@@ -115,7 +133,13 @@ class TestGetDynamoDBResource:
             assert result == mock_resource
 
     def test_empty_endpoint_string(self, aws_credentials, monkeypatch):
-        """Test that the function uses the default endpoint when an empty string is provided."""
+        """
+        Tests that get_dynamodb_resource defaults to the standard DynamoDB endpoint when the
+        DYNAMODB_ENDPOINT environment variable is set to an empty string.
+        
+        Verifies that a debug log is emitted for using the default endpoint and that the
+        returned resource supports table listing.
+        """
         monkeypatch.setenv("DYNAMODB_ENDPOINT", "")
 
         mock_logger = MagicMock()
@@ -130,7 +154,11 @@ class TestGetDynamoDBResource:
             assert isinstance(tables, list)
 
     def test_integration_with_dynamo_table(self, app_with_mocked_table, dynamo_table):
-        """Test that the function works with the mocked DynamoDB table fixture."""
+        """
+        Verifies integration with a mocked DynamoDB table, ensuring correct table access and structure.
+        
+        This test checks that the `get_dynamodb_resource` function can retrieve a mocked DynamoDB table, confirms the table's name, and asserts the presence of a Global Secondary Index named `IdempotencyKeyIndex`.
+        """
 
         # Call get_dynamodb_resource directly
         resource = app_with_mocked_table.get_dynamodb_resource()
