@@ -17,7 +17,7 @@ reliability, and modern cloud practices in mind. Key features and technologies i
   data, offering high availability and performance.
 * **Idempotency:** Critical operations, like transaction recording, implement idempotency to prevent duplicate
   processing and ensure data integrity.
-* **Infrastructure as Code (IaC):** The entire infrastructure is defined using AWS SAM templates (`template.yaml`). This
+* **Infrastructure as Code (IaC):** The entire infrastructure is defined using AWS SAM templates [template.yml](template.yml). This
   allows for repeatable deployments, version control of infrastructure, and easier management of cloud resources.
 * **Local Development & Testing:** The project is set up for efficient local development and testing using `sam local`
   and a local instance of DynamoDB (via Docker), enabling developers to iterate quickly before deploying to the cloud.
@@ -47,11 +47,11 @@ configured on your system:
     * Used to interact with AWS services, including creating the local DynamoDB table.
     * Installation guide: [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
     * While full AWS credentials are not strictly required for interacting with DynamoDB Local, having the AWS CLI
-      installed is necessary for the `aws dynamodb create-table` command. You can configure it with dummy credentials
+      installed is necessary for the `aws dynamodb create-table` command. You can configure it with fake credentials
       for local use if preferred:
     * Credentials are needed for deploying the system to an AWS Account.
 
-4. **Python (Version 3.12 or as specified in `template.yaml`):**
+4. **Python (Version 3.12 or as specified in [template.yml](template.yml)):**
     * The runtime for the Lambda functions.
     * Download: [https://www.python.org/downloads/](https://www.python.org/downloads/)
     * It's highly recommended to use a virtual environment:
@@ -74,7 +74,7 @@ configured on your system:
 
 ## Linting and Formatting
 
-To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To setup Ruff
+To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To set up Ruff, 
 install it using
 
 ```shell
@@ -154,8 +154,8 @@ different environments (e.g., `dev`, `test`, `prod`) are managed in the `samconf
 Ensure you have met all the items in the [Prerequisites](#prerequisites) section, especially:
 
 * An active AWS Account.
-* AWS CLI configured with credentials that have sufficient permissions to create the resources defined in
-  `template.yml` (CloudFormation, S3, Lambda, API Gateway, DynamoDB, IAM roles, etc.).
+* AWS CLI is configured with credentials that have sufficient permissions to create the resources defined in
+  [template.yml](template.yml) (CloudFormation, S3, Lambda, API Gateway, DynamoDB, IAM roles, etc.).
 * AWS SAM CLI installed.
 
 ### S3 Bucket for Artifacts
@@ -220,7 +220,7 @@ After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
 1. **AWS CloudFormation Console:**
     * Navigate to the CloudFormation console in the AWS region you deployed to.
     * Select your stack (e.g., `banking-app-dev`).
-    * Check the "Status", "Events", "Resources", and especially the **"Outputs"** tab. The "Outputs" tab will contain
+    * Check the "Status," "Events," "Resources," and especially the **"Outputs"** tab. The "Outputs" tab will contain
       important information like your `BankingApiGatewayEndpoint`.
 2. **Test the API Endpoint:**
     * Use a tool like `curl` or Postman to send requests to the `BankingApiGatewayEndpoint` obtained from the
