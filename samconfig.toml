@@ -1,0 +1,42 @@
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+stack_name = "banking-app"
+
+
+# --- Production Environment ---
+[prod.deploy.parameters]
+s3_prefix = "banking-app/prod"
+stack_name = "banking-app-prod"
+region = "eu-west-2"
+parameter_overrides=[
+    "Environment=prod",
+]
+
+# --- Development Environment ---
+[dev.deploy.parameters]
+s3_prefix = "banking-app/dev"
+stack_name = "banking-app-dev"
+region = "eu-west-2"
+parameter_overrides=[
+    "Environment=dev",
+]
+
+# --- Testing Environment ---
+[test.deploy.parameters]
+s3_prefix = "banking-app/test"
+stack_name = "banking-app-test"
+region = "eu-west-2"
+parameter_overrides=[
+    "Environment=test",
+]

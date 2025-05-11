@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  SAM template for a banking transaction system with intuitive transaction types.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: The deployment environment (e.g., dev, test, prod).
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Default: dev
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 128
+    Timeout: 90
+    Tracing: Active
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        POWERTOOLS_LOG_LEVEL: INFO
+        POWERTOOLS_SERVICE_NAME: transactions
+        ENVIRONMENT_NAME: !Ref Environment
+
+Resources:
+  # --- API Gateway ---
+  BankingApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-TransactionApi-${Environment}
+      StageName: !Ref Environment
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+
+  # --- Lambda Functions ---
+  RecordTransactionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-RecordTransaction-${Environment}
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: RecordTransactionFunction
+      CodeUri: functions/record_transactions/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          IDEMPOTENCY_EXPIRATION_DAYS: "7"
+          DYNAMODB_ENDPOINT: ""
+      Events:
+        ApiSaveTransactionEvent:
+          Type: Api
+          Properties:
+            Path: /save/transaction
+            Method: POST
+            RestApiId: !Ref BankingApiGateway
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+
+  RecordTransactionFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${RecordTransactionFunction}
+
+  # --- DynamoDB Table for Transactions ---
+  TransactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-TransactionsTable-${Environment}
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: idempotencyKey
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: IdempotencyKeyIndex
+          KeySchema:
+            - AttributeName: idempotencyKey
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttlTimestamp
+        Enabled: true
+
+Outputs:
+  BankingApiGatewayEndpoint:
+    Description: API Gateway endpoint URL for the banking gateway
+    Value: !Sub https://${BankingApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/save/transaction
+  TransactionsTableName:
+    Description: Name of the DynamoDB Transactions table
+    Value: !Ref TransactionsTable
+  DeployedEnvironment:
+    Description: The environment this stack was deployed to.
+    Value: !Ref Environment
