@@ -30,7 +30,7 @@ Resources:
   BankingApiGateway:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub ${AWS::StackName}-TransactionApi-${Environment}
+      Name: !Sub ${AWS::StackName}-transaction-api
       StageName: !Ref Environment
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
@@ -39,7 +39,7 @@ Resources:
   RecordTransactionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-RecordTransaction-${Environment}
+      FunctionName: !Sub ${AWS::StackName}-record-transaction
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: RecordTransactionFunction
@@ -73,7 +73,7 @@ Resources:
   TransactionsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-TransactionsTable-${Environment}
+      TableName: !Sub ${AWS::StackName}-transactions-table
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -103,9 +103,6 @@ Resources:
         Enabled: true
 
 Outputs:
-  BankingApiGatewayEndpoint:
-    Description: API Gateway endpoint URL for the banking gateway
-    Value: !Sub https://${BankingApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/save/transaction
   TransactionsTableName:
     Description: Name of the DynamoDB Transactions table
     Value: !Ref TransactionsTable
