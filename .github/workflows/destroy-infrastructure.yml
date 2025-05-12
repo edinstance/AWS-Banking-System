@@ -1,0 +1,72 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Name of the SAM config environment (and GitHub Environment) to destroy (e.g., development, testing and production).'
+        required: true
+        type: choice
+        options:
+          - development
+          - testing
+          - production
+      confirm_deletion:
+        description: 'Type "CONFIRM" to confirm stack deletion. This is an extra safety measure.'
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.inputs.target_environment }}
+  cancel-in-progress: true
+
+jobs:
+  destroy-infrastructure:
+    environment: ${{ github.event.inputs.target_environment }}
+
+    if: github.event.inputs.confirm_deletion == 'CONFIRM'
+
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_DEFAULT_REGION: "eu-west-2"
+      TARGET_SAM_CONFIG_ENV: ${{ github.event.inputs.target_environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Upgrade pip and install AWS SAM CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install aws-sam-cli # Consider pinning SAM CLI version
+
+      - name: Determine SAM Config Env Name
+        id: sam_env
+        run: |
+          if [ "${{ github.event.inputs.target_environment }}" == "production" ]; then
+            echo "sam_config_name=prod" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.target_environment }}" == "development" ]; then
+            echo "sam_config_name=dev" >> $GITHUB_OUTPUT
+          else
+            echo "sam_config_name=test" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Display Target for Deletion
+        run: |
+          echo "Attempting to delete infrastructure for SAM config environment: ${{ env.TARGET_SAM_CONFIG_ENV }}"
+          echo "This corresponds to GitHub Environment: ${{ github.event.inputs.target_environment }}"
+
+      - name: Destroy Infrastructure
+        run: |
+          sam delete --config-env "${{ steps.sam_env.outputs.sam_config_name }}" --no-prompts
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "eu-west-2"
