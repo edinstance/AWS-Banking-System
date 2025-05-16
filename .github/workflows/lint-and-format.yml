@@ -1,4 +1,4 @@
-name: Ruff Code
+name: Lint and Format Check Code
 
 on:
   pull_request:
@@ -21,10 +21,10 @@ jobs:
       - name: Upgrade pip and install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r dev-requirements.txt
+          make init
 
-      - name: Ruff Format Check
-        run: ruff format --check
+      - name: Black Format Check
+        run: make format-check
 
       - name: Ruff Check
-        run: ruff check
+        run: make lint
