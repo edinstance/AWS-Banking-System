@@ -1,1 +1,15 @@
+# Formatting
+black==25.1.0
+
+# Linting
 ruff==0.11.9
+
+# Running
+aws_lambda_powertools==3.12.0
+boto3==1.38.13
+
+# Tests
+pytest==8.3.5
+pytest-cov==6.1.1
+pytest-xdist==3.6.1
+moto==5.1.4

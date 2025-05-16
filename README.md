@@ -61,50 +61,75 @@ configured on your system:
       # .venv\Scripts\activate   # On Windows
       ```
 
-5. **Project Dependencies:**
-    * Once your Python virtual environment is activated, install the required Python packages:
-      ```shell
-      # For the Lambda function itself
-      pip install -r functions/record_transactions/requirements.txt
-      # For running tests
-      pip install -r tests/requirements.txt
-      # For development tools like Ruff
-      pip install -r dev-requirements.txt 
-      ```
+## Project Dependencies
+
+Once your Python virtual environment is activated, you can initialize the project dependencies using the `make init` target:
+
+```shell
+make init
+```
+
+This will install the required Python packages for development, testing, and the Lambda function itself.
 
 ## Linting and Formatting
 
-To lint and format the python code in this project, you can use [Ruff](https://github.com/astral-sh/ruff). To set up Ruff, 
-install it using
+To lint and format the Python code in this project, you can use the `make lint`, `make lint-fix`, and `make format` targets:
+
+- **Lint the code**:
+  ```shell
+  make lint
+  ```
+
+- **Fix linting issues**:
+  ```shell
+  make lint-fix
+  ```
+
+- **Format the code**:
+  ```shell
+  make format
+  ```
+
+- **Check linting for staged changes only**:
+  ```shell
+  make lint-diff
+  ```
+
+- **Check if the code is properly formatted**:
+  ```shell
+  make format-check
+  ```
+
+## Local Testing
+
+To test the project locally, you can use the `make test` or `make test-cov-report` targets:
+
+- **Run unit tests**:
+  ```shell
+  make test
+  ```
+
+- **Run unit tests with a coverage report**:
+  ```shell
+  make test-cov-report
+  ```
+
+## Setting Up DynamoDB Locally
+
+To set up DynamoDB for local testing, ensure Docker is running and use the following command:
 
 ```shell
-
-pip install -r dev-requirements.txt       
-```
-
-Then once installed, you can use this to check if there are any issues
-
-```shell
-
-ruff format && ruff check
-```
-
-You can then also try to fix some issues by using
-```shell
-
-ruff --fix . && ruff format .
-```
-
-But this will not work for every issue.
-
-## Local testing
-
-To test this locally, you first need to set up dynamodb to run locally; it is currently set up to use Docker by running:
-
-``` shell
-
 docker compose up -d
 ```
+
+## Make Help 
+
+You can also run `make` or `make help` to see all the options for make.
+
+```shell
+make
+```
+
 
 ### DynamoDB
 
