@@ -90,6 +90,16 @@ To lint and format the Python code in this project, you can use the `make lint`,
   make format
   ```
 
+- **Check linting for staged changes only**:
+  ```shell
+  make lint-diff
+  ```
+
+- **Check if the code is properly formatted**:
+  ```shell
+  make format-check
+  ```
+
 ## Local Testing
 
 To test the project locally, you can use the `make test` or `make test-cov-report` targets:
@@ -114,7 +124,7 @@ docker compose up -d
 
 ## Make Help 
 
-You can also run `make` to see all the options for make.
+You can also run `make` or `make help` to see all the options for make.
 
 ```shell
 make
