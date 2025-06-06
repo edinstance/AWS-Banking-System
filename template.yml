@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: |
   SAM template for a banking transaction system with intuitive transaction types.
+  Includes Cognito User Pool authentication for API Gateway and a custom login/refresh proxy.
 
 Parameters:
   Environment:
@@ -26,6 +27,45 @@ Globals:
         ENVIRONMENT_NAME: !Ref Environment
 
 Resources:
+  # --- Cognito User Pool ---
+  BankingUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-user-pool-${Environment}
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  BankingUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-user-pool-client-${Environment}
+      UserPoolId: !Ref BankingUserPool
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+
   # --- API Gateway ---
   BankingApiGateway:
     Type: AWS::Serverless::Api
@@ -109,3 +149,9 @@ Outputs:
   DeployedEnvironment:
     Description: The environment this stack was deployed to.
     Value: !Ref Environment
+  CognitoUserPoolId:
+    Description: The ID of the Cognito User Pool
+    Value: !Ref BankingUserPool
+  CognitoUserPoolClientId:
+    Description: The ID of the Cognito User Pool Client
+    Value: !Ref BankingUserPoolClient
