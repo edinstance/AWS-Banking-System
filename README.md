@@ -100,6 +100,14 @@ To lint and format the Python code in this project, you can use the `make lint`,
   make format-check
   ```
 
+## Make Help 
+
+You can also run `make` or `make help` to see all the options for make.
+
+```shell
+make
+```
+
 ## Local Testing
 
 To test the project locally, you can use the `make test` or `make test-cov-report` targets:
@@ -114,24 +122,21 @@ To test the project locally, you can use the `make test` or `make test-cov-repor
   make test-cov-report
   ```
 
-## Setting Up DynamoDB Locally
+## Setting Up System Locally
+
+### Cognito
+
+Cognito cannot be setup locally, so if you want to run the system locally you need to use a deployed version of cognito, see below for details on how to deploy cognito.
+
+### DynamoDB
 
 To set up DynamoDB for local testing, ensure Docker is running and use the following command:
 
 ```shell
+
 docker compose up -d
 ```
 
-## Make Help 
-
-You can also run `make` or `make help` to see all the options for make.
-
-```shell
-make
-```
-
-
-### DynamoDB
 
 You need to create the DynamoDB tables using this command, ensure Docker Compose has successfully started the DynamoDB
 Local container before running this command.
@@ -278,6 +283,7 @@ DynamoDB tables (and their data, unless `DeletionPolicy: Retain` is set on the t
 Using SAM CLI:
 
 ```shell
+
 # To delete the 'dev' environment stack
 sam delete --config-env dev
 
@@ -289,6 +295,39 @@ You will be prompted for confirmation.
 
 Monitor the deletion progress in the AWS CloudFormation console.
 
+## Cognito
+
+To deploy cognito for managing users of for local testing of the system you can either use the normal sam deploy above and reuse the cognito user pool id and client id. Or you can use the [cognito-template.yml](cognito-template.yml) to only deploy cognito. The users used in this must be created either in cognito or with a custom flow as this api does not support creating users.
+
+### Security Considerations
+
+When deploying Cognito for production use:
+- Ensure users are created through secure, audited processes
+- Consider implementing user invitation flows rather than allowing self-registration
+- Regularly review and rotate any temporary credentials used for user management
+
+### Deploying just cognito
+
+To deploy only cognito you need to run:
+
+```shell
+
+sam build --template-file cognito-template.yml
+```
+
+and then to deploy it you should run:
+
+```shell
+
+sam deploy --template-file cognito-template.yml --config-file samconfig.cognito.toml
+```
+
+finally to delete it you should run:
+
+```shell
+
+sam delete --config-file samconfig.cognito.toml  
+```
 ## API Idempotency Requirements
 
 ### Endpoints Requiring Idempotency Keys
