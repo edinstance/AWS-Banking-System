@@ -37,13 +37,13 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, DecimalException
+from typing import Dict, Any
 
 import boto3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
-# --- Configuration Constants ---
 TRANSACTIONS_TABLE_NAME = os.environ.get("TRANSACTIONS_TABLE_NAME")
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
@@ -52,8 +52,23 @@ VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 
-# --- Logger Setup using AWS Lambda Powertools ---
 logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
+
+def create_response(
+        status_code: int, body_dict: Dict[str, Any], methods: str
+) -> Dict[str, Any]:
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "X-Content-Type-Options": "nosniff",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": methods,
+            "Access-Control-Allow-Headers": "Content-Type",
+        },
+        "body": json.dumps(body_dict),
+    }
 
 
 def get_dynamodb_resource():
@@ -73,7 +88,6 @@ def get_dynamodb_resource():
     return boto3.resource("dynamodb")
 
 
-# Initialize DynamoDB resource and table
 dynamodb = get_dynamodb_resource()
 if TRANSACTIONS_TABLE_NAME:
     table = dynamodb.Table(TRANSACTIONS_TABLE_NAME)
@@ -100,28 +114,6 @@ def is_valid_uuid(val):
         return False
 
 
-def create_response(status_code, body_dict):
-    """
-    Constructs a standard HTTP response dictionary for API Gateway with JSON body and security headers.
-
-    Args:
-        status_code: The HTTP status code to return.
-        body_dict: The response body as a dictionary to be serialised as JSON.
-
-    Returns:
-        A dictionary formatted for API Gateway responses, including headers and JSON body.
-    """
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "X-Content-Type-Options": "nosniff",
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-        },
-        "body": json.dumps(body_dict),
-    }
-
-
 def validate_transaction_data(data):
     """
     Validates transaction data against required fields and business rules.
@@ -139,28 +131,23 @@ def validate_transaction_data(data):
     if missing_fields:
         return False, f"Missing required fields: {', '.join(missing_fields)}"
 
-    # Validate transaction type
     if data["type"].upper() not in VALID_TRANSACTION_TYPES:
         return (
             False,
             f"Invalid transaction type. Must be one of: {', '.join(VALID_TRANSACTION_TYPES)}",
         )
 
-    # Validate amount format
     try:
         amount = Decimal(str(data["amount"]))
     except (ValueError, TypeError, DecimalException):
         return False, "Invalid amount format. Amount must be a number."
 
-    # Validate amount is positive regardless of transaction type
     if amount <= 0:
         return False, "Amount must be a positive number"
 
-    # Validate accountId format (assuming UUID format)
     if not is_valid_uuid(data["accountId"]):
         return False, "Invalid accountId, accountId must be a valid UUID"
 
-    # Sanitize description to prevent injection
     if "description" in data and not isinstance(data["description"], str):
         return False, "Description must be a string"
 
@@ -254,7 +241,11 @@ def lambda_handler(event, context):
 
     if not table:
         logger.error("DynamoDB table resource is not initialized")
-        return create_response(500, {"error": "Server configuration error"})
+        return create_response(
+            500,
+            {"error": "Server configuration error"},
+            "POST",
+        )
 
     try:
         # Extract and normalize headers (case-insensitive)
@@ -272,9 +263,9 @@ def lambda_handler(event, context):
                     "suggestion": "Please include an Idempotency-Key header with a UUID v4 value",
                     "example": suggested_key,
                 },
+                "POST",
             )
 
-        # Sanitize and validate idempotency key
         idempotency_key = str(idempotency_key)
         if len(idempotency_key) < 10 or len(idempotency_key) > 64:
             suggested_key = str(uuid.uuid4())
@@ -286,9 +277,9 @@ def lambda_handler(event, context):
                     "suggestion": "We recommend using a UUID v4 format",
                     "example": suggested_key,
                 },
+                "POST",
             )
 
-        # Check if the idempotency key is a valid UUID
         if not is_valid_uuid(idempotency_key):
             suggested_key = str(uuid.uuid4())
             logger.warning(f"Non-UUID Idempotency-Key used: {idempotency_key}")
@@ -298,9 +289,9 @@ def lambda_handler(event, context):
                     "error": "Idempotency-Key must be a valid UUID",
                     "example": suggested_key,
                 },
+                "POST",
             )
 
-        # Check for existing transaction with this idempotency key
         try:
             existing_transaction = check_existing_transaction(idempotency_key)
             if existing_transaction:
@@ -312,54 +303,53 @@ def lambda_handler(event, context):
                     {
                         "message": "Transaction recorded successfully!",
                         "transactionId": existing_transaction["id"],
-                        "idempotent": True,  # Indicate this was an idempotent response
+                        "idempotent": True,
                     },
+                    "POST",
                 )
         except Exception as e:
             logger.error(f"Error checking idempotency: {str(e)}")
             return create_response(
-                500, {"error": "Unable to verify transaction uniqueness"}
+                500,
+                {"error": "Unable to verify transaction uniqueness"},
+                "POST",
             )
 
-        # Parse and validate request body
         try:
             request_body = json.loads(event.get("body", "{}"))
         except json.JSONDecodeError as e:
             logger.warning(f"Invalid JSON in request body: {e}")
             return create_response(
-                400, {"error": "Invalid JSON format in request body"}
+                400,
+                {"error": "Invalid JSON format in request body"},
+                "POST",
             )
 
-        # Validate transaction data
         is_valid, validation_error = validate_transaction_data(request_body)
         if not is_valid:
             logger.warning(f"Validation error: {validation_error}")
-            return create_response(400, {"error": validation_error})
+            return create_response(400, {"error": validation_error}, "POST")
 
-        # Extract and process transaction data
         account_id = request_body.get("accountId")
         transaction_type = request_body.get("type").upper()
         description = request_body.get("description", "")
         amount = Decimal(str(request_body.get("amount")))
 
-        # Generate transaction metadata
         transaction_id = str(uuid.uuid4())
         now_utc = datetime.now(timezone.utc)
         created_at_iso = now_utc.isoformat()
 
-        # Calculate TTL values
         ttl_datetime = now_utc + timedelta(days=365)
         ttl_timestamp = int(ttl_datetime.timestamp())
 
         idempotency_expiration = now_utc + timedelta(days=IDEMPOTENCY_EXPIRATION_DAYS)
         idempotency_expiration_timestamp = int(idempotency_expiration.timestamp())
 
-        # Prepare transaction record
         transaction_item = {
             "id": transaction_id,
             "createdAt": created_at_iso,
             "accountId": account_id,
-            "amount": amount,  # Always store the positive amount
+            "amount": amount,
             "type": transaction_type,
             "description": description,
             "status": "COMPLETED",
@@ -368,7 +358,6 @@ def lambda_handler(event, context):
             "idempotencyExpiration": idempotency_expiration_timestamp,
             "environment": ENVIRONMENT_NAME,
             "requestId": request_id,
-            # Store the sanitized version of the request.
             "rawRequest": json.dumps(
                 {
                     "accountId": account_id,
@@ -379,17 +368,17 @@ def lambda_handler(event, context):
             ),
         }
 
-        # Save transaction to DynamoDB
         try:
             save_transaction(transaction_item)
             logger.info(f"Successfully saved transaction {transaction_id}")
         except Exception as e:
             logger.error(f"Failed to save transaction: {str(e)}")
             return create_response(
-                500, {"error": "Failed to process transaction. Please try again."}
+                500,
+                {"error": "Failed to process transaction. Please try again."},
+                "POST",
             )
 
-        # Return success response
         response_payload = {
             "message": "Transaction recorded successfully!",
             "transactionId": transaction_id,
@@ -397,10 +386,16 @@ def lambda_handler(event, context):
             "timestamp": created_at_iso,
             "idempotencyKey": idempotency_key,
         }
-        return create_response(201, response_payload)
+        return create_response(
+            201,
+            response_payload,
+            "POST",
+        )
 
     except Exception as e:
         logger.exception(f"Unhandled exception: {str(e)}")
         return create_response(
-            500, {"error": "Internal server error. Please contact support."}
+            500,
+            {"error": "Internal server error. Please contact support."},
+            "POST",
         )

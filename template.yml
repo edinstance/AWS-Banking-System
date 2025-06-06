@@ -74,6 +74,11 @@ Resources:
       StageName: !Ref Environment
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt BankingUserPool.Arn
 
   # --- Lambda Functions ---
   RecordTransactionFunction:
@@ -97,9 +102,51 @@ Resources:
             Path: /save/transaction
             Method: POST
             RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionsTable
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-auth
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: AuthFunction
+      CodeUri: functions/auth/
+      Handler: auth.app.lambda_handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Events:
+        ApiLoginEvent:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: NONE
+        ApiTokenRefreshEvent:
+          Type: Api
+          Properties:
+            Path: /auth/refresh
+            Method: POST
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:InitiateAuth
+              - cognito-idp:RespondToAuthChallenge
+              - cognito-idp:AdminInitiateAuth
+              - cognito-idp:AdminRespondToAuthChallenge
+            Resource: !GetAtt BankingUserPool.Arn
 
   RecordTransactionFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -107,6 +154,14 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub /aws/lambda/${RecordTransactionFunction}
+      RetentionInDays: 7
+
+  AuthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AuthFunction}
       RetentionInDays: 7
 
   # --- DynamoDB Table for Transactions ---
