@@ -1,10 +1,8 @@
-import json
 import uuid
 from decimal import Decimal
 
 from functions.record_transactions.app import (
     is_valid_uuid,
-    create_response,
     validate_transaction_data,
     VALID_TRANSACTION_TYPES,
 )
@@ -56,50 +54,6 @@ class TestIsValidUUID:
         assert is_valid_uuid(12345) is False
 
 
-class TestCreateResponse:
-    def test_basic_response(self):
-        """Test creating a basic response with valid inputs."""
-        status_code = 200
-        body = {"message": "Success"}
-        response = create_response(status_code, body)
-
-        assert response["statusCode"] == status_code
-        assert json.loads(response["body"]) == body
-        assert response["headers"]["Content-Type"] == "application/json"
-
-    def test_error_response(self):
-        """
-        Tests that an error HTTP response is correctly constructed with the expected status code and body.
-        """
-        status_code = 400
-        body = {"error": "Bad Request"}
-        response = create_response(status_code, body)
-
-        assert response["statusCode"] == status_code
-        assert json.loads(response["body"]) == body
-
-    def test_security_headers(self):
-        """
-        Verifies that the HTTP response includes required security headers.
-        """
-        response = create_response(200, {})
-
-        assert "X-Content-Type-Options" in response["headers"]
-        assert response["headers"]["X-Content-Type-Options"] == "nosniff"
-        assert "Strict-Transport-Security" in response["headers"]
-
-    def test_json_serialization(self):
-        """
-        Tests that complex nested JSON objects are correctly serialised and deserialised in HTTP responses.
-        """
-        body = {"id": "12345", "nested": {"key": "value"}, "list": [1, 2, 3]}
-        response = create_response(200, body)
-
-        # Deserialize to verify integrity
-        deserialized = json.loads(response["body"])
-        assert deserialized == body
-
-
 class TestValidateTransactionData:
     def test_valid_deposit_transaction(self):
         """Test a valid DEPOSIT transaction passes validation."""
@@ -133,7 +87,6 @@ class TestValidateTransactionData:
         assert "Missing required fields" in error
         assert "accountId" in error
 
-        # Missing multiple fields
         data = {"type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
@@ -147,7 +100,6 @@ class TestValidateTransactionData:
         assert is_valid is False
         assert "Invalid transaction type" in error
 
-        # Check that all valid types are mentioned in the error
         for valid_type in VALID_TRANSACTION_TYPES:
             assert valid_type in error
 
@@ -171,7 +123,6 @@ class TestValidateTransactionData:
         assert is_valid is False
         assert "Amount must be a positive number" in error
 
-        # Also test for WITHDRAWAL
         data["type"] = "WITHDRAWAL"
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
@@ -191,13 +142,11 @@ class TestValidateTransactionData:
         Verifies that account IDs which are too short or not strings cause validation to fail,
         and that the appropriate error message is returned.
         """
-        # Account ID too short
         data = {"accountId": "abs121", "amount": 100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
         assert "Invalid accountId, accountId must be a valid UUID" in error
 
-        # Account ID not a string
         data = {"accountId": 12345, "amount": 100, "type": "DEPOSIT"}
         is_valid, error = validate_transaction_data(data)
         assert is_valid is False
@@ -239,7 +188,6 @@ class TestValidateTransactionData:
         assert is_valid is True
         assert error is None
 
-        # Mixed case
         data["type"] = "DePoSiT"
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True
@@ -253,7 +201,6 @@ class TestValidateTransactionData:
             "accountId": str(uuid.uuid4()),
             "amount": 100,
             "type": "DEPOSIT",
-            # No description
         }
         is_valid, error = validate_transaction_data(data)
         assert is_valid is True

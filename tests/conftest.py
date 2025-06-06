@@ -12,7 +12,7 @@ boto3.setup_default_session(region_name=AWS_REGION)
 @pytest.fixture(scope="function")
 def aws_credentials():
     """
-    Sets environment variables to provide dummy AWS credentials and region for testing.
+    Sets environment variables to provide fake AWS credentials and region for testing.
 
     This fixture configures the environment so that AWS SDK clients use mock credentials,
     enabling the use of the `moto` library to simulate AWS services during tests.
@@ -75,3 +75,68 @@ def dynamo_table(dynamo_resource):
     table.meta.client.get_waiter("table_exists").wait(TableName=table_name)
 
     return table_name
+
+
+@pytest.fixture(scope="function")
+def cognito_client():
+    with mock_aws():
+        client = boto3.client("cognito-idp", region_name=AWS_REGION)
+        yield client
+
+
+@pytest.fixture(scope="function")
+def mock_cognito_user_pool(cognito_client):
+    user_pool_name = "test-user-pool"
+    client_name = "test-app-client"
+    test_username = "test_user"
+    test_password = "Password123!"
+
+    user_pool_response = cognito_client.create_user_pool(
+        PoolName=user_pool_name,
+        AutoVerifiedAttributes=["email"],
+        Policies={
+            "PasswordPolicy": {
+                "MinimumLength": 8,
+                "RequireUppercase": True,
+                "RequireLowercase": True,
+                "RequireNumbers": True,
+                "RequireSymbols": True,
+            }
+        },
+    )
+    user_pool_id = user_pool_response["UserPool"]["Id"]
+
+    client_response = cognito_client.create_user_pool_client(
+        UserPoolId=user_pool_id,
+        ClientName=client_name,
+        ExplicitAuthFlows=[
+            "ADMIN_USER_PASSWORD_AUTH",
+            "REFRESH_TOKEN_AUTH",
+        ],
+    )
+    client_id = client_response["UserPoolClient"]["ClientId"]
+
+    cognito_client.admin_create_user(
+        UserPoolId=user_pool_id,
+        Username=test_username,
+        UserAttributes=[
+            {"Name": "email", "Value": "testuser@example.com"},
+        ],
+        TemporaryPassword=test_password,
+        MessageAction="SUPPRESS",
+    )
+
+    cognito_client.admin_set_user_password(
+        UserPoolId=user_pool_id,
+        Username=test_username,
+        Password=test_password,
+        Permanent=True,
+    )
+
+    yield {
+        "user_pool_id": user_pool_id,
+        "client_id": client_id,
+        "username": test_username,
+        "password": test_password,
+        "cognito_client": cognito_client,
+    }

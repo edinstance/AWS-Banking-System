@@ -3,13 +3,11 @@ from unittest.mock import patch, MagicMock
 from boto3.resources.base import ServiceResource
 from moto import mock_aws
 
-from functions.record_transactions import app
 from functions.record_transactions.app import get_dynamodb_resource
 
 
 def test_table_initialization_with_environment_variable(app_with_mocked_table):
     """Test table initialization when TRANSACTIONS_TABLE_NAME is set."""
-    # No need to patch the logger since it's already initialized in the app
     assert app_with_mocked_table.table is not None
     assert app_with_mocked_table.TRANSACTIONS_TABLE_NAME == "test-transactions-table"
 
@@ -18,8 +16,6 @@ def test_table_initialization_without_environment_variable(app_without_table):
     """
     Tests that the DynamoDB table resource remains uninitialized when the TRANSACTIONS_TABLE_NAME environment variable is not set.
     """
-    # The logger is already initialized, so we need to check if critical was called
-    # during the module reload, which is hard to test directly
     assert app_without_table.table is None
 
 
@@ -131,7 +127,7 @@ class TestGetDynamoDBResource:
                 "functions.record_transactions.app.DYNAMODB_ENDPOINT", custom_endpoint
             ),
         ):
-            result = app.get_dynamodb_resource()
+            result = get_dynamodb_resource()
 
             mock_boto3.resource.assert_called_once_with(
                 "dynamodb", endpoint_url=custom_endpoint, region_name="eu-west-2"
@@ -162,7 +158,7 @@ class TestGetDynamoDBResource:
             ),
             patch("functions.record_transactions.app.AWS_REGION", custom_region),
         ):
-            result = app.get_dynamodb_resource()
+            result = get_dynamodb_resource()
 
             mock_boto3.resource.assert_called_once_with(
                 "dynamodb", endpoint_url=custom_endpoint, region_name="us-east-1"

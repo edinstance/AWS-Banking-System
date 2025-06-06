@@ -17,15 +17,12 @@ class TestLambdaHandler:
 
         Verifies that the lambda handler returns a 201 response with the expected fields and that the transaction is saved in the mocked DynamoDB table with correct attributes.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a valid idempotency key
         idempotency_key = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event
         event = {
             "headers": {"Idempotency-Key": idempotency_key},
             "body": json.dumps(
@@ -38,10 +35,8 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 201
         response_body = json.loads(response["body"])
         assert "transactionId" in response_body
@@ -50,7 +45,6 @@ class TestLambdaHandler:
         assert "timestamp" in response_body
         assert response_body["idempotencyKey"] == idempotency_key
 
-        # Verify the transaction was saved in DynamoDB
         transactions = app_with_mocked_table.table.scan()["Items"]
         assert len(transactions) == 1
         transaction = transactions[0]
@@ -66,15 +60,12 @@ class TestLambdaHandler:
 
         Inserts a transaction with a specific idempotency key, then sends a new request using the same key but different data. Asserts that the response returns the existing transaction and no duplicate is created.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a valid idempotency key and account id
         idempotency_key = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        # Create a test transaction with the idempotency key
         now = datetime.now(timezone.utc)
         future_expiration = int((now + timedelta(days=7)).timestamp())
 
@@ -89,10 +80,8 @@ class TestLambdaHandler:
             "status": "COMPLETED",
         }
 
-        # Insert the item directly into the table
         app_with_mocked_table.table.put_item(Item=transaction_item)
 
-        # Create a request event with the same idempotency key
         event = {
             "headers": {"Idempotency-Key": idempotency_key},
             "body": json.dumps(
@@ -105,16 +94,13 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 201
         response_body = json.loads(response["body"])
         assert response_body["transactionId"] == "existing-transaction-id"
         assert response_body["idempotent"] is True
 
-        # Verify no new transaction was created
         transactions = app_with_mocked_table.table.scan()["Items"]
         assert len(transactions) == 1
 
@@ -124,11 +110,9 @@ class TestLambdaHandler:
 
         Verifies that the response includes an appropriate error message, a suggestion, and an example.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a request event without an idempotency key
         event = {
             "headers": {},
             "body": json.dumps(
@@ -141,10 +125,8 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 400
         response_body = json.loads(response["body"])
         assert "error" in response_body
@@ -158,13 +140,11 @@ class TestLambdaHandler:
 
         Verifies that requests with an Idempotency-Key header outside the allowed length (10–64 characters) are rejected with an appropriate error message.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a request event with an invalid idempotency key (too short)
         event = {
             "headers": {"Idempotency-Key": "short"},
             "body": json.dumps(
@@ -177,10 +157,8 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 400
         response_body = json.loads(response["body"])
         assert "error" in response_body
@@ -189,7 +167,6 @@ class TestLambdaHandler:
             in response_body["error"]
         )
 
-        # Test with a key that's too long
         event["headers"]["Idempotency-Key"] = "x" * 65
         response = app_with_mocked_table.lambda_handler(event, mock_context)
         assert response["statusCode"] == 400
@@ -205,13 +182,11 @@ class TestLambdaHandler:
 
         Sends a request with a syntactically valid but non-UUID idempotency key and verifies that the response includes an appropriate error message and an example of a valid UUID.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a request event with a non-UUID idempotency key
         event = {
             "headers": {"Idempotency-Key": "not-a-uuid-but-long-enough-12345"},
             "body": json.dumps(
@@ -224,10 +199,8 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 400
         response_body = json.loads(response["body"])
         assert "error" in response_body
@@ -240,20 +213,16 @@ class TestLambdaHandler:
 
         Verifies that an appropriate error message is returned if the request body cannot be parsed as valid JSON.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a request event with invalid JSON in the body
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": "{invalid json",
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 400
         response_body = json.loads(response["body"])
         assert "error" in response_body
@@ -261,36 +230,30 @@ class TestLambdaHandler:
 
     def test_validation_errors(self, app_with_mocked_table):
         """
-        Tests that the lambda_handler returns appropriate 400 responses for invalid transaction data.
+        Tests that the lambda_handler returns the appropriate 400 responses for invalid transaction data.
 
         Verifies that missing required fields or invalid transaction types in the request body result in descriptive validation error messages.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a request event with missing required fields
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": json.dumps(
                 {
-                    # Missing accountId
                     "amount": 100.50,
                     "type": "CREDIT",
                 }
             ),
         }
 
-        # Call the lambda handler
         response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 400
         response_body = json.loads(response["body"])
         assert "error" in response_body
         assert "Missing required fields" in response_body["error"]
 
-        # Test with an invalid transaction type
         event["body"] = json.dumps(
             {"accountId": "test-account-123", "amount": 100.50, "type": "INVALID_TYPE"}
         )
@@ -306,13 +269,11 @@ class TestLambdaHandler:
 
         Simulates a database error by patching the idempotency check method to raise an exception, then verifies that the response contains a 500 status code and an appropriate error message.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": json.dumps(
@@ -325,16 +286,13 @@ class TestLambdaHandler:
             ),
         }
 
-        # Mock check_existing_transaction to raise an exception
         with patch.object(
             app_with_mocked_table, "check_existing_transaction"
         ) as mock_check:
             mock_check.side_effect = Exception("Database error")
 
-            # Call the lambda handler
             response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-            # Verify the response
             assert response["statusCode"] == 500
             response_body = json.loads(response["body"])
             assert "error" in response_body
@@ -347,13 +305,11 @@ class TestLambdaHandler:
         Simulates an exception when saving a transaction and verifies that the Lambda handler
         returns a 500 status code with an appropriate error message in the response body.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": json.dumps(
@@ -366,14 +322,11 @@ class TestLambdaHandler:
             ),
         }
 
-        # Mock save_transaction to raise an exception
         with patch.object(app_with_mocked_table, "save_transaction") as mock_save:
             mock_save.side_effect = Exception("Failed to save")
 
-            # Call the lambda handler
             response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-            # Verify the response
             assert response["statusCode"] == 500
             response_body = json.loads(response["body"])
             assert "error" in response_body
@@ -385,13 +338,11 @@ class TestLambdaHandler:
 
         Simulates an unexpected exception in the validation logic and verifies that the response contains an internal server error message.
         """
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": json.dumps(
@@ -404,16 +355,13 @@ class TestLambdaHandler:
             ),
         }
 
-        # Mock a function to raise an unexpected exception
         with patch.object(
             app_with_mocked_table, "validate_transaction_data"
         ) as mock_validate:
             mock_validate.side_effect = RuntimeError("Unexpected error")
 
-            # Call the lambda handler
             response = app_with_mocked_table.lambda_handler(event, mock_context)
 
-            # Verify the response
             assert response["statusCode"] == 500
             response_body = json.loads(response["body"])
             assert "error" in response_body
@@ -427,19 +375,15 @@ class TestLambdaHandler:
         Ensures that the absence of the TRANSACTIONS_TABLE_NAME environment variable results
         in a 500 response with an appropriate error message.
         """
-        # Ensure TRANSACTIONS_TABLE_NAME is not set
         monkeypatch.delenv("TRANSACTIONS_TABLE_NAME", raising=False)
 
-        # Reload app to clear the table
         reload(app)
 
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event
         event = {
             "headers": {"Idempotency-Key": str(uuid.uuid4())},
             "body": json.dumps(
@@ -452,10 +396,8 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 500
         response_body = json.loads(response["body"])
         assert "error" in response_body
@@ -470,18 +412,14 @@ class TestLambdaHandler:
         table_name = dynamo_table
         monkeypatch.setenv("TRANSACTIONS_TABLE_NAME", table_name)
 
-        # Reload app to use the mocked table
         reload(app)
 
-        # Create a mock context
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
 
-        # Create a valid idempotency key and account id
         idempotency_key = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        # Create a valid request event for a DEPOSIT transaction
         event = {
             "headers": {"Idempotency-Key": idempotency_key},
             "body": json.dumps(
@@ -494,16 +432,13 @@ class TestLambdaHandler:
             ),
         }
 
-        # Call the lambda handler
         response = app.lambda_handler(event, mock_context)
 
-        # Verify the response
         assert response["statusCode"] == 201
         response_body = json.loads(response["body"])
         assert "transactionId" in response_body
         assert response_body["message"] == "Transaction recorded successfully!"
 
-        # Verify the transaction was saved in DynamoDB
         transactions = app.table.scan()["Items"]
         assert len(transactions) == 1
         transaction = transactions[0]
