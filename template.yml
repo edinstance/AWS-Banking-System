@@ -89,12 +89,14 @@ Resources:
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: RecordTransactionFunction
       CodeUri: functions/record_transactions/
-      Handler: app.lambda_handler
+      Handler: record_transactions.app.lambda_handler
       Environment:
         Variables:
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
           IDEMPOTENCY_EXPIRATION_DAYS: "7"
           DYNAMODB_ENDPOINT: ""
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Events:
         ApiSaveTransactionEvent:
           Type: Api

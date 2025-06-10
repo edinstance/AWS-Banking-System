@@ -36,13 +36,25 @@ import json
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal, DecimalException
-from typing import Dict, Any
+from decimal import Decimal
 
-import boto3
 from aws_lambda_powertools import Logger
-from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
+from aws_lambda_powertools.utilities.typing import LambdaContext
+
+from .auth import (
+    get_sub_from_id_token,
+    MissingSubClaimError,
+    InvalidTokenError,
+    AuthVerificationError,
+    AuthConfigurationError,
+)
+from .dynamodb import get_dynamodb_resource
+from .helpers import create_response, is_valid_uuid
+from .transactions import (
+    check_existing_transaction,
+    validate_transaction_data,
+    save_transaction,
+)
 
 TRANSACTIONS_TABLE_NAME = os.environ.get("TRANSACTIONS_TABLE_NAME")
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
@@ -51,44 +63,12 @@ IDEMPOTENCY_EXPIRATION_DAYS = int(os.environ.get("IDEMPOTENCY_EXPIRATION_DAYS", 
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
+COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
+COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID")
 
 logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
 
-def create_response(
-        status_code: int, body_dict: Dict[str, Any], methods: str
-) -> Dict[str, Any]:
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "X-Content-Type-Options": "nosniff",
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": methods,
-            "Access-Control-Allow-Headers": "Content-Type",
-        },
-        "body": json.dumps(body_dict),
-    }
-
-
-def get_dynamodb_resource():
-    """
-    Returns a DynamoDB resource configured with a custom endpoint if specified.
-
-    If a custom DynamoDB endpoint is set via environment variable, the resource is initialised with that endpoint; otherwise, the default AWS endpoint is used.
-    """
-    if DYNAMODB_ENDPOINT:
-        logger.debug(f"Using custom DynamoDB endpoint: {DYNAMODB_ENDPOINT}")
-        return boto3.resource(
-            "dynamodb",
-            endpoint_url=DYNAMODB_ENDPOINT,
-            region_name=AWS_REGION,
-        )
-    logger.debug("Using default DynamoDB endpoint")
-    return boto3.resource("dynamodb")
-
-
-dynamodb = get_dynamodb_resource()
+dynamodb = get_dynamodb_resource(DYNAMODB_ENDPOINT, AWS_REGION, logger)
 if TRANSACTIONS_TABLE_NAME:
     table = dynamodb.Table(TRANSACTIONS_TABLE_NAME)
     logger.debug(f"Initialized DynamoDB table: {TRANSACTIONS_TABLE_NAME}")
@@ -97,132 +77,8 @@ else:
     table = None
 
 
-def is_valid_uuid(val):
-    """
-    Determines whether the provided string is a valid UUID.
-
-    Args:
-        val: The string to validate.
-
-    Returns:
-        True if the string is a valid UUID, otherwise False.
-    """
-    try:
-        uuid_obj = uuid.UUID(str(val))
-        return str(uuid_obj) == val.lower()
-    except (ValueError, AttributeError, TypeError):
-        return False
-
-
-def validate_transaction_data(data):
-    """
-    Validates transaction data against required fields and business rules.
-
-    Checks for presence of required fields, valid transaction type, positive numeric amount, valid UUID for accountId, and ensures description is a string if provided.
-
-    Args:
-        data (dict): The transaction data to validate.
-
-    Returns:
-        tuple: A tuple (is_valid, error_message), where is_valid is True if the data is valid, otherwise False, and error_message contains the reason for invalidity or None if valid.
-    """
-    required_fields = ["accountId", "amount", "type"]
-    missing_fields = [field for field in required_fields if field not in data]
-    if missing_fields:
-        return False, f"Missing required fields: {', '.join(missing_fields)}"
-
-    if data["type"].upper() not in VALID_TRANSACTION_TYPES:
-        return (
-            False,
-            f"Invalid transaction type. Must be one of: {', '.join(VALID_TRANSACTION_TYPES)}",
-        )
-
-    try:
-        amount = Decimal(str(data["amount"]))
-    except (ValueError, TypeError, DecimalException):
-        return False, "Invalid amount format. Amount must be a number."
-
-    if amount <= 0:
-        return False, "Amount must be a positive number"
-
-    if not is_valid_uuid(data["accountId"]):
-        return False, "Invalid accountId, accountId must be a valid UUID"
-
-    if "description" in data and not isinstance(data["description"], str):
-        return False, "Description must be a string"
-
-    return True, None
-
-
-def check_existing_transaction(idempotency_key):
-    """
-    Checks for an existing, non-expired transaction with the specified idempotency key.
-
-    Queries the DynamoDB table using a secondary index to find a transaction matching the
-    given idempotency key whose idempotency expiration timestamp is in the future.
-
-    Args:
-        idempotency_key: The idempotency key to search for.
-
-    Returns:
-        The existing transaction item as a dictionary if found and not expired; otherwise, None.
-
-    Raises:
-        ClientError: If a DynamoDB error occurs during the query.
-    """
-    try:
-        response = table.query(
-            IndexName="IdempotencyKeyIndex",
-            KeyConditionExpression=Key("idempotencyKey").eq(idempotency_key),
-            ConsistentRead=False,
-        )
-
-        items = response.get("Items", [])
-        if items:
-            now = int(datetime.now(timezone.utc).timestamp())
-            for item in items:
-                if item.get("idempotencyExpiration", 0) > now:
-                    return item
-        return None
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code")
-        logger.error(
-            f"DynamoDB error checking idempotency: {error_code}", exc_info=True
-        )
-        if error_code == "ProvisionedThroughputExceededException":
-            logger.warning("DynamoDB throughput exceeded during idempotency check")
-        raise
-
-
-def save_transaction(transaction_item):
-    """
-    Attempts to save a transaction record to DynamoDB, raising exceptions on failure.
-
-    Args:
-        transaction_item (dict): The transaction data to be stored.
-
-    Returns:
-        True if the transaction is saved successfully.
-
-    Raises:
-        Exception: If the operation fails due to throughput limits, missing resources, or other database errors.
-    """
-    try:
-        table.put_item(Item=transaction_item)
-        return True
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code")
-        logger.error(f"Failed to save transaction: {error_code}", exc_info=True)
-        if error_code == "ProvisionedThroughputExceededException":
-            raise Exception("Service temporarily unavailable due to high load") from e
-        elif error_code == "ResourceNotFoundException":
-            raise Exception("Transaction database configuration error") from e
-        else:
-            raise Exception(f"Database error: {error_code}") from e
-
-
 @logger.inject_lambda_context
-def lambda_handler(event, context):
+def lambda_handler(event, context: LambdaContext):
     """
     Handles incoming API Gateway requests to record financial transactions with idempotency.
 
@@ -247,11 +103,68 @@ def lambda_handler(event, context):
             "POST",
         )
 
-    try:
-        # Extract and normalize headers (case-insensitive)
-        headers = {k.lower(): v for k, v in event.get("headers", {}).items()}
+    headers = {k.lower(): v for k, v in event.get("headers", {}).items()}
 
-        # Validate idempotency key
+    user_id = None
+    if (
+        "requestContext" in event
+        and "authorizer" in event["requestContext"]
+        and "claims" in event["requestContext"]["authorizer"]
+    ):
+        user_id = event["requestContext"]["authorizer"]["claims"].get("sub")
+
+    if user_id is None and "authorization" in headers:
+        try:
+            user_id = get_sub_from_id_token(
+                headers["authorization"],
+                COGNITO_USER_POOL_ID,
+                COGNITO_CLIENT_ID,
+                AWS_REGION.lower(),
+            )
+        except (MissingSubClaimError, InvalidTokenError) as e:
+            logger.warning(f"Authentication failed (Invalid Token/Claims): {e}")
+            return create_response(
+                401,
+                {"error": f"Unauthorized: Invalid authentication token ({e})"},
+                "POST",
+            )
+        except AuthConfigurationError as e:
+            logger.critical(f"Authentication configuration error: {e}", exc_info=True)
+            return create_response(
+                500,
+                {
+                    "error": "Server authentication configuration error. Please contact support."
+                },
+                "POST",
+            )
+        except AuthVerificationError as e:
+            logger.error(
+                f"Generic authentication verification error: {e}", exc_info=True
+            )
+            return create_response(
+                500,
+                {"error": "Internal authentication error. Please contact support."},
+                "POST",
+            )
+        except Exception as e:
+            logger.exception(f"Unexpected error during direct token verification: {e}")
+            return create_response(
+                500,
+                {"error": "An unexpected error occurred during authentication."},
+                "POST",
+            )
+
+    if user_id is None:
+        logger.error(f"Failed to determine user ID after all attempts. Event: {event}")
+        return create_response(
+            401,
+            {
+                "error": "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
+            },
+            "POST",
+        )
+    try:
+
         idempotency_key = headers.get("idempotency-key")
         if not idempotency_key:
             suggested_key = str(uuid.uuid4())
@@ -293,10 +206,12 @@ def lambda_handler(event, context):
             )
 
         try:
-            existing_transaction = check_existing_transaction(idempotency_key)
+            existing_transaction = check_existing_transaction(
+                idempotency_key, table, logger
+            )
             if existing_transaction:
                 logger.info(
-                    f"Found existing transaction with ID: {existing_transaction['id']}"
+                    f"Found existing transaction with ID: {existing_transaction.get('id')} for idempotency key {idempotency_key}"
                 )
                 return create_response(
                     201,
@@ -311,7 +226,7 @@ def lambda_handler(event, context):
             logger.error(f"Error checking idempotency: {str(e)}")
             return create_response(
                 500,
-                {"error": "Unable to verify transaction uniqueness"},
+                {"error": "Unable to verify transaction uniqueness. Please try again."},
                 "POST",
             )
 
@@ -325,15 +240,17 @@ def lambda_handler(event, context):
                 "POST",
             )
 
-        is_valid, validation_error = validate_transaction_data(request_body)
+        is_valid, validation_error = validate_transaction_data(
+            request_body, VALID_TRANSACTION_TYPES
+        )
         if not is_valid:
             logger.warning(f"Validation error: {validation_error}")
             return create_response(400, {"error": validation_error}, "POST")
 
-        account_id = request_body.get("accountId")
-        transaction_type = request_body.get("type").upper()
+        account_id = request_body["accountId"]
+        transaction_type = request_body["type"].upper()
         description = request_body.get("description", "")
-        amount = Decimal(str(request_body.get("amount")))
+        amount = Decimal(str(request_body["amount"]))
 
         transaction_id = str(uuid.uuid4())
         now_utc = datetime.now(timezone.utc)
@@ -349,6 +266,7 @@ def lambda_handler(event, context):
             "id": transaction_id,
             "createdAt": created_at_iso,
             "accountId": account_id,
+            "userId": user_id,
             "amount": amount,
             "type": transaction_type,
             "description": description,
@@ -361,6 +279,7 @@ def lambda_handler(event, context):
             "rawRequest": json.dumps(
                 {
                     "accountId": account_id,
+                    "userId": user_id,
                     "amount": str(amount),
                     "type": transaction_type,
                     "description": description,
@@ -369,10 +288,14 @@ def lambda_handler(event, context):
         }
 
         try:
-            save_transaction(transaction_item)
-            logger.info(f"Successfully saved transaction {transaction_id}")
+            save_transaction(transaction_item, table, logger)
+            logger.info(
+                f"Successfully saved transaction {transaction_id} for user {user_id}"
+            )
         except Exception as e:
-            logger.error(f"Failed to save transaction: {str(e)}")
+            logger.error(
+                f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
+            )
             return create_response(
                 500,
                 {"error": "Failed to process transaction. Please try again."},
@@ -393,7 +316,7 @@ def lambda_handler(event, context):
         )
 
     except Exception as e:
-        logger.exception(f"Unhandled exception: {str(e)}")
+        logger.exception(f"Unhandled exception in lambda_handler: {str(e)}")
         return create_response(
             500,
             {"error": "Internal server error. Please contact support."},

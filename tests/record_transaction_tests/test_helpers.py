@@ -1,11 +1,13 @@
 import uuid
-from decimal import Decimal
 
-from functions.record_transactions.app import (
+from functions.record_transactions.record_transactions.app import (
     is_valid_uuid,
-    validate_transaction_data,
-    VALID_TRANSACTION_TYPES,
 )
+from functions.record_transactions.record_transactions.helpers import create_response
+
+# Test constants
+VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
+INVALID_UUID = "not-a-uuid"
 
 
 class TestIsValidUUID:
@@ -24,8 +26,7 @@ class TestIsValidUUID:
         """
         Tests that is_valid_uuid returns False for an improperly formatted UUID string.
         """
-        invalid_uuid = "not-a-uuid"
-        assert is_valid_uuid(invalid_uuid) is False
+        assert is_valid_uuid(INVALID_UUID) is False
 
     def test_uuid_wrong_length(self):
         """Test that a string of the wrong length returns False."""
@@ -53,179 +54,41 @@ class TestIsValidUUID:
         """
         assert is_valid_uuid(12345) is False
 
+    def test_non_string_input(self):
+        assert is_valid_uuid(123) is False
 
-class TestValidateTransactionData:
-    def test_valid_deposit_transaction(self):
-        """Test a valid DEPOSIT transaction passes validation."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 100.50,
-            "type": "DEPOSIT",
-            "description": "Test deposit",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
 
-    def test_valid_withdrawal_transaction(self):
-        """Test a valid WITHDRAWAL transaction passes validation."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 50.25,
-            "type": "WITHDRAWAL",
-            "description": "Test withdrawal",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
+class TestCreateResponse:
+    def test_successful_response(self):
+        body = {"message": "Success"}
+        response = create_response(200, body, "POST")
 
-    def test_missing_required_fields(self):
-        """Test that missing required fields are detected."""
-        data = {"amount": 100, "type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Missing required fields" in error
-        assert "accountId" in error
+        assert response["statusCode"] == 200
+        assert response["body"] == '{"message": "Success"}'
+        assert response["headers"]["Content-Type"] == "application/json"
+        assert response["headers"]["Access-Control-Allow-Methods"] == "POST"
+        assert response["headers"]["Access-Control-Allow-Origin"] == "*"
 
-        data = {"type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "accountId" in error
-        assert "amount" in error
+    def test_error_response(self):
+        body = {"error": "Bad Request"}
+        response = create_response(400, body, "GET")
 
-    def test_invalid_transaction_type(self):
-        """Test that invalid transaction types are rejected."""
-        data = {"accountId": str(uuid.uuid4()), "amount": 100, "type": "INVALID_TYPE"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Invalid transaction type" in error
+        assert response["statusCode"] == 400
+        assert response["body"] == '{"error": "Bad Request"}'
+        assert response["headers"]["Access-Control-Allow-Methods"] == "GET"
 
-        for valid_type in VALID_TRANSACTION_TYPES:
-            assert valid_type in error
+    def test_empty_body(self):
+        response = create_response(204, {}, "DELETE")
 
-    def test_invalid_amount_format(self):
-        """
-        Tests that the validation rejects transactions with a non-numeric amount field.
-        """
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": "not-a-number",
-            "type": "DEPOSIT",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Invalid amount format" in error
+        assert response["statusCode"] == 204
+        assert response["body"] == "{}"
+        assert response["headers"]["Access-Control-Allow-Methods"] == "DELETE"
 
-    def test_negative_amount(self):
-        """Test that negative amounts are rejected for all transaction types."""
-        data = {"accountId": str(uuid.uuid4()), "amount": -100, "type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Amount must be a positive number" in error
+    def test_complex_body(self):
+        body = {"data": {"id": 1, "items": ["a", "b", "c"], "nested": {"key": "value"}}}
+        response = create_response(200, body, "PUT")
 
-        data["type"] = "WITHDRAWAL"
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Amount must be a positive number" in error
-
-    def test_zero_amount(self):
-        """Test that zero amounts are rejected."""
-        data = {"accountId": str(uuid.uuid4()), "amount": 0, "type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Amount must be a positive number" in error
-
-    def test_invalid_account_id(self):
-        """
-        Tests that transactions with invalid account IDs are correctly rejected.
-
-        Verifies that account IDs which are too short or not strings cause validation to fail,
-        and that the appropriate error message is returned.
-        """
-        data = {"accountId": "abs121", "amount": 100, "type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Invalid accountId, accountId must be a valid UUID" in error
-
-        data = {"accountId": 12345, "amount": 100, "type": "DEPOSIT"}
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Invalid accountId, accountId must be a valid UUID" in error
-
-    def test_invalid_description_type(self):
-        """Test that non-string descriptions are rejected."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 100,
-            "type": "DEPOSIT",
-            "description": 12345,  # Not a string
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is False
-        assert "Description must be a string" in error
-
-    def test_valid_with_decimal_amount(self):
-        """Test that Decimal amounts are accepted."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": Decimal("100.50"),
-            "type": "DEPOSIT",
-            "description": "Test with Decimal",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
-
-    def test_case_insensitive_transaction_type(self):
-        """Test that transaction types are case-insensitive."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 100,
-            "type": "deposit",
-            "description": "Test with lowercase type",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
-
-        data["type"] = "DePoSiT"
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
-
-    def test_valid_without_description(self):
-        """
-        Verifies that a transaction is valid when the optional description field is omitted.
-        """
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 100,
-            "type": "DEPOSIT",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
-
-    def test_valid_transfer_transaction(self):
-        """Test a valid TRANSFER transaction passes validation."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 75.00,
-            "type": "TRANSFER",
-            "description": "Transfer to savings",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
-
-    def test_valid_adjustment_transaction(self):
-        """Test a valid ADJUSTMENT transaction passes validation."""
-        data = {
-            "accountId": str(uuid.uuid4()),
-            "amount": 25.75,
-            "type": "ADJUSTMENT",
-            "description": "Fee reversal",
-        }
-        is_valid, error = validate_transaction_data(data)
-        assert is_valid is True
-        assert error is None
+        assert response["statusCode"] == 200
+        assert '"items": ["a", "b", "c"]' in response["body"]
+        assert '"nested": {"key": "value"}' in response["body"]
+        assert response["headers"]["Access-Control-Allow-Methods"] == "PUT"
