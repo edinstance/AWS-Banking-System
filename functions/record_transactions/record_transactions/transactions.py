@@ -26,7 +26,8 @@ def validate_transaction_data(data, valid_transaction_types):
     if missing_fields:
         return False, f"Missing required fields: {', '.join(missing_fields)}"
 
-    if data["type"].upper() not in valid_transaction_types:
+    normalised_types = {t.upper() for t in valid_transaction_types}
+    if data["type"].upper() not in normalised_types:
         return (
             False,
             f"Invalid transaction type. Must be one of: {', '.join(valid_transaction_types)}",
