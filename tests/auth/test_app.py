@@ -28,11 +28,14 @@ class TestApp:
     def test_invalid_json(self):
         context = MagicMock()
         context.aws_request_id = "test-request-id"
-        result = lambda_handler({
-            "httpMethod": "POST",
-            "path": "/auth/login",
-            "body": "{invalid json",
-        }, context)
+        result = lambda_handler(
+            {
+                "httpMethod": "POST",
+                "path": "/auth/login",
+                "body": "{invalid json",
+            },
+            context,
+        )
 
         assert result["statusCode"] == 400
         body = json.loads(result["body"])
@@ -42,10 +45,13 @@ class TestApp:
         context = MagicMock()
         context.aws_request_id = "test-request-id"
 
-        result = lambda_handler({
-            "httpMethod": "POST",
-            "path": "/fake",
-        }, context)
+        result = lambda_handler(
+            {
+                "httpMethod": "POST",
+                "path": "/fake",
+            },
+            context,
+        )
 
         assert result["statusCode"] == 404
         body = json.loads(result["body"])
@@ -54,20 +60,21 @@ class TestApp:
     def test_post_login_route(self):
         context = MagicMock()
         context.aws_request_id = "test-request-id"
-        with patch(
-                "functions.auth.auth.app.get_auth_service"
-        ) as mock_get_auth_service:
+        with patch("functions.auth.auth.app.get_auth_service") as mock_get_auth_service:
             mock_auth_service = MagicMock()
             mock_get_auth_service.return_value = mock_auth_service
             mock_auth_service.handle_login.return_value = {
                 "statusCode": 200,
                 "body": json.dumps({"message": "Login successful"}),
             }
-            result = lambda_handler({
-                "httpMethod": "POST",
-                "path": "/auth/login",
-                "body": json.dumps({"username": "test", "password": "password"}),
-            }, context)
+            result = lambda_handler(
+                {
+                    "httpMethod": "POST",
+                    "path": "/auth/login",
+                    "body": json.dumps({"username": "test", "password": "password"}),
+                },
+                context,
+            )
 
             assert result["statusCode"] == 200
             body = json.loads(result["body"])
@@ -77,20 +84,21 @@ class TestApp:
     def test_post_refresh_route(self):
         context = MagicMock()
         context.aws_request_id = "test-request-id"
-        with patch(
-                "functions.auth.auth.app.get_auth_service"
-        ) as mock_get_auth_service:
+        with patch("functions.auth.auth.app.get_auth_service") as mock_get_auth_service:
             mock_auth_service = MagicMock()
             mock_get_auth_service.return_value = mock_auth_service
             mock_auth_service.handle_refresh.return_value = {
                 "statusCode": 200,
                 "body": json.dumps({"message": "Token refreshed"}),
             }
-            result = lambda_handler({
-                "httpMethod": "POST",
-                "path": "/auth/refresh",
-                "body": json.dumps({"refreshToken": "some_refresh_token"}),
-            }, context)
+            result = lambda_handler(
+                {
+                    "httpMethod": "POST",
+                    "path": "/auth/refresh",
+                    "body": json.dumps({"refreshToken": "some_refresh_token"}),
+                },
+                context,
+            )
 
             assert result["statusCode"] == 200
             body = json.loads(result["body"])

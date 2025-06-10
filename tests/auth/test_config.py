@@ -39,4 +39,3 @@ class TestAuthConfig:
         assert config.cognito_client_id is None
         assert config.user_pool_id is None
         assert config.log_level == "INFO"
-

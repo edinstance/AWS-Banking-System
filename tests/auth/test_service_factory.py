@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
-from functions.auth.auth.service import get_auth_service
+
 import functions.auth.auth.service
+from functions.auth.auth.service import get_auth_service
 
 
 def setup_method():
@@ -10,8 +11,11 @@ def setup_method():
 class TestAuthServiceFactory:
 
     def test_get_auth_service_creates_new_instance_when_none(self):
-        with patch('functions.auth.auth.service.AuthConfig') as mock_config_class, \
-                patch('functions.auth.auth.service.AuthService') as mock_service_class:
+        with patch(
+            "functions.auth.auth.service.AuthConfig"
+        ) as mock_config_class, patch(
+            "functions.auth.auth.service.AuthService"
+        ) as mock_service_class:
             mock_config = Mock()
             mock_config_class.return_value = mock_config
             mock_service = Mock()

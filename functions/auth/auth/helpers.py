@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 
 def create_response(
-        status_code: int, body_dict: Dict[str, Any], methods: str
+    status_code: int, body_dict: Dict[str, Any], methods: str
 ) -> Dict[str, Any]:
     return {
         "statusCode": status_code,
