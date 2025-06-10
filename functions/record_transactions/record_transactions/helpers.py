@@ -16,7 +16,7 @@ def create_response(
             "Access-Control-Allow-Methods": methods,
             "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key",
         },
-        "body": json.dumps(body_dict),
+        "body": json.dumps(body_dict) if body_dict else "{}",
     }
 
 
