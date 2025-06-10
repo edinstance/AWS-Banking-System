@@ -22,9 +22,8 @@ def get_dynamodb_resource(dynamodb_endpoint: str, aws_region: str, logger: Logge
             return boto3.resource(
                 "dynamodb", endpoint_url=dynamodb_endpoint, region_name=aws_region
             )
-        else:
-            logger.debug("Initialized DynamoDB resource with default endpoint")
-            return boto3.resource("dynamodb", region_name=aws_region)
+        logger.debug("Initialized DynamoDB resource with default endpoint")
+        return boto3.resource("dynamodb", region_name=aws_region)
     except Exception:
         logger.error("Failed to initialize DynamoDB resource", exc_info=True)
         raise
