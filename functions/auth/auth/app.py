@@ -29,11 +29,11 @@ def lambda_handler(event, context: LambdaContext):
 
         if path == "/auth/login":
             return auth_service.handle_login(request_body)
-        elif path == "/auth/refresh":
+        if path == "/auth/refresh":
             return auth_service.handle_refresh(request_body)
-        else:
-            auth_service.logger.warning(f"Unsupported path: {path}")
-            return create_response(404, {"error": "Not Found"}, "POST")
+
+        auth_service.logger.warning(f"Unsupported path: {path}")
+        return create_response(404, {"error": "Not Found"}, "POST")
     else:
         auth_service.logger.warning(f"Unsupported HTTP method: {http_method}")
         return create_response(405, {"error": "Method Not Allowed"}, "POST")
