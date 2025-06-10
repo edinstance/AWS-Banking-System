@@ -126,7 +126,7 @@ To test the project locally, you can use the `make test` or `make test-cov-repor
 
 ### Cognito
 
-Cognito cannot be setup locally, so if you want to run the system locally you need to use a deployed version of cognito, see below for details on how to deploy cognito.
+Cognito cannot be set up locally, so if you want to run the system locally you need to use a deployed version of cognito, see below for details on how to deploy cognito.
 
 ### DynamoDB
 
@@ -297,32 +297,32 @@ Monitor the deletion progress in the AWS CloudFormation console.
 
 ## Cognito
 
-To deploy cognito for managing users of for local testing of the system you can either use the normal sam deploy above and reuse the cognito user pool id and client id. Or you can use the [cognito-template.yml](cognito-template.yml) to only deploy cognito. The users used in this must be created either in cognito or with a custom flow as this api does not support creating users.
+To deploy Cognito for managing users or for local testing of the system, you can either use the normal sam deploy above and reuse the Cognito user pool ID and client ID, or you can use the [cognito-template.yml](cognito-template.yml) to only deploy Cognito. The users used in this must be created either in Cognito or with a custom flow, as this API does not support creating users.
 
 ### Security Considerations
 
 When deploying Cognito for production use:
-- Ensure users are created through secure, audited processes
-- Consider implementing user invitation flows rather than allowing self-registration
-- Regularly review and rotate any temporary credentials used for user management
+* Ensure users are created through secure, audited processes
+* Consider implementing user invitation flows rather than allowing self-registration
+* Regularly review and rotate any temporary credentials used for user management
 
 ### Deploying just cognito
 
-To deploy only cognito you need to run:
+To deploy only cognito, you need to run:
 
 ```shell
 
 sam build --template-file cognito-template.yml
 ```
 
-and then to deploy it you should run:
+and then to deploy it, you should run:
 
 ```shell
 
 sam deploy --template-file cognito-template.yml --config-file samconfig.cognito.toml
 ```
 
-finally to delete it you should run:
+finally to delete it, you should run:
 
 ```shell
 
