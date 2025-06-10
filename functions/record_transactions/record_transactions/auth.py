@@ -46,6 +46,11 @@ def get_sub_from_id_token(
         MissingSubClaimError: If the 'sub' claim is missing from the token
         AuthVerificationError: For unexpected authentication errors
     """
+    if not user_pool_id or not isinstance(user_pool_id, str):
+        raise AuthConfigurationError("Invalid or missing Cognito User Pool ID")
+    if not client_id or not isinstance(client_id, str):
+        raise AuthConfigurationError("Invalid or missing Cognito Client ID")
+
     try:
         jwks_url = f"https://cognito-idp.{aws_region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json"
         jwks_client = PyJWKClient(jwks_url)

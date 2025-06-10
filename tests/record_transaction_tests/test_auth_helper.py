@@ -121,3 +121,17 @@ def test_unexpected_error(mock_jwks_client, mock_jwt):
             TEST_ID_TOKEN, TEST_USER_POOL_ID, TEST_CLIENT_ID, TEST_AWS_REGION
         )
     assert "An unexpected authentication error occurred" in str(exc_info.value)
+
+
+def test_no_user_pool_id(mock_jwks_client, mock_jwt):
+    with pytest.raises(AuthConfigurationError) as exc_info:
+        get_sub_from_id_token(TEST_ID_TOKEN, None, TEST_CLIENT_ID, TEST_AWS_REGION)
+
+    assert "Invalid or missing Cognito User Pool ID" in str(exc_info.value)
+
+
+def test_no_client_id(mock_jwks_client, mock_jwt):
+    with pytest.raises(AuthConfigurationError) as exc_info:
+        get_sub_from_id_token(TEST_ID_TOKEN, TEST_USER_POOL_ID, None, TEST_AWS_REGION)
+
+    assert "Invalid or missing Cognito Client ID" in str(exc_info.value)
