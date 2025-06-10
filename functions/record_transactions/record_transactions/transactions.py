@@ -87,10 +87,10 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
             for item in items:
                 if item.get("idempotencyExpiration", 0) > now:
                     return item
-                else:
-                    logger.debug(
-                        f"Expired or invalid idempotency item found for key {idempotency_key}"
-                    )
+
+                logger.debug(
+                    f"Expired or invalid idempotency item found for key {idempotency_key}"
+                )
         return None
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
