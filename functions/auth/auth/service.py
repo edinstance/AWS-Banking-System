@@ -117,7 +117,9 @@ class AuthService:
 
         if not refresh_token:
             self.logger.warning("Missing refreshToken for token refresh.")
-            return create_response(400, {"error": "Refresh token is required."}, "OPTIONS,POST")
+            return create_response(
+                400, {"error": "Refresh token is required."}, "OPTIONS,POST"
+            )
 
         try:
             auth_response = self.cognito_client.initiate_auth(
