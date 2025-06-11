@@ -29,6 +29,9 @@ class TestValidateTransactionData:
         assert "Missing required fields: type" in error
 
     def test_invalid_transaction_type(self, valid_transaction_data):
+        """
+        Tests that an invalid transaction type causes validation to fail with an appropriate error message.
+        """
         data = valid_transaction_data.copy()
         data["type"] = "INVALID_TYPE"
         is_valid, error = validate_transaction_data(data, VALID_TRANSACTION_TYPES)
@@ -43,6 +46,11 @@ class TestValidateTransactionData:
         assert "Invalid amount format" in error
 
     def test_negative_amount(self, valid_transaction_data):
+        """
+        Tests that a negative transaction amount is rejected by the validation function.
+        
+        Verifies that providing a negative amount results in validation failure and the appropriate error message.
+        """
         data = valid_transaction_data.copy()
         data["amount"] = "-100.50"
         is_valid, error = validate_transaction_data(data, VALID_TRANSACTION_TYPES)
@@ -77,6 +85,11 @@ class TestCheckExistingTransaction:
         assert result is None
 
     def test_existing_valid_transaction(self, mock_table, mock_logger):
+        """
+        Tests that an existing transaction with a valid, unexpired idempotency key is returned.
+        
+        Verifies that when a transaction with a future idempotency expiration is found in the database, the function returns the transaction item.
+        """
         future_timestamp = int(datetime.now(timezone.utc).timestamp()) + 3600
         mock_item = {"id": "test-id", "idempotencyExpiration": future_timestamp}
         mock_table.query.return_value = {"Items": [mock_item]}
@@ -85,6 +98,9 @@ class TestCheckExistingTransaction:
         assert result == mock_item
 
     def test_expired_transaction(self, mock_table, mock_logger):
+        """
+        Tests that check_existing_transaction returns None when the idempotency expiration is in the past.
+        """
         past_timestamp = int(datetime.now(timezone.utc).timestamp()) - 3600
         mock_item = {"id": "test-id", "idempotencyExpiration": past_timestamp}
         mock_table.query.return_value = {"Items": [mock_item]}
@@ -93,6 +109,11 @@ class TestCheckExistingTransaction:
         assert result is None
 
     def test_throughput_exceeded(self, mock_table, mock_logger):
+        """
+        Tests that a throughput exceeded error during transaction lookup raises a service unavailable exception.
+        
+        Simulates a DynamoDB ProvisionedThroughputExceededException when querying for an existing transaction and asserts that an appropriate exception is raised.
+        """
         error_response = {
             "Error": {
                 "Code": "ProvisionedThroughputExceededException",
@@ -106,6 +127,9 @@ class TestCheckExistingTransaction:
         assert "Service temporarily unavailable" in str(exc_info.value)
 
     def test_unknown_error(self, mock_table, mock_logger):
+        """
+        Tests that an unknown client error during transaction lookup raises an exception with the error code in the message.
+        """
         error_response = {
             "Error": {
                 "Code": "UnknownError",
@@ -127,11 +151,17 @@ class TestSaveTransaction:
         mock_logger.error.assert_called_once()
 
     def test_successful_save(self, mock_table, mock_logger):
+        """
+        Tests that save_transaction returns True when the transaction item is successfully saved.
+        """
         transaction_item = {"id": "test-id", "amount": Decimal("100.50")}
         result = save_transaction(transaction_item, mock_table, mock_logger)
         assert result is True
 
     def test_throughput_exceeded_on_save(self, mock_table, mock_logger):
+        """
+        Tests that save_transaction raises an exception with a service unavailable message when a throughput exceeded error occurs during save.
+        """
         error_response = {
             "Error": {
                 "Code": "ProvisionedThroughputExceededException",
@@ -145,6 +175,9 @@ class TestSaveTransaction:
         assert "Service temporarily unavailable" in str(exc_info.value)
 
     def test_resource_not_found_on_save(self, mock_table, mock_logger):
+        """
+        Tests that saving a transaction raises an exception with a configuration error message when the database table is not found.
+        """
         error_response = {
             "Error": {"Code": "ResourceNotFoundException", "Message": "Table not found"}
         }
@@ -155,6 +188,9 @@ class TestSaveTransaction:
         assert "Transaction database configuration error" in str(exc_info.value)
 
     def test_other_client_error_on_save(self, mock_table, mock_logger):
+        """
+        Tests that save_transaction raises an exception with the correct error message when an unknown client error occurs during the save operation.
+        """
         error_response = {
             "Error": {"Code": "UnknownError", "Message": "Unknown error occurred"}
         }
@@ -165,6 +201,11 @@ class TestSaveTransaction:
         assert "Database error: UnknownError" in str(exc_info.value)
 
     def test_conditional_error(self, mock_table, mock_logger):
+        """
+        Tests that save_transaction raises an exception when a conditional check fails due to idempotency expiration.
+        
+        Simulates a ConditionalCheckFailedException from the database and asserts that the correct exception is raised.
+        """
         error_response = {
             "Error": {
                 "Code": "ConditionalCheckFailedException",

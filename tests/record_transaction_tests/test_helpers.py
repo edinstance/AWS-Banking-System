@@ -31,7 +31,9 @@ class TestIsValidUUID:
         assert is_valid_uuid(INVALID_UUID) is False
 
     def test_uuid_wrong_length(self):
-        """Test that a string of the wrong length returns False."""
+        """
+        Tests that is_valid_uuid returns False for a UUID string with incorrect length.
+        """
         too_short = "123e4567-e89b-12d3-a456"  # Incomplete UUID
         assert is_valid_uuid(too_short) is False
 
@@ -80,6 +82,9 @@ class TestCreateResponse:
         assert response["headers"]["Access-Control-Allow-Methods"] == "GET"
 
     def test_empty_body(self):
+        """
+        Tests that create_response returns a 204 response with an empty JSON body and correct CORS headers when given an empty dictionary and the DELETE method.
+        """
         response = create_response(204, {}, "DELETE")
 
         assert response["statusCode"] == 204

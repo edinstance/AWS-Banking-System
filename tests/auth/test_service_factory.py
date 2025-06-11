@@ -8,6 +8,12 @@ from functions.auth.auth.service import get_auth_service
 
 @pytest.fixture(autouse=True)
 def reset_auth_service_singleton():
+    """
+    Resets the internal authentication service singleton before and after each test.
+    
+    Intended for use as a pytest fixture to ensure test isolation by clearing the
+    module-level `_auth_service` variable in the authentication service module.
+    """
     functions.auth.auth.service._auth_service = None
     yield
     functions.auth.auth.service._auth_service = None

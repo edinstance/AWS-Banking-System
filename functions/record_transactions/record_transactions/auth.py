@@ -30,22 +30,18 @@ def get_sub_from_id_token(
     id_token: str, user_pool_id: str, client_id: str, aws_region: str
 ) -> str:
     """
-    Verifies a JWT ID token and extracts the 'sub' claim.
-
-    Args:
-        id_token: The JWT ID token to verify
-        user_pool_id: The Cognito User Pool ID
-        client_id: The Cognito Client ID
-        aws_region: The AWS region where the User Pool is located
-
-    Returns:
-        The 'sub' claim from the verified token
-
+    Verifies an AWS Cognito JWT ID token and returns the user's unique identifier.
+    
+    Validates the token's signature, audience, issuer, and ensures it is an ID token. Extracts and returns the 'sub' claim, which uniquely identifies the user.
+    
     Raises:
-        AuthConfigurationError: If there's an issue with the auth configuration
-        InvalidTokenError: If the token is invalid, expired, or has wrong audience/issuer
-        MissingSubClaimError: If the 'sub' claim is missing from the token
-        AuthVerificationError: For unexpected authentication errors
+        AuthConfigurationError: If the Cognito User Pool ID or Client ID is invalid, or if JWKS retrieval fails.
+        InvalidTokenError: If the token is expired, has an invalid audience or issuer, is not an ID token, or fails verification.
+        MissingSubClaimError: If the 'sub' claim is not present in the token.
+        AuthVerificationError: For unexpected authentication errors.
+        
+    Returns:
+        The value of the 'sub' claim from the verified token.
     """
     if not user_pool_id or not isinstance(user_pool_id, str):
         raise AuthConfigurationError("Invalid or missing Cognito User Pool ID")
@@ -111,6 +107,11 @@ def get_sub_from_id_token(
 def authenticate_user(
     event, headers, cognito_user_pool_id, cognito_client_id, aws_region
 ):
+    """
+    Authenticates a user by extracting and verifying their identity from a Lambda event or HTTP headers.
+    
+    Attempts to retrieve the user ID (`sub` claim) from the event's authorizer claims. If not present, checks for an authorisation header, verifies the JWT ID token using AWS Cognito, and extracts the user ID. Returns a tuple containing the user ID and `None` on success, or `None` and an HTTP response object on failure. Responds with appropriate status codes and error messages for missing or invalid tokens, configuration errors, or unexpected authentication failures.
+    """
     if (
         "requestContext" in event
         and "authorizer" in event["requestContext"]

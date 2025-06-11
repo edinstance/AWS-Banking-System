@@ -12,6 +12,9 @@ from functions.record_transactions.record_transactions.idempotency import (
 class TestIdempotencyChecks:
 
     def test_existing_transaction(self, mock_logger, mock_table, mock_create_response):
+        """
+        Tests that an existing transaction for a given idempotency key returns a 201 response with the correct transaction details and idempotency status.
+        """
         idempotency_key = "test-key-123"
         existing_transaction = {"id": "transaction-123"}
         expected_response_body = {
@@ -46,6 +49,9 @@ class TestIdempotencyChecks:
             assert json.loads(response["body"]) == expected_response_body
 
     def test_no_existing_transaction(self, mock_logger, mock_table):
+        """
+        Tests that handle_idempotency_check returns None when no existing transaction is found for the given idempotency key.
+        """
         idempotency_key = "test-key-456"
 
         with patch(
@@ -64,6 +70,10 @@ class TestIdempotencyChecks:
     def test_idempotency_exception_handling(
         self, mock_logger, mock_table, mock_create_response
     ):
+        """
+        Tests that handle_idempotency_check returns a 500 response with an appropriate error
+        message when an exception occurs during the idempotency check.
+        """
         idempotency_key = "test-key-789"
         expected_error_body = {
             "error": "Unable to verify transaction uniqueness. Please try again."
@@ -95,6 +105,9 @@ class TestIdempotencyErrors:
     TEST_TRANSACTION_ID = "txn-abc-123"
 
     def test_generic_exception(self, mock_table, mock_logger):
+        """
+        Tests that a generic ClientError during idempotency handling returns a 500 status code and an appropriate error message.
+        """
         mock_error = ClientError({"Error": {"Code": "Generic Error"}}, "PutItem")
 
         result = handle_idempotency_error(
@@ -109,6 +122,9 @@ class TestIdempotencyErrors:
         assert "Failed to process transaction" in json.loads(result["body"])["error"]
 
     def test_conditional_check_error(self, mock_table, mock_logger):
+        """
+        Tests that a conditional check failure during idempotency error handling returns a 409 status code and an appropriate error message indicating the transaction was already processed.
+        """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
         )
@@ -130,6 +146,11 @@ class TestIdempotencyErrors:
             )
 
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):
+        """
+        Tests that a conditional check failure with an existing transaction returns a 409 status.
+        
+        Verifies that when a `ConditionalCheckFailedException` occurs and an existing transaction is found, the error handler responds with a 409 status code and an appropriate error message indicating the transaction was already processed.
+        """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
         )
