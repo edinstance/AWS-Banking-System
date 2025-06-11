@@ -41,7 +41,7 @@ class AuthService:
         if not username or not password:
             self.logger.warning("Missing username or password for login.")
             return create_response(
-                400, {"error": "Username and password are required."}, "POST"
+                400, {"error": "Username and password are required."}, "OPTIONS,POST"
             )
 
         try:
@@ -74,14 +74,14 @@ class AuthService:
                 f"Authentication failed for user: {username} (Invalid credentials)."
             )
             return create_response(
-                401, {"error": "Invalid username or password."}, "POST"
+                401, {"error": "Invalid username or password."}, "OPTIONS,POST"
             )
         except self.cognito_client.exceptions.UserNotConfirmedException:
             self.logger.warning(f"User {username} not confirmed.")
             return create_response(
                 403,
                 {"error": "User not confirmed. Please verify your account."},
-                "POST",
+                "OPTIONS,POST",
             )
         except self.cognito_client.exceptions.UserNotFoundException:
             self.logger.warning(f"User {username} not found.")
@@ -91,14 +91,14 @@ class AuthService:
             return create_response(
                 429,
                 {"error": "Too many login attempts, please try again later."},
-                "POST",
+                "OPTIONS,POST",
             )
         except Exception as e:
             self.logger.exception(f"Cognito login error for user {username}: {e}")
             return create_response(
                 500,
                 {"error": "Authentication service error. Please try again later."},
-                "POST",
+                "OPTIONS,POST",
             )
 
     def handle_refresh(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
@@ -117,7 +117,7 @@ class AuthService:
 
         if not refresh_token:
             self.logger.warning("Missing refreshToken for token refresh.")
-            return create_response(400, {"error": "Refresh token is required."}, "POST")
+            return create_response(400, {"error": "Refresh token is required."}, "OPTIONS,POST")
 
         try:
             auth_response = self.cognito_client.initiate_auth(
@@ -138,7 +138,7 @@ class AuthService:
                     "accessToken": auth_result.get("AccessToken"),
                     "expiresIn": auth_result.get("ExpiresIn"),
                 },
-                "POST",
+                "OPTIONS,POST",
             )
 
         except self.cognito_client.exceptions.NotAuthorizedException:
@@ -146,21 +146,21 @@ class AuthService:
             return create_response(
                 401,
                 {"error": "Refresh token invalid or expired. Please re-authenticate."},
-                "POST",
+                "OPTIONS,POST",
             )
         except self.cognito_client.exceptions.TooManyRequestsException:
             self.logger.warning("Too many requests to Cognito (refresh).")
             return create_response(
                 429,
                 {"error": "Too many refresh attempts, please try again later."},
-                "POST",
+                "OPTIONS,POST",
             )
         except Exception as e:
             self.logger.exception(f"Cognito refresh error: {e}")
             return create_response(
                 500,
                 {"error": "Authentication service error. Please try again later."},
-                "POST",
+                "OPTIONS,POST",
             )
 
 
