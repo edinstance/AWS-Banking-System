@@ -58,7 +58,8 @@ def validate_request_headers(headers: dict) -> dict | None:
     Returns:
         A response dictionary with status 400 and error details if validation fails, or None if the header is valid.
     """
-    idempotency_key = headers.get("idempotency-key")
+    normalized_headers = {k.lower(): v for k, v in headers.items()}
+    idempotency_key = normalized_headers.get("idempotency-key")
 
     if not idempotency_key:
         suggested_key = str(uuid.uuid4())
