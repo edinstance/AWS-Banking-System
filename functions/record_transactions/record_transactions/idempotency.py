@@ -7,7 +7,7 @@ from .transactions import check_existing_transaction
 def handle_idempotency_check(idempotency_key, table, logger: Logger):
     """
     Checks for an existing transaction using the idempotency key and returns an appropriate HTTP response.
-    
+
     If a transaction with the given idempotency key exists, returns a 201 response indicating the transaction was already recorded and is idempotent. If no transaction is found, returns None. If an error occurs during the check, returns a 500 response indicating a failure to verify transaction uniqueness.
     """
     try:
@@ -40,7 +40,7 @@ def handle_idempotency_check(idempotency_key, table, logger: Logger):
 def handle_idempotency_error(idempotency_key, table, logger, transaction_id, error):
     """
     Handles errors encountered during transaction recording with idempotency checks.
-    
+
     If the error indicates a duplicate transaction ("ConditionalCheckFailedException"), attempts to retrieve the existing transaction and returns a 409 HTTP response with relevant details. For other errors, logs the failure and returns a 500 HTTP response indicating the transaction could not be processed.
     """
     error_code = error.response.get("Error", {}).get("Code")

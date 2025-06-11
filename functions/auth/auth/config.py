@@ -11,7 +11,7 @@ class AuthConfig:
     ):
         """
         Initialises authentication configuration parameters with optional overrides.
-        
+
         If parameters are not provided, values are loaded from environment variables. The log level defaults to 'INFO' and is always set in uppercase.
         """
         self.cognito_client_id = cognito_client_id or os.environ.get(

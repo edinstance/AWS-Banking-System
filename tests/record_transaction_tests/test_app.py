@@ -93,7 +93,7 @@ class TestLambdaHandler:
     def test_database_error(self, valid_event, mock_context, mock_table, mock_auth):
         """
         Tests that a database error during transaction uniqueness verification results in a 500 response.
-        
+
         Simulates a database query failure and verifies that the Lambda handler returns a 500 status code with an appropriate error message.
         """
         mock_table.query.side_effect = Exception("Database error")
@@ -108,7 +108,7 @@ class TestLambdaHandler:
     ):
         """
         Tests that the Lambda handler returns a 400 error when the transaction amount is negative.
-        
+
         Verifies that submitting a transaction with a negative amount results in an appropriate error message indicating the amount must be positive.
         """
         valid_event["body"] = (
@@ -140,7 +140,7 @@ class TestLambdaHandler:
     ):
         """
         Tests that the Lambda handler returns a 400 status code when the transaction type is invalid.
-        
+
         Verifies that providing an unsupported transaction type in the request body results in an error response indicating the invalid type.
         """
         valid_event["body"] = (
@@ -201,7 +201,7 @@ class TestLambdaHandler:
     ):
         """
         Tests that a ClientError during transaction save results in a 500 status code.
-        
+
         Simulates a conditional check failure when saving a transaction to the database and verifies that the Lambda handler returns an internal server error response.
         """
         error_response = {

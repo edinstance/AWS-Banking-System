@@ -148,7 +148,7 @@ class TestIdempotencyErrors:
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):
         """
         Tests that a conditional check failure with an existing transaction returns a 409 status.
-        
+
         Verifies that when a `ConditionalCheckFailedException` occurs and an existing transaction is found, the error handler responds with a 409 status code and an appropriate error message indicating the transaction was already processed.
         """
         mock_error = ClientError(

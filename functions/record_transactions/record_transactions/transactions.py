@@ -13,13 +13,13 @@ from .helpers import is_valid_uuid
 def validate_transaction_data(data, valid_transaction_types):
     """
     Validates transaction data for required fields and business rules.
-    
+
     Checks that the transaction includes a valid account ID (UUID), a positive numeric amount, a supported transaction type (case-insensitive), and that the optional description is a string if present.
-    
+
     Args:
         data: The transaction data to validate.
         valid_transaction_types: List of allowed transaction types.
-    
+
     Returns:
         Tuple of (is_valid, error_message), where is_valid is True if the data is valid, otherwise False, and error_message provides the reason for invalidity or None if valid.
     """
@@ -58,9 +58,9 @@ def validate_transaction_data(data, valid_transaction_types):
 def check_existing_transaction(idempotency_key: str, table, logger: Logger):
     """
     Checks for an existing, non-expired transaction with the given idempotency key.
-    
+
     Queries the DynamoDB table using a secondary index to find a transaction whose idempotency expiration timestamp is in the future. Returns the transaction item if found; otherwise, returns None.
-    
+
     Raises:
         Exception: If the DynamoDB table is not configured or if a throughput limit is exceeded.
         ClientError: If a DynamoDB client error occurs during the query.
@@ -101,12 +101,12 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
 def save_transaction(transaction_item, table, logger: Logger):
     """
     Saves a transaction record to DynamoDB with atomic idempotency enforcement.
-    
+
     Attempts to write the transaction only if no unexpired record with the same idempotency key exists. Raises exceptions for conditional check failures, throughput limits, missing resources, or other database errors.
-    
+
     Returns:
         True if the transaction is saved successfully.
-    
+
     Raises:
         ConditionalCheckFailedException: If a transaction with this idempotency key already exists and has not expired.
         Exception: For throughput exceeded, missing resources, or other database errors.
@@ -153,9 +153,9 @@ def build_transaction_item(
 ) -> dict:
     """
     Builds a transaction item dictionary for storage in DynamoDB.
-    
+
     Assembles all required transaction fields, including normalised and serialised request data, timestamps for creation, TTL, and idempotency expiration, as well as metadata such as user and environment identifiers.
-    
+
     Args:
         transaction_id: Unique identifier for the transaction.
         request_body: Dictionary containing transaction details from the request.
@@ -164,7 +164,7 @@ def build_transaction_item(
         idempotency_expiration_days: Number of days before the idempotency key expires.
         environment_name: Name of the environment (e.g., "prod", "dev").
         request_id: Unique identifier for the request.
-    
+
     Returns:
         A dictionary representing the transaction item, ready for insertion into DynamoDB.
     """

@@ -7,12 +7,12 @@ def create_response(
 ) -> Dict[str, Any]:
     """
     Constructs a standardised HTTP response dictionary with headers and JSON body.
-    
+
     Args:
         status_code: HTTP status code for the response.
         body_dict: Dictionary to be serialised as the JSON response body.
         methods: Comma-separated string of allowed HTTP methods for CORS.
-    
+
     Returns:
         A dictionary containing the status code, headers (including CORS and security headers), and a JSON-formatted body.
     """

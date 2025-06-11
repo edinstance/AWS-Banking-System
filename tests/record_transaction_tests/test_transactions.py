@@ -48,7 +48,7 @@ class TestValidateTransactionData:
     def test_negative_amount(self, valid_transaction_data):
         """
         Tests that a negative transaction amount is rejected by the validation function.
-        
+
         Verifies that providing a negative amount results in validation failure and the appropriate error message.
         """
         data = valid_transaction_data.copy()
@@ -87,7 +87,7 @@ class TestCheckExistingTransaction:
     def test_existing_valid_transaction(self, mock_table, mock_logger):
         """
         Tests that an existing transaction with a valid, unexpired idempotency key is returned.
-        
+
         Verifies that when a transaction with a future idempotency expiration is found in the database, the function returns the transaction item.
         """
         future_timestamp = int(datetime.now(timezone.utc).timestamp()) + 3600
@@ -111,7 +111,7 @@ class TestCheckExistingTransaction:
     def test_throughput_exceeded(self, mock_table, mock_logger):
         """
         Tests that a throughput exceeded error during transaction lookup raises a service unavailable exception.
-        
+
         Simulates a DynamoDB ProvisionedThroughputExceededException when querying for an existing transaction and asserts that an appropriate exception is raised.
         """
         error_response = {
@@ -203,7 +203,7 @@ class TestSaveTransaction:
     def test_conditional_error(self, mock_table, mock_logger):
         """
         Tests that save_transaction raises an exception when a conditional check fails due to idempotency expiration.
-        
+
         Simulates a ConditionalCheckFailedException from the database and asserts that the correct exception is raised.
         """
         error_response = {

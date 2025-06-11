@@ -8,12 +8,12 @@ def create_response(
 ) -> Dict[str, Any]:
     """
     Constructs a standardised HTTP response dictionary with JSON body and appropriate headers.
-    
+
     Args:
         status_code: HTTP status code for the response.
         body_dict: Dictionary to be serialised as the JSON response body.
         methods: Comma-separated string of allowed HTTP methods for CORS.
-    
+
     Returns:
         A dictionary representing the HTTP response, including status code, headers for content type, security, and CORS, and a JSON-encoded body.
     """
@@ -34,7 +34,7 @@ def create_response(
 def is_valid_uuid(val: str) -> bool:
     """
     Checks if the given string is a valid UUID.
-    
+
     Returns True if the input is a non-empty string that can be parsed as a UUID; otherwise, returns False.
     """
     if not val or not isinstance(val, str):
@@ -49,12 +49,12 @@ def is_valid_uuid(val: str) -> bool:
 def validate_request_headers(headers: dict) -> dict | None:
     """
     Validates the presence and format of the 'Idempotency-Key' header in HTTP request headers.
-    
+
     If the header is missing, not within the required length (10–64 characters), or not a valid UUID, returns a 400 response dictionary with an error message and a suggested example. Returns None if the header is valid.
-    
+
     Args:
         headers: Dictionary of HTTP request headers.
-    
+
     Returns:
         A response dictionary with status 400 and error details if validation fails, or None if the header is valid.
     """

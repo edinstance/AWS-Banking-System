@@ -77,13 +77,13 @@ else:
 def lambda_handler(event, context: LambdaContext):
     """
     Processes API Gateway requests to record financial transactions with idempotency enforcement.
-    
+
     Validates authentication and the Idempotency-Key header, checks for duplicate transactions, parses and validates the request body, and stores new transactions in DynamoDB. Returns structured HTTP responses for validation errors, duplicate requests, and server or configuration errors.
-    
+
     Args:
         event: The API Gateway event payload.
         context: The Lambda execution context.
-    
+
     Returns:
         A dictionary formatted as an API Gateway HTTP response.
     """

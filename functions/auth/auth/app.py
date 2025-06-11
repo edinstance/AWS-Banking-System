@@ -9,15 +9,15 @@ from .service import get_auth_service
 def lambda_handler(event, context: LambdaContext):
     """
     AWS Lambda handler for processing authentication-related HTTP requests.
-    
+
     Handles login and token refresh requests by delegating to the authentication service.
     Supports CORS preflight (OPTIONS) requests and returns appropriate HTTP responses for
     missing or unsupported methods and paths.
-    
+
     Args:
         event: The Lambda event payload containing HTTP request details.
         context: The Lambda context object providing runtime information.
-    
+
     Returns:
         A dictionary representing the HTTP response, including status code, headers, and body.
     """

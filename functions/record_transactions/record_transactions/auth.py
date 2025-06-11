@@ -31,15 +31,15 @@ def get_sub_from_id_token(
 ) -> str:
     """
     Verifies an AWS Cognito JWT ID token and returns the user's unique identifier.
-    
+
     Validates the token's signature, audience, issuer, and ensures it is an ID token. Extracts and returns the 'sub' claim, which uniquely identifies the user.
-    
+
     Raises:
         AuthConfigurationError: If the Cognito User Pool ID or Client ID is invalid, or if JWKS retrieval fails.
         InvalidTokenError: If the token is expired, has an invalid audience or issuer, is not an ID token, or fails verification.
         MissingSubClaimError: If the 'sub' claim is not present in the token.
         AuthVerificationError: For unexpected authentication errors.
-        
+
     Returns:
         The value of the 'sub' claim from the verified token.
     """
@@ -109,7 +109,7 @@ def authenticate_user(
 ):
     """
     Authenticates a user by extracting and verifying their identity from a Lambda event or HTTP headers.
-    
+
     Attempts to retrieve the user ID (`sub` claim) from the event's authorizer claims. If not present, checks for an authorisation header, verifies the JWT ID token using AWS Cognito, and extracts the user ID. Returns a tuple containing the user ID and `None` on success, or `None` and an HTTP response object on failure. Responds with appropriate status codes and error messages for missing or invalid tokens, configuration errors, or unexpected authentication failures.
     """
     if (

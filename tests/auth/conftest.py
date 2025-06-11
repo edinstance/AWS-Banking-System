@@ -16,7 +16,7 @@ from tests.auth.mock_exceptions import (
 def auth_service_instance(monkeypatch, mock_cognito_user_pool):
     """
     Creates an AuthService instance configured for testing with mocked Cognito settings.
-    
+
     Environment variables for Cognito client ID, user pool ID, and log level are set using monkeypatch. The returned AuthService uses a mocked Cognito client and a mocked logger, enabling isolated authentication tests.
     """
     monkeypatch.setenv("COGNITO_CLIENT_ID", mock_cognito_user_pool["client_id"])
@@ -35,7 +35,7 @@ def auth_service_instance(monkeypatch, mock_cognito_user_pool):
 def auth_service_instance_with_mock_cognito(monkeypatch, mock_cognito_user_pool):
     """
     Creates an AuthService instance with a mocked Cognito client and custom exception classes for testing.
-    
+
     The returned AuthService is configured with environment variables and a MagicMock Cognito client whose exception attributes are set to custom mock exception classes, enabling simulation of various Cognito error scenarios in tests.
     """
     monkeypatch.setenv("COGNITO_CLIENT_ID", mock_cognito_user_pool["client_id"])
