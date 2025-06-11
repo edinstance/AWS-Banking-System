@@ -61,8 +61,10 @@ def get_sub_from_id_token(
             if "Failed to fetch jwks.json" in str(e):
                 raise AuthConfigurationError(
                     "Auth configuration error: Failed to fetch or process JWKS"
-                )
-            raise AuthVerificationError("An unexpected authentication error occurred")
+                ) from e
+            raise AuthVerificationError(
+                "An unexpected authentication error occurred"
+            ) from e
 
         payload = jwt.decode(
             id_token,
@@ -82,13 +84,13 @@ def get_sub_from_id_token(
 
     except (InvalidAudienceError, InvalidIssuerError) as e:
         logger.error(f"Token validation failed: {str(e)}")
-        raise InvalidTokenError(str(e))
+        raise InvalidTokenError(str(e)) from e
     except ExpiredSignatureError:
         logger.error("Token has expired")
         raise InvalidTokenError("Token has expired")
     except PyJWTError as e:
         logger.error(f"JWT verification failed: {str(e)}")
-        raise InvalidTokenError(f"JWT processing failed: {str(e)}")
+        raise InvalidTokenError(f"JWT processing failed: {str(e)}") from e
     except MissingSubClaimError:
         raise
     except InvalidTokenError:
@@ -97,4 +99,6 @@ def get_sub_from_id_token(
         raise
     except Exception as e:
         logger.error(f"Unexpected authentication error: {str(e)}")
-        raise AuthVerificationError("An unexpected authentication error occurred")
+        raise AuthVerificationError(
+            "An unexpected authentication error occurred"
+        ) from e
