@@ -100,7 +100,7 @@ def test_jwt_processing_error(mock_jwks_client, mock_jwt):
 
 
 def test_auth_configuration_error(mock_jwks_client, mock_jwt):
-    mock_jwks_client.return_value.get_signing_key_from_jwt.side_effect = Exception(
+    mock_jwks_client.return_value.get_signing_key_from_jwt.side_effect = PyJWTError(
         "Failed to fetch jwks.json"
     )
 

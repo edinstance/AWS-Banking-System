@@ -56,12 +56,15 @@ def get_sub_from_id_token(
         jwks_client = PyJWKClient(jwks_url)
         try:
             signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+
+        except PyJWTError as e:
+            logger.error(f"Failed to fetch or process JWKS: {str(e)}")
+            raise AuthConfigurationError(
+                "Auth configuration error: Failed to fetch or process JWKS"
+            ) from e
+
         except Exception as e:
             logger.error(f"Failed to fetch or process JWKS: {str(e)}")
-            if "Failed to fetch jwks.json" in str(e):
-                raise AuthConfigurationError(
-                    "Auth configuration error: Failed to fetch or process JWKS"
-                ) from e
             raise AuthVerificationError(
                 "An unexpected authentication error occurred"
             ) from e
