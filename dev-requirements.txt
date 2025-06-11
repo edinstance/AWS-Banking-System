@@ -12,4 +12,8 @@ boto3==1.38.13
 pytest==8.3.5
 pytest-cov==6.1.1
 pytest-xdist==3.6.1
+pytest-mock==3.14.1
 moto==5.1.4
+joserfc==1.1.0
+PyJWT==2.10.1
+requests==2.32.3

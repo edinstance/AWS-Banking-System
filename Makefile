@@ -28,6 +28,9 @@ format:
 format-check:
 	black --check functions tests
 
+build:
+	sam build
+
 define HELP_MESSAGE
 
 Usage: $ make [TARGETS]
@@ -41,4 +44,5 @@ TARGETS
 	lint-fix            Run the linter and fix the issues.
 	format              Format the code using Black.
 	format-check        Check the code formatting using Black.
+	build               Builds the project using AWS SAM.
 endef

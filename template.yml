@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: |
   SAM template for a banking transaction system with intuitive transaction types.
+  Includes Cognito User Pool authentication for API Gateway and a custom login/refresh proxy.
 
 Parameters:
   Environment:
@@ -26,6 +27,45 @@ Globals:
         ENVIRONMENT_NAME: !Ref Environment
 
 Resources:
+  # --- Cognito User Pool ---
+  BankingUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-user-pool-${Environment}
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  BankingUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-user-pool-client-${Environment}
+      UserPoolId: !Ref BankingUserPool
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+
   # --- API Gateway ---
   BankingApiGateway:
     Type: AWS::Serverless::Api
@@ -34,6 +74,11 @@ Resources:
       StageName: !Ref Environment
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt BankingUserPool.Arn
 
   # --- Lambda Functions ---
   RecordTransactionFunction:
@@ -44,12 +89,14 @@ Resources:
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: RecordTransactionFunction
       CodeUri: functions/record_transactions/
-      Handler: app.lambda_handler
+      Handler: record_transactions.app.lambda_handler
       Environment:
         Variables:
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
           IDEMPOTENCY_EXPIRATION_DAYS: "7"
           DYNAMODB_ENDPOINT: ""
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Events:
         ApiSaveTransactionEvent:
           Type: Api
@@ -57,9 +104,51 @@ Resources:
             Path: /save/transaction
             Method: POST
             RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionsTable
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-auth
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: AuthFunction
+      CodeUri: functions/auth/
+      Handler: auth.app.lambda_handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Events:
+        ApiLoginEvent:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: NONE
+        ApiTokenRefreshEvent:
+          Type: Api
+          Properties:
+            Path: /auth/refresh
+            Method: POST
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:InitiateAuth
+              - cognito-idp:RespondToAuthChallenge
+              - cognito-idp:AdminInitiateAuth
+              - cognito-idp:AdminRespondToAuthChallenge
+            Resource: !GetAtt BankingUserPool.Arn
 
   RecordTransactionFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -67,6 +156,14 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub /aws/lambda/${RecordTransactionFunction}
+      RetentionInDays: 7
+
+  AuthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AuthFunction}
       RetentionInDays: 7
 
   # --- DynamoDB Table for Transactions ---
@@ -109,3 +206,9 @@ Outputs:
   DeployedEnvironment:
     Description: The environment this stack was deployed to.
     Value: !Ref Environment
+  CognitoUserPoolId:
+    Description: The ID of the Cognito User Pool
+    Value: !Ref BankingUserPool
+  CognitoUserPoolClientId:
+    Description: The ID of the Cognito User Pool Client
+    Value: !Ref BankingUserPoolClient
