@@ -6,13 +6,13 @@ import os
 
 import jwt
 from aws_lambda_powertools import Logger
+from jwt import PyJWKClient
 from jwt.exceptions import (
     PyJWTError,
     InvalidAudienceError,
     InvalidIssuerError,
     ExpiredSignatureError,
 )
-from jwt.jwks_client import PyJWKClient
 
 from .exceptions import (
     MissingSubClaimError,
