@@ -77,6 +77,20 @@ def valid_event():
 
 
 @pytest.fixture
+def headers_with_jwt():
+    return {
+        "headers": {
+            "authorization": "Bearer valid-token",
+        }
+    }
+
+
+@pytest.fixture
+def empty_headers():
+    return {"headers": {}}
+
+
+@pytest.fixture
 def mock_table():
     with patch("functions.record_transactions.record_transactions.app.table") as mock:
         mock.query.return_value = {"Items": []}
@@ -86,7 +100,7 @@ def mock_table():
 @pytest.fixture
 def mock_auth():
     with patch(
-        "functions.record_transactions.record_transactions.app.get_sub_from_id_token"
+        "functions.record_transactions.record_transactions.auth.get_sub_from_id_token"
     ) as mock:
         mock.return_value = TEST_USER_ID
         yield mock

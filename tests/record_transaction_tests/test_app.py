@@ -4,12 +4,6 @@ from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
 
 from functions.record_transactions.record_transactions.app import lambda_handler
-from functions.record_transactions.record_transactions.exceptions import (
-    MissingSubClaimError,
-    InvalidTokenError,
-    AuthConfigurationError,
-    AuthVerificationError,
-)
 from tests.record_transaction_tests.conftest import VALID_UUID
 
 
@@ -81,60 +75,6 @@ class TestLambdaHandler:
 
         assert response["statusCode"] == 400
         assert "Invalid JSON format" in response["body"]
-
-    def test_missing_authorization(self, valid_event, mock_context, mock_table):
-        valid_event["headers"].pop("Authorization")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 401
-        assert "Unauthorized" in response["body"]
-
-    def test_invalid_token(self, valid_event, mock_context, mock_table, mock_auth):
-        mock_auth.side_effect = InvalidTokenError("Invalid token")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 401
-        assert "Invalid authentication token" in response["body"]
-
-    def test_missing_sub_claim(self, valid_event, mock_context, mock_table, mock_auth):
-        mock_auth.side_effect = MissingSubClaimError("Missing sub claim")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 401
-        assert "Invalid authentication token" in response["body"]
-
-    def test_auth_configuration_error(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        mock_auth.side_effect = AuthConfigurationError("Config error")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 500
-        assert "Server authentication configuration error" in response["body"]
-
-    def test_auth_verification_error(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        mock_auth.side_effect = AuthVerificationError("Verification error")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 500
-        assert "Internal authentication error" in response["body"]
-
-    def test_auth_unexpected_error(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        mock_auth.side_effect = Exception("Unknown error")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 500
-        assert "An unexpected error occurred during authentication." in response["body"]
 
     def test_database_error(self, valid_event, mock_context, mock_table, mock_auth):
         mock_table.query.side_effect = Exception("Database error")

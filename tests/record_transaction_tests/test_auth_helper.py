@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from jwt.exceptions import (
     PyJWTError,
@@ -6,7 +8,10 @@ from jwt.exceptions import (
     ExpiredSignatureError,
 )
 
-from functions.record_transactions.record_transactions.auth import get_sub_from_id_token
+from functions.record_transactions.record_transactions.auth import (
+    get_sub_from_id_token,
+    authenticate_user,
+)
 from functions.record_transactions.record_transactions.exceptions import (
     MissingSubClaimError,
     InvalidTokenError,
@@ -135,3 +140,128 @@ def test_no_client_id(mock_jwks_client, mock_jwt):
         get_sub_from_id_token(TEST_ID_TOKEN, TEST_USER_POOL_ID, None, TEST_AWS_REGION)
 
     assert "Invalid or missing Cognito Client ID" in str(exc_info.value)
+
+
+def test_authenticate_user_missing_authorization(valid_event, empty_headers):
+    valid_event["headers"].pop("Authorization")
+
+    user_id, response = authenticate_user(
+        valid_event, empty_headers, TEST_USER_POOL_ID, TEST_CLIENT_ID, TEST_AWS_REGION
+    )
+
+    response_body = json.loads(response["body"])
+
+    assert user_id is None
+    assert response["statusCode"] == 401
+    assert (
+        "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
+        in response_body["error"]
+    )
+
+
+def test_authenticate_user_invalid_token(mock_auth, valid_event, headers_with_jwt):
+    mock_auth.side_effect = InvalidTokenError("Signature verification failed")
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    response_body = json.loads(response["body"])
+
+    assert user_id is None
+    assert response["statusCode"] == 401
+    assert (
+        response_body["error"]
+        == "Unauthorized: Invalid authentication token (Signature verification failed)"
+    )
+
+
+def test_authenticate_user_missing_sub_claim(mock_auth, valid_event, headers_with_jwt):
+    mock_auth.side_effect = MissingSubClaimError("Missing sub claim")
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    response_body = json.loads(response["body"])
+
+    assert user_id is None
+    assert response["statusCode"] == 401
+    assert (
+        response_body["error"]
+        == "Unauthorized: Invalid authentication token (Missing sub claim)"
+    )
+
+
+def test_authenticate_user_auth_configuration_error(
+    mock_auth, valid_event, headers_with_jwt
+):
+    mock_auth.side_effect = AuthConfigurationError("Config error")
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    assert response["statusCode"] == 500
+    assert "Server authentication configuration error" in response["body"]
+
+
+def test_authenticate_user_verification_error(mock_auth, valid_event, headers_with_jwt):
+    mock_auth.side_effect = AuthVerificationError("Verification error")
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    assert response["statusCode"] == 500
+    assert "Internal authentication error" in response["body"]
+
+
+def test_authenticate_user_unexpected_error(mock_auth, valid_event, headers_with_jwt):
+    mock_auth.side_effect = Exception("Unknown error")
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    assert response["statusCode"] == 500
+    assert "An unexpected error occurred during authentication." in response["body"]
+
+
+def test_authenticate_user_no_user_id(mock_auth, valid_event, headers_with_jwt):
+    mock_auth.return_value = None
+
+    user_id, response = authenticate_user(
+        valid_event,
+        headers_with_jwt["headers"],
+        TEST_USER_POOL_ID,
+        TEST_CLIENT_ID,
+        TEST_AWS_REGION,
+    )
+
+    assert user_id is None
+    assert response["statusCode"] == 401
+    assert (
+        "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
+        in response["body"]
+    )

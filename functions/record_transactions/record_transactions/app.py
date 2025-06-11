@@ -43,11 +43,7 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
 from .auth import (
-    get_sub_from_id_token,
-    MissingSubClaimError,
-    InvalidTokenError,
-    AuthVerificationError,
-    AuthConfigurationError,
+    authenticate_user,
 )
 from .dynamodb import get_dynamodb_resource
 from .helpers import create_response, is_valid_uuid
@@ -99,79 +95,16 @@ def lambda_handler(event, context: LambdaContext):
     if not table:
         logger.error("DynamoDB table resource is not initialized")
         return create_response(
-            500,
-            {"error": "Server configuration error"},
-            "POST",
+            500, {"error": "Server configuration error"}, "OPTIONS,POST"
         )
 
     raw_headers = event.get("headers") or {}
     headers = {k.lower(): v for k, v in raw_headers.items()}
 
-    user_id = None
-    if (
-        "requestContext" in event
-        and "authorizer" in event["requestContext"]
-        and "claims" in event["requestContext"]["authorizer"]
-    ):
-        user_id = event["requestContext"]["authorizer"]["claims"].get("sub")
+    user_id = authenticate_user(
+        event, headers, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, AWS_REGION.lower()
+    )
 
-    if user_id is None and "authorization" in headers:
-        try:
-            bearer = headers["authorization"]
-            token = (
-                bearer.split(" ", 1)[-1]
-                if bearer.lower().startswith("bearer ")
-                else bearer
-            )
-
-            user_id = get_sub_from_id_token(
-                token,
-                COGNITO_USER_POOL_ID,
-                COGNITO_CLIENT_ID,
-                AWS_REGION.lower(),
-            )
-        except (MissingSubClaimError, InvalidTokenError) as e:
-            logger.warning(f"Authentication failed (Invalid Token/Claims): {e}")
-            return create_response(
-                401,
-                {"error": f"Unauthorized: Invalid authentication token ({e})"},
-                "POST",
-            )
-        except AuthConfigurationError as e:
-            logger.critical(f"Authentication configuration error: {e}", exc_info=True)
-            return create_response(
-                500,
-                {
-                    "error": "Server authentication configuration error. Please contact support."
-                },
-                "POST",
-            )
-        except AuthVerificationError as e:
-            logger.error(
-                f"Generic authentication verification error: {e}", exc_info=True
-            )
-            return create_response(
-                500,
-                {"error": "Internal authentication error. Please contact support."},
-                "POST",
-            )
-        except Exception as e:
-            logger.exception(f"Unexpected error during direct token verification: {e}")
-            return create_response(
-                500,
-                {"error": "An unexpected error occurred during authentication."},
-                "POST",
-            )
-
-    if user_id is None:
-        logger.error(f"Failed to determine user ID after all attempts. Event: {event}")
-        return create_response(
-            401,
-            {
-                "error": "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
-            },
-            "POST",
-        )
     try:
 
         idempotency_key = headers.get("idempotency-key")
@@ -185,7 +118,7 @@ def lambda_handler(event, context: LambdaContext):
                     "suggestion": "Please include an Idempotency-Key header with a UUID v4 value",
                     "example": suggested_key,
                 },
-                "POST",
+                "OPTIONS,POST",
             )
 
         idempotency_key = str(idempotency_key)
@@ -199,7 +132,7 @@ def lambda_handler(event, context: LambdaContext):
                     "suggestion": "We recommend using a UUID v4 format",
                     "example": suggested_key,
                 },
-                "POST",
+                "OPTIONS,POST",
             )
 
         if not is_valid_uuid(idempotency_key):
@@ -211,7 +144,7 @@ def lambda_handler(event, context: LambdaContext):
                     "error": "Idempotency-Key must be a valid UUID",
                     "example": suggested_key,
                 },
-                "POST",
+                "OPTIONS,POST",
             )
 
         try:
@@ -229,14 +162,14 @@ def lambda_handler(event, context: LambdaContext):
                         "transactionId": existing_transaction["id"],
                         "idempotent": True,
                     },
-                    "POST",
+                    "OPTIONS,POST",
                 )
         except Exception as e:
             logger.error(f"Error checking idempotency: {str(e)}")
             return create_response(
                 500,
                 {"error": "Unable to verify transaction uniqueness. Please try again."},
-                "POST",
+                "OPTIONS,POST",
             )
 
         try:
@@ -245,9 +178,7 @@ def lambda_handler(event, context: LambdaContext):
         except json.JSONDecodeError as e:
             logger.warning(f"Invalid JSON in request body: {e}")
             return create_response(
-                400,
-                {"error": "Invalid JSON format in request body"},
-                "POST",
+                400, {"error": "Invalid JSON format in request body"}, "OPTIONS,POST"
             )
 
         is_valid, validation_error = validate_transaction_data(
@@ -318,7 +249,7 @@ def lambda_handler(event, context: LambdaContext):
                                 "transactionId": existing_transaction["id"],
                                 "idempotent": True,
                             },
-                            "POST",
+                            "OPTIONS,POST",
                         )
                 except Exception:
                     return create_response(
@@ -327,7 +258,7 @@ def lambda_handler(event, context: LambdaContext):
                             "error": "Transaction already processed",
                             "idempotent": True,
                         },
-                        "POST",
+                        "OPTIONS,POST",
                     )
 
             logger.error(
@@ -337,7 +268,7 @@ def lambda_handler(event, context: LambdaContext):
             return create_response(
                 500,
                 {"error": "Failed to process transaction. Please try again."},
-                "POST",
+                "OPTIONS,POST",
             )
         except Exception as e:
             logger.error(
@@ -346,7 +277,7 @@ def lambda_handler(event, context: LambdaContext):
             return create_response(
                 500,
                 {"error": "Failed to process transaction. Please try again."},
-                "POST",
+                "OPTIONS,POST",
             )
 
         response_payload = {
@@ -356,16 +287,12 @@ def lambda_handler(event, context: LambdaContext):
             "timestamp": created_at_iso,
             "idempotencyKey": idempotency_key,
         }
-        return create_response(
-            201,
-            response_payload,
-            "POST",
-        )
+        return create_response(201, response_payload, "OPTIONS,POST")
 
     except Exception as e:
         logger.exception(f"Unhandled exception in lambda_handler: {str(e)}")
         return create_response(
             500,
             {"error": "Internal server error. Please contact support."},
-            "POST",
+            "OPTIONS,POST",
         )
