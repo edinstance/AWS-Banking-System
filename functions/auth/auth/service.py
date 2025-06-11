@@ -56,7 +56,7 @@ class AuthService:
                     "refreshToken": auth_result.get("RefreshToken"),
                     "expiresIn": auth_result.get("ExpiresIn"),
                 },
-                "POST",
+                "OPTIONS,POST",
             )
 
         except self.cognito_client.exceptions.NotAuthorizedException:
