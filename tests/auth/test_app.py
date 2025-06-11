@@ -14,6 +14,14 @@ class TestApp:
         assert result["statusCode"] == 200
         assert result["headers"]
 
+    def test_no_http_method(self):
+        context = MagicMock()
+        context.aws_request_id = "test-request-id"
+
+        result = lambda_handler({}, context)
+
+        assert result["statusCode"] == 400
+
     def test_unsupported_method(self):
         context = MagicMock()
         context.aws_request_id = "test-request-id"

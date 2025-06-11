@@ -12,11 +12,17 @@ def lambda_handler(event, context: LambdaContext):
     auth_service.logger.append_keys(request_id=request_id)
     auth_service.logger.info("Processing login/refresh proxy request.")
 
-    if event["httpMethod"] == "OPTIONS":
-        return create_response(200, {}, "POST")
-
-    path = event.get("path")
     http_method = event.get("httpMethod")
+    path = event.get("path")
+
+    if http_method is None:
+        auth_service.logger.warning("Missing 'httpMethod' in event.")
+        return create_response(
+            400, {"error": "Bad Request: 'httpMethod' is missing."}, "POST"
+        )
+
+    if http_method == "OPTIONS":
+        return create_response(200, {}, "POST, OPTIONS")
 
     if http_method == "POST":
         try:
