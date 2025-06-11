@@ -140,3 +140,11 @@ def valid_transaction_data():
         "type": "DEPOSIT",
         "description": "Test transaction",
     }
+
+
+@pytest.fixture
+def mock_create_response():
+    with patch(
+        "functions.record_transactions.record_transactions.idempotency.create_response"
+    ) as mock:
+        yield mock

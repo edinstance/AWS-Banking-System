@@ -37,3 +37,41 @@ def is_valid_uuid(val: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def validate_request_headers(headers: dict) -> dict | None:
+    idempotency_key = headers.get("idempotency-key")
+
+    if not idempotency_key:
+        suggested_key = str(uuid.uuid4())
+        return create_response(
+            400,
+            {
+                "error": "Idempotency-Key header is required for transaction creation",
+                "suggestion": "Please include an Idempotency-Key header with a UUID v4 value",
+                "example": suggested_key,
+            },
+            "OPTIONS,POST",
+        )
+
+    idempotency_key = str(idempotency_key)
+    if len(idempotency_key) < 10 or len(idempotency_key) > 64:
+        suggested_key = str(uuid.uuid4())
+        return create_response(
+            400,
+            {
+                "error": "Idempotency-Key must be between 10 and 64 characters",
+                "suggestion": "We recommend using a UUID v4 format",
+                "example": suggested_key,
+            },
+            "OPTIONS,POST",
+        )
+
+    if not is_valid_uuid(idempotency_key):
+        suggested_key = str(uuid.uuid4())
+        return create_response(
+            400,
+            {"error": "Idempotency-Key must be a valid UUID", "example": suggested_key},
+            "OPTIONS,POST",
+        )
+    return None

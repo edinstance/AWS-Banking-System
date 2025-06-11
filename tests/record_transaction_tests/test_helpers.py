@@ -1,9 +1,12 @@
+import json
 import uuid
 
-from functions.record_transactions.record_transactions.app import (
+
+from functions.record_transactions.record_transactions.helpers import (
+    create_response,
     is_valid_uuid,
+    validate_request_headers,
 )
-from functions.record_transactions.record_transactions.helpers import create_response
 
 # Test constants
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
@@ -13,7 +16,6 @@ INVALID_UUID = "not-a-uuid"
 class TestIsValidUUID:
     def test_valid_uuid_v4(self):
         """Test that a valid UUID v4 string returns True."""
-        # Generate a real UUID v4
         valid_uuid = str(str(uuid.uuid4()))
         assert is_valid_uuid(valid_uuid) is True
 
@@ -92,3 +94,49 @@ class TestCreateResponse:
         assert '"items": ["a", "b", "c"]' in response["body"]
         assert '"nested": {"key": "value"}' in response["body"]
         assert response["headers"]["Access-Control-Allow-Methods"] == "PUT"
+
+
+class TestValidateRequestHeaders:
+
+    def test_no_idempotency_key(self):
+        headers = {}
+
+        response = validate_request_headers(headers)
+        response_body = json.loads(response["body"])
+
+        assert response["statusCode"] == 400
+        assert "error" in response_body
+        assert (
+            response_body["error"]
+            == "Idempotency-Key header is required for transaction creation"
+        )
+
+    def test_short_idempotency_key(self):
+        headers = {"idempotency-key": "key"}
+
+        response = validate_request_headers(headers)
+        response_body = json.loads(response["body"])
+
+        assert response["statusCode"] == 400
+        assert "error" in response_body
+        assert (
+            response_body["error"]
+            == "Idempotency-Key must be between 10 and 64 characters"
+        )
+
+    def test_incorrect_idempotency_key(self):
+        headers = {"idempotency-key": "long-but-invalid-key"}
+
+        response = validate_request_headers(headers)
+        response_body = json.loads(response["body"])
+
+        assert response["statusCode"] == 400
+        assert "error" in response_body
+        assert response_body["error"] == "Idempotency-Key must be a valid UUID"
+
+    def test_successful_idempotency_key(self):
+        headers = {"idempotency-key": str(uuid.uuid4())}
+
+        response = validate_request_headers(headers)
+
+        assert response is None

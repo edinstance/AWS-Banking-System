@@ -1,5 +1,7 @@
-from datetime import datetime, timezone
-from decimal import Decimal, DecimalException
+import json
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from decimal import DecimalException
 
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
@@ -152,3 +154,52 @@ def save_transaction(transaction_item, table, logger: Logger):
             raise Exception("Transaction database configuration error") from e
         else:
             raise Exception(f"Database error: {error_code}") from e
+
+
+def build_transaction_item(
+    transaction_id: str,
+    request_body: dict,
+    user_id: str,
+    idempotency_key: str,
+    idempotency_expiration_days: int,
+    environment_name: str,
+    request_id: str,
+) -> dict:
+    account_id = request_body["accountId"]
+    transaction_type = request_body["type"].upper()
+    description = request_body.get("description", "")
+    amount = Decimal(str(request_body["amount"]))
+
+    now_utc = datetime.now(timezone.utc)
+    created_at_iso = now_utc.isoformat()
+
+    ttl_datetime = now_utc + timedelta(days=365)
+    ttl_timestamp = int(ttl_datetime.timestamp())
+
+    idempotency_expiration = now_utc + timedelta(days=idempotency_expiration_days)
+    idempotency_expiration_timestamp = int(idempotency_expiration.timestamp())
+
+    sanitized_request_body = {
+        "accountId": account_id,
+        "userId": user_id,
+        "amount": str(amount),
+        "type": transaction_type,
+        "description": description,
+    }
+
+    return {
+        "id": transaction_id,
+        "createdAt": created_at_iso,
+        "accountId": account_id,
+        "userId": user_id,
+        "amount": amount,
+        "type": transaction_type,
+        "description": description,
+        "status": "COMPLETED",
+        "ttlTimestamp": ttl_timestamp,
+        "idempotencyKey": idempotency_key,
+        "idempotencyExpiration": idempotency_expiration_timestamp,
+        "environment": environment_name,
+        "requestId": request_id,
+        "rawRequest": json.dumps(sanitized_request_body),
+    }

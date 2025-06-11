@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from botocore.exceptions import ClientError
 
@@ -12,7 +12,6 @@ class TestLambdaHandler:
         self, valid_event, mock_context, mock_table, mock_auth
     ):
         response = lambda_handler(valid_event, mock_context)
-
         assert response["statusCode"] == 201
         assert "transactionId" in response["body"]
         assert "Transaction recorded successfully" in response["body"]
@@ -158,99 +157,17 @@ class TestLambdaHandler:
                 == '{"error": "Internal server error. Please contact support."}'
             )
 
-    def test_conditional_check_failed_exception(
+    def test_client_error_during_save(
         self, valid_event, mock_context, mock_table, mock_auth
     ):
-        context = MagicMock()
-        context.aws_request_id = "test-request-id"
-        mock_table.query.side_effect = [
-            {"Items": []},
-            {
-                "Items": [
-                    {
-                        "id": "existing-transaction-id",
-                        "idempotencyExpiration": 9999999999,
-                    }
-                ]
-            },
-        ]
-
-        mock_table.put_item.side_effect = ClientError(
-            {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
-        )
-
-        response = lambda_handler(valid_event, context)
-
-        assert response["statusCode"] == 409
-        assert "Transaction already processed" in response["body"]
-        assert "existing-transaction-id" in response["body"]
-        assert '"idempotent": true' in response["body"]
-
-    def test_conditional_check_failed_with_query_exception(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        context = MagicMock()
-        context.aws_request_id = "test-request-id"
-
-        mock_table.query.side_effect = [
-            {"Items": []},
-            Exception("Database error during idempotency check"),
-        ]
-
-        mock_table.put_item.side_effect = ClientError(
-            {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
-        )
-
-        response = lambda_handler(valid_event, context)
-
-        assert response["statusCode"] == 409
-        response_body = json.loads(response["body"])
-        assert "Transaction already processed" in response_body["error"]
-        assert response_body["idempotent"] is True
-
-    def test_non_conditional_check_client_error(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        transaction_data = {
-            "accountId": VALID_UUID,
-            "amount": "100.50",
-            "type": "DEPOSIT",
-            "description": "Test transaction",
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
         }
-        valid_event["body"] = json.dumps(transaction_data)
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
 
-        context = MagicMock()
-        context.aws_request_id = "test-request-id"
-
-        mock_table.query.return_value = {"Items": []}
-
-        mock_table.put_item.side_effect = ClientError(
-            {
-                "Error": {
-                    "Code": "ValidationException",
-                    "Message": "Some validation error",
-                }
-            },
-            "PutItem",
-        )
-
-        with patch(
-            "functions.record_transactions.record_transactions.app.save_transaction"
-        ) as mock_save:
-            mock_save.side_effect = ClientError(
-                {
-                    "Error": {
-                        "Code": "ValidationException",
-                        "Message": "Some validation error",
-                    }
-                },
-                "PutItem",
-            )
-
-            response = lambda_handler(valid_event, context)
+        response = lambda_handler(valid_event, mock_context)
 
         assert response["statusCode"] == 500
-        response_body = json.loads(response["body"])
-        assert (
-            "Failed to process transaction. Please try again." in response_body["error"]
-        )

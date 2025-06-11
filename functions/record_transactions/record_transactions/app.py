@@ -35,8 +35,6 @@ Response Format:
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -46,11 +44,12 @@ from .auth import (
     authenticate_user,
 )
 from .dynamodb import get_dynamodb_resource
-from .helpers import create_response, is_valid_uuid
+from .helpers import create_response, validate_request_headers
+from .idempotency import handle_idempotency_check, handle_idempotency_error
 from .transactions import (
-    check_existing_transaction,
     validate_transaction_data,
     save_transaction,
+    build_transaction_item,
 )
 
 TRANSACTIONS_TABLE_NAME = os.environ.get("TRANSACTIONS_TABLE_NAME")
@@ -106,71 +105,18 @@ def lambda_handler(event, context: LambdaContext):
     )
 
     try:
+        idempotency_key_response = validate_request_headers(headers)
+        if idempotency_key_response:
+            return idempotency_key_response
 
-        idempotency_key = headers.get("idempotency-key")
-        if not idempotency_key:
-            suggested_key = str(uuid.uuid4())
-            logger.warning("Missing Idempotency-Key header")
-            return create_response(
-                400,
-                {
-                    "error": "Idempotency-Key header is required for transaction creation",
-                    "suggestion": "Please include an Idempotency-Key header with a UUID v4 value",
-                    "example": suggested_key,
-                },
-                "OPTIONS,POST",
-            )
+        idempotency_key = headers["idempotency-key"]
 
-        idempotency_key = str(idempotency_key)
-        if len(idempotency_key) < 10 or len(idempotency_key) > 64:
-            suggested_key = str(uuid.uuid4())
-            logger.warning(f"Invalid Idempotency-Key format: {idempotency_key}")
-            return create_response(
-                400,
-                {
-                    "error": "Idempotency-Key must be between 10 and 64 characters",
-                    "suggestion": "We recommend using a UUID v4 format",
-                    "example": suggested_key,
-                },
-                "OPTIONS,POST",
-            )
+        existing_transaction_response = handle_idempotency_check(
+            idempotency_key, table, logger
+        )
 
-        if not is_valid_uuid(idempotency_key):
-            suggested_key = str(uuid.uuid4())
-            logger.warning(f"Non-UUID Idempotency-Key used: {idempotency_key}")
-            return create_response(
-                400,
-                {
-                    "error": "Idempotency-Key must be a valid UUID",
-                    "example": suggested_key,
-                },
-                "OPTIONS,POST",
-            )
-
-        try:
-            existing_transaction = check_existing_transaction(
-                idempotency_key, table, logger
-            )
-            if existing_transaction:
-                logger.info(
-                    f"Found existing transaction with ID: {existing_transaction.get('id')} for idempotency key {idempotency_key}"
-                )
-                return create_response(
-                    201,
-                    {
-                        "message": "Transaction recorded successfully!",
-                        "transactionId": existing_transaction["id"],
-                        "idempotent": True,
-                    },
-                    "OPTIONS,POST",
-                )
-        except Exception as e:
-            logger.error(f"Error checking idempotency: {str(e)}")
-            return create_response(
-                500,
-                {"error": "Unable to verify transaction uniqueness. Please try again."},
-                "OPTIONS,POST",
-            )
+        if existing_transaction_response:
+            return existing_transaction_response
 
         try:
             body_raw = event.get("body") or "{}"
@@ -188,45 +134,17 @@ def lambda_handler(event, context: LambdaContext):
             logger.warning(f"Validation error: {validation_error}")
             return create_response(400, {"error": validation_error}, "POST")
 
-        account_id = request_body["accountId"]
-        transaction_type = request_body["type"].upper()
-        description = request_body.get("description", "")
-        amount = Decimal(str(request_body["amount"]))
-
         transaction_id = str(uuid.uuid4())
-        now_utc = datetime.now(timezone.utc)
-        created_at_iso = now_utc.isoformat()
 
-        ttl_datetime = now_utc + timedelta(days=365)
-        ttl_timestamp = int(ttl_datetime.timestamp())
-
-        idempotency_expiration = now_utc + timedelta(days=IDEMPOTENCY_EXPIRATION_DAYS)
-        idempotency_expiration_timestamp = int(idempotency_expiration.timestamp())
-
-        transaction_item = {
-            "id": transaction_id,
-            "createdAt": created_at_iso,
-            "accountId": account_id,
-            "userId": user_id,
-            "amount": amount,
-            "type": transaction_type,
-            "description": description,
-            "status": "COMPLETED",
-            "ttlTimestamp": ttl_timestamp,
-            "idempotencyKey": idempotency_key,
-            "idempotencyExpiration": idempotency_expiration_timestamp,
-            "environment": ENVIRONMENT_NAME,
-            "requestId": request_id,
-            "rawRequest": json.dumps(
-                {
-                    "accountId": account_id,
-                    "userId": user_id,
-                    "amount": str(amount),
-                    "type": transaction_type,
-                    "description": description,
-                }
-            ),
-        }
+        transaction_item = build_transaction_item(
+            transaction_id,
+            request_body,
+            user_id,
+            idempotency_key,
+            IDEMPOTENCY_EXPIRATION_DAYS,
+            ENVIRONMENT_NAME,
+            request_id,
+        )
 
         try:
             save_transaction(transaction_item, table, logger)
@@ -234,42 +152,11 @@ def lambda_handler(event, context: LambdaContext):
                 f"Successfully saved transaction {transaction_id} for user {user_id}"
             )
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-
-            if error_code == "ConditionalCheckFailedException":
-                try:
-                    existing_transaction = check_existing_transaction(
-                        idempotency_key, table, logger
-                    )
-                    if existing_transaction:
-                        return create_response(
-                            409,
-                            {
-                                "error": "Transaction already processed",
-                                "transactionId": existing_transaction["id"],
-                                "idempotent": True,
-                            },
-                            "OPTIONS,POST",
-                        )
-                except Exception:
-                    return create_response(
-                        409,
-                        {
-                            "error": "Transaction already processed",
-                            "idempotent": True,
-                        },
-                        "OPTIONS,POST",
-                    )
-
-            logger.error(
-                f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
+            error_response = handle_idempotency_error(
+                idempotency_key, table, logger, transaction_id, e
             )
 
-            return create_response(
-                500,
-                {"error": "Failed to process transaction. Please try again."},
-                "OPTIONS,POST",
-            )
+            return error_response
         except Exception as e:
             logger.error(
                 f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
@@ -284,7 +171,7 @@ def lambda_handler(event, context: LambdaContext):
             "message": "Transaction recorded successfully!",
             "transactionId": transaction_id,
             "status": "COMPLETED",
-            "timestamp": created_at_iso,
+            "timestamp": transaction_item["createdAt"],
             "idempotencyKey": idempotency_key,
         }
         return create_response(201, response_payload, "OPTIONS,POST")

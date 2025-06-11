@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -8,6 +9,7 @@ from functions.record_transactions.record_transactions.transactions import (
     validate_transaction_data,
     check_existing_transaction,
     save_transaction,
+    build_transaction_item,
 )
 from tests.record_transaction_tests.conftest import VALID_TRANSACTION_TYPES, VALID_UUID
 
@@ -178,3 +180,33 @@ class TestSaveTransaction:
             "An error occurred (ConditionalCheckFailedException) when calling the PutItem operation"
             in str(exc_info.value)
         )
+
+
+class TestBuildTransaction:
+    def test_successful_item_creation(self):
+        transaction_id = str(uuid.uuid4())
+        request_body = {
+            "accountId": str(uuid.uuid4()),
+            "type": "deposit",
+            "description": "Monthly savings",
+            "amount": 100.50,
+        }
+        user_id = str(uuid.uuid4())
+        idempotency_key = str(uuid.uuid4())
+        idempotency_expiration_days = 7
+        environment_name = "production"
+        request_id = str(uuid.uuid4())
+
+        result = build_transaction_item(
+            transaction_id,
+            request_body,
+            user_id,
+            idempotency_key,
+            idempotency_expiration_days,
+            environment_name,
+            request_id,
+        )
+
+        assert result is not None
+        assert result["id"] == transaction_id
+        assert result["idempotencyKey"] == idempotency_key
