@@ -232,7 +232,8 @@ def lambda_handler(event, context: LambdaContext):
             )
 
         try:
-            request_body = json.loads(event.get("body", "{}"))
+            body_raw = event.get("body") or "{}"
+            request_body = json.loads(body_raw)
         except json.JSONDecodeError as e:
             logger.warning(f"Invalid JSON in request body: {e}")
             return create_response(
