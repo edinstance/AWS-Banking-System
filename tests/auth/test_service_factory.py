@@ -5,11 +5,13 @@ import pytest
 import functions.auth.auth.service
 from functions.auth.auth.service import get_auth_service
 
+
 @pytest.fixture(autouse=True)
 def reset_auth_service_singleton():
     functions.auth.auth.service._auth_service = None
     yield
     functions.auth.auth.service._auth_service = None
+
 
 class TestAuthServiceFactory:
 
