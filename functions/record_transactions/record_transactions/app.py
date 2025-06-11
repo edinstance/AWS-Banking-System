@@ -117,8 +117,15 @@ def lambda_handler(event, context: LambdaContext):
 
     if user_id is None and "authorization" in headers:
         try:
+            bearer = headers["authorization"]
+            token = (
+                bearer.split(" ", 1)[-1]
+                if bearer.lower().startswith("bearer ")
+                else bearer
+            )
+
             user_id = get_sub_from_id_token(
-                headers["authorization"],
+                token,
                 COGNITO_USER_POOL_ID,
                 COGNITO_CLIENT_ID,
                 AWS_REGION.lower(),
