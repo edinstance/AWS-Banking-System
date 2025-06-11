@@ -34,11 +34,11 @@ class TestIdempotencyChecks:
             return_value=existing_transaction,
         ) as mock_check_existing_transaction:
             response = handle_idempotency_check(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
 
             mock_check_existing_transaction.assert_called_once_with(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
 
             mock_create_response.assert_called_once_with(
@@ -48,7 +48,7 @@ class TestIdempotencyChecks:
             assert response["statusCode"] == 201
             assert json.loads(response["body"]) == expected_response_body
 
-    def test_no_existing_transaction(self, mock_logger, mock_table):
+    def test_no_existing_transaction(self, mock_table, mock_logger):
         """
         Tests that handle_idempotency_check returns None when no existing transaction is found for the given idempotency key.
         """
@@ -59,16 +59,16 @@ class TestIdempotencyChecks:
             return_value=None,
         ) as mock_check_existing_transaction:
             response = handle_idempotency_check(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
 
             mock_check_existing_transaction.assert_called_once_with(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
             assert response is None
 
     def test_idempotency_exception_handling(
-        self, mock_logger, mock_table, mock_create_response
+        self, mock_table, mock_logger, mock_create_response
     ):
         """
         Tests that handle_idempotency_check returns a 500 response with an appropriate error
@@ -89,11 +89,11 @@ class TestIdempotencyChecks:
             side_effect=Exception("Error checking idempotency"),
         ) as mock_check_existing_transaction:
             response = handle_idempotency_check(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
 
             mock_check_existing_transaction.assert_called_once_with(
-                idempotency_key, mock_logger, mock_table
+                idempotency_key, mock_table, mock_logger
             )
 
             assert response["statusCode"] == 500
