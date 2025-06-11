@@ -22,7 +22,8 @@ def validate_transaction_data(data, valid_transaction_types):
         tuple: A tuple (is_valid, error_message), where is_valid is True if the data is valid, otherwise False, and error_message contains the reason for invalidity or None if valid.
     """
     required_fields = ["accountId", "amount", "type"]
-    missing_fields = [field for field in required_fields if field not in data]
+    missing_fields = [field for field in required_fields if not data.get(field)]
+
     if missing_fields:
         return False, f"Missing required fields: {', '.join(missing_fields)}"
 
