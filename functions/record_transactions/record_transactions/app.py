@@ -104,7 +104,8 @@ def lambda_handler(event, context: LambdaContext):
             "POST",
         )
 
-    headers = {k.lower(): v for k, v in event.get("headers", {}).items()}
+    raw_headers = event.get("headers") or {}
+    headers = {k.lower(): v for k, v in raw_headers.items()}
 
     user_id = None
     if (
