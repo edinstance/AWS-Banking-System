@@ -40,6 +40,7 @@ from decimal import Decimal
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from botocore.exceptions import ClientError
 
 from .auth import (
     get_sub_from_id_token,
@@ -291,6 +292,43 @@ def lambda_handler(event, context: LambdaContext):
             save_transaction(transaction_item, table, logger)
             logger.info(
                 f"Successfully saved transaction {transaction_id} for user {user_id}"
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+
+            if error_code == "ConditionalCheckFailedException":
+                try:
+                    existing_transaction = check_existing_transaction(
+                        idempotency_key, table, logger
+                    )
+                    if existing_transaction:
+                        return create_response(
+                            409,
+                            {
+                                "error": "Transaction already processed",
+                                "transactionId": existing_transaction["id"],
+                                "idempotent": True,
+                            },
+                            "POST",
+                        )
+                except Exception:
+                    return create_response(
+                        409,
+                        {
+                            "error": "Transaction already processed",
+                            "idempotent": True,
+                        },
+                        "POST",
+                    )
+
+            logger.error(
+                f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
+            )
+
+            return create_response(
+                500,
+                {"error": "Failed to process transaction. Please try again."},
+                "POST",
             )
         except Exception as e:
             logger.error(

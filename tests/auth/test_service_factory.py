@@ -4,13 +4,10 @@ import functions.auth.auth.service
 from functions.auth.auth.service import get_auth_service
 
 
-def setup_method():
-    functions.auth.auth.service._auth_service = None
-
-
 class TestAuthServiceFactory:
 
     def test_get_auth_service_creates_new_instance_when_none(self):
+        functions.auth.auth.service._auth_service = None
         with patch(
             "functions.auth.auth.service.AuthConfig"
         ) as mock_config_class, patch(

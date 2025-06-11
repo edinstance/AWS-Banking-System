@@ -105,17 +105,21 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
 
 def save_transaction(transaction_item, table, logger: Logger):
     """
-    Attempts to save a transaction record to DynamoDB, raising exceptions on failure.
+    Attempts to save a transaction record to DynamoDB using a conditional write to ensure idempotency.
+
+    The conditional write ensures that no transaction with the same idempotencyKey exists that hasn't expired.
+    This provides atomic idempotency checking and writing in a single operation.
 
     Args:
         transaction_item (dict): The transaction data to be stored.
-        table: The DynamoDB table to query.
+        table: The DynamoDB table to write to.
         logger: The logger to use.
 
     Returns:
         True if the transaction is saved successfully.
 
     Raises:
+        ConditionalCheckFailedException: If a transaction with this idempotency key already exists.
         Exception: If the operation fails due to throughput limits, missing resources, or other database errors.
     """
     if not table:
@@ -123,14 +127,25 @@ def save_transaction(transaction_item, table, logger: Logger):
         raise Exception("Database not configured.")
 
     try:
-        table.put_item(Item=transaction_item)
+        condition_expression = (
+            "attribute_not_exists(idempotencyKey) OR " "idempotencyExpiration < :now"
+        )
+        expression_values = {":now": int(datetime.now(timezone.utc).timestamp())}
+
+        table.put_item(
+            Item=transaction_item,
+            ConditionExpression=condition_expression,
+            ExpressionAttributeValues=expression_values,
+        )
         return True
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
         logger.error(
             f"Failed to save transaction (Code: {error_code}): {e}", exc_info=True
         )
-        if error_code == "ProvisionedThroughputExceededException":
+        if error_code == "ConditionalCheckFailedException":
+            raise
+        elif error_code == "ProvisionedThroughputExceededException":
             raise Exception("Service temporarily unavailable due to high load") from e
         elif error_code == "ResourceNotFoundException":
             raise Exception("Transaction database configuration error") from e

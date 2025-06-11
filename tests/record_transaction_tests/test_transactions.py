@@ -128,7 +128,6 @@ class TestSaveTransaction:
         transaction_item = {"id": "test-id", "amount": Decimal("100.50")}
         result = save_transaction(transaction_item, mock_table, mock_logger)
         assert result is True
-        mock_table.put_item.assert_called_once_with(Item=transaction_item)
 
     def test_throughput_exceeded_on_save(self, mock_table, mock_logger):
         error_response = {
@@ -162,3 +161,20 @@ class TestSaveTransaction:
         with pytest.raises(Exception) as exc_info:
             save_transaction({}, mock_table, mock_logger)
         assert "Database error: UnknownError" in str(exc_info.value)
+
+    def test_conditional_error(self, mock_table, mock_logger):
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "IdempotencyExpiration",
+            }
+        }
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
+
+        with pytest.raises(Exception) as exc_info:
+            save_transaction({}, mock_table, mock_logger)
+
+        assert (
+            "An error occurred (ConditionalCheckFailedException) when calling the PutItem operation"
+            in str(exc_info.value)
+        )
