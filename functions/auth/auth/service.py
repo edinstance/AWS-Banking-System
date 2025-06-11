@@ -6,6 +6,7 @@ from aws_lambda_powertools import Logger
 
 from .config import AuthConfig
 from .helpers import create_response
+from ...record_transactions.record_transactions.exceptions import AuthConfigurationError
 
 
 class AuthService:
@@ -15,6 +16,15 @@ class AuthService:
 
         If no Cognito client is provided, a default boto3 Cognito IDP client is created.
         """
+
+        if (
+            config.user_pool_id is None
+            or config.user_pool_id is None
+            or config.user_pool_id == ""
+            or config.user_pool_id == ""
+        ):
+            raise AuthConfigurationError()
+
         self.config = config
         self.logger = Logger(service="AuthLambda", level=config.log_level)
         self.cognito_client = cognito_client or boto3.client("cognito-idp")

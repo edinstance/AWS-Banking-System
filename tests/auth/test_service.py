@@ -1,5 +1,10 @@
 import json
 
+import pytest
+
+from functions.auth.auth.config import AuthConfig
+from functions.auth.auth.service import AuthService
+from functions.record_transactions.record_transactions.exceptions import AuthConfigurationError
 from tests.auth.conftest import (
     MockUserNotConfirmedException,
     MockTooManyRequestsException,
@@ -9,6 +14,15 @@ from tests.auth.conftest import (
 
 
 class TestAuthService:
+
+    def test_service_init_exception(self, mock_cognito_user_pool):
+        config = AuthConfig()
+        with pytest.raises(AuthConfigurationError):
+            service = AuthService(
+                config=config, cognito_client=mock_cognito_user_pool["cognito_client"]
+            )
+
+            assert service is None
 
     def test_no_username_or_password(self, auth_service_instance):
         """

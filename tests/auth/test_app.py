@@ -6,7 +6,7 @@ from functions.auth.auth.app import lambda_handler
 
 class TestApp:
 
-    def test_options_request(self):
+    def test_options_request(self, auth_service_instance_with_mock_cognito):
         """
         Tests that an OPTIONS HTTP request to the lambda handler returns a 200 status code and includes headers.
         """
@@ -17,7 +17,7 @@ class TestApp:
         assert result["statusCode"] == 200
         assert result["headers"]
 
-    def test_no_http_method(self):
+    def test_no_http_method(self, auth_service_instance_with_mock_cognito):
         """
         Tests that the lambda_handler returns a 400 status code when the HTTP method is missing from the event.
         """
@@ -28,7 +28,7 @@ class TestApp:
 
         assert result["statusCode"] == 400
 
-    def test_unsupported_method(self):
+    def test_unsupported_method(self, auth_service_instance_with_mock_cognito):
         """
         Tests that the lambda_handler returns a 405 status code and appropriate error message when an unsupported HTTP method is used.
         """
@@ -42,7 +42,7 @@ class TestApp:
         body = json.loads(result["body"])
         assert body.get("error") == "Method Not Allowed"
 
-    def test_invalid_json(self):
+    def test_invalid_json(self, auth_service_instance_with_mock_cognito):
         """
         Tests that the lambda_handler returns a 400 status code and appropriate error message when the request body contains invalid JSON.
         """
@@ -61,7 +61,7 @@ class TestApp:
         body = json.loads(result["body"])
         assert body.get("error") == "Invalid JSON format in request body"
 
-    def test_invalid_path(self):
+    def test_invalid_path(self, auth_service_instance_with_mock_cognito):
         """
         Tests that the lambda_handler returns a 404 status code and appropriate error message when an unsupported path is requested.
         """
@@ -80,7 +80,7 @@ class TestApp:
         body = json.loads(result["body"])
         assert body.get("error") == "Not Found"
 
-    def test_post_login_route(self):
+    def test_post_login_route(self, auth_service_instance_with_mock_cognito):
         """
         Tests that a POST request to the /auth/login route returns a successful login response.
 
@@ -109,7 +109,7 @@ class TestApp:
             assert body.get("message") == "Login successful"
             mock_auth_service.handle_login.assert_called_once()
 
-    def test_post_refresh_route(self):
+    def test_post_refresh_route(self, auth_service_instance_with_mock_cognito):
         """
         Tests that a POST request to the /auth/refresh route returns a successful token refresh response.
 
