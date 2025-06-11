@@ -19,9 +19,9 @@ class AuthService:
 
         if (
             config.user_pool_id is None
-            or config.user_pool_id is None
+            or config.cognito_client_id is None
             or config.user_pool_id == ""
-            or config.user_pool_id == ""
+            or config.cognito_client_id == ""
         ):
             raise AuthConfigurationError()
 
