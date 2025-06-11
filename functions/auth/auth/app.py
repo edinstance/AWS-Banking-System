@@ -18,11 +18,11 @@ def lambda_handler(event, context: LambdaContext):
     if http_method is None:
         auth_service.logger.warning("Missing 'httpMethod' in event.")
         return create_response(
-            400, {"error": "Bad Request: 'httpMethod' is missing."}, "POST"
+            400, {"error": "Bad Request: 'httpMethod' is missing."}, "OPTIONS,POST"
         )
 
     if http_method == "OPTIONS":
-        return create_response(200, {}, "POST, OPTIONS")
+        return create_response(200, {}, "OPTIONS,POST")
 
     if http_method == "POST":
         try:
@@ -30,7 +30,7 @@ def lambda_handler(event, context: LambdaContext):
         except json.JSONDecodeError:
             auth_service.logger.warning("Invalid JSON in request body.")
             return create_response(
-                400, {"error": "Invalid JSON format in request body"}, "POST"
+                400, {"error": "Invalid JSON format in request body"}, "OPTIONS,POST"
             )
 
         if path == "/auth/login":
@@ -39,7 +39,7 @@ def lambda_handler(event, context: LambdaContext):
             return auth_service.handle_refresh(request_body)
 
         auth_service.logger.warning(f"Unsupported path: {path}")
-        return create_response(404, {"error": "Not Found"}, "POST")
+        return create_response(404, {"error": "Not Found"}, "OPTIONS,POST")
     else:
         auth_service.logger.warning(f"Unsupported HTTP method: {http_method}")
-        return create_response(405, {"error": "Method Not Allowed"}, "POST")
+        return create_response(405, {"error": "Method Not Allowed"}, "OPTIONS,POST")
