@@ -357,11 +357,11 @@ String idempotencyKey = UUID.randomUUID().toString();
 
 ## TODO
 
-- Move authentication logic in record transactions to a lambda layer
-- Add accounts to the system
-- Refactor record_transaction to request_transaction
-- Dynamo Stream from record_transaction to update the accounts 
-- Once account is updated then notify the using using SES, SNS or other
-- Create a set of GraphQL apis using Appsync
-- Tryout Appsync Events
-- Add a SQS queue
+* Move authentication logic in record transactions to a Lambda layer
+* Add accounts to the system
+* Refactor `record_transaction` to `request_transaction`
+* Use DynamoDB Streams to update account balances after transactions
+* Once an account is updated, notify the user using SES, SNS, or other channels
+* Create a set of GraphQL APIs using AppSync
+* Experiment with AppSync events
+* Add an SQS queue
