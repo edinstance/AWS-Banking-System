@@ -26,7 +26,8 @@ def lambda_handler(event, context: LambdaContext):
 
     if http_method == "POST":
         try:
-            request_body = json.loads(event.get("body", "{}"))
+            body_raw = event.get("body") or "{}"
+            request_body = json.loads(body_raw)
         except json.JSONDecodeError:
             auth_service.logger.warning("Invalid JSON in request body.")
             return create_response(
