@@ -22,6 +22,7 @@ def auth_service_instance(monkeypatch, mock_cognito_user_pool):
     monkeypatch.setenv("COGNITO_CLIENT_ID", mock_cognito_user_pool["client_id"])
     monkeypatch.setenv("COGNITO_USER_POOL_ID", mock_cognito_user_pool["user_pool_id"])
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-2")  # Set default AWS region
 
     config = AuthConfig()
     service = AuthService(
@@ -41,6 +42,7 @@ def auth_service_instance_with_mock_cognito(monkeypatch, mock_cognito_user_pool)
     monkeypatch.setenv("COGNITO_CLIENT_ID", mock_cognito_user_pool["client_id"])
     monkeypatch.setenv("COGNITO_USER_POOL_ID", mock_cognito_user_pool["user_pool_id"])
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-2")
 
     mock_cognito_client = MagicMock()
     mock_cognito_client.exceptions.NotAuthorizedException = MockNotAuthorizedException
