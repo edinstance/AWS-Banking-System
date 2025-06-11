@@ -10,6 +10,9 @@ from functions.record_transactions.record_transactions.dynamodb import (
 
 class TestGetDynamoDBResource:
     def test_get_dynamodb_resource_with_endpoint(self):
+        """
+        Tests that get_dynamodb_resource initialises a DynamoDB resource with a specified endpoint URL and logs the correct debug message.
+        """
         mock_logger = MagicMock()
         endpoint_url = "http://localhost:8000"
         region = "us-west-2"
@@ -29,6 +32,11 @@ class TestGetDynamoDBResource:
             )
 
     def test_get_dynamodb_resource_without_endpoint(self):
+        """
+        Tests that get_dynamodb_resource initialises a DynamoDB resource using the default endpoint when no endpoint URL is provided.
+        
+        Verifies that the resource is created with the specified region, the returned object matches the mock, and a debug log about using the default endpoint is emitted.
+        """
         mock_logger = MagicMock()
         region = "us-west-2"
 
@@ -45,6 +53,9 @@ class TestGetDynamoDBResource:
             )
 
     def test_get_dynamodb_resource_error_handling(self):
+        """
+        Tests that get_dynamodb_resource logs an error and raises an exception when boto3.resource fails.
+        """
         mock_logger = MagicMock()
         region = "us-west-2"
 
@@ -73,9 +84,9 @@ class TestGetDynamoDBResource:
 
     def test_lambda_handler_with_uninitialized_table(self, app_without_table):
         """
-        Tests that the lambda handler returns a 500 error and logs an appropriate message when the DynamoDB table resource is uninitialized.
-
-        Verifies that the response contains a server configuration error and that an error log is emitted about the missing table resource.
+        Tests the Lambda handler's response when the DynamoDB table resource is uninitialized.
+        
+        Asserts that a 500 status code and a server configuration error message are returned, and verifies that an error log about the missing table resource is emitted.
         """
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"
@@ -97,9 +108,9 @@ class TestGetDynamoDBResource:
 
     def test_lambda_handler_with_initialized_table(self, app_with_mocked_table):
         """
-        Tests the lambda handler's response when the DynamoDB table is initialized but the request lacks the required Idempotency-Key header.
-
-        Asserts that the handler returns a 400 status code with an appropriate error message and confirms the table resource is initialized.
+        Tests the Lambda handler's response when the DynamoDB table is initialised but the request is missing the required Idempotency-Key header.
+        
+        Verifies that the handler returns a 400 status code with an appropriate error message and that the table resource is present.
         """
         mock_context = MagicMock()
         mock_context.aws_request_id = "test-request-id"

@@ -10,11 +10,21 @@ from .helpers import create_response
 
 class AuthService:
     def __init__(self, config: AuthConfig, cognito_client=None):
+        """
+        Initialises the AuthService with configuration, logging, and a Cognito client.
+        
+        If no Cognito client is provided, a default boto3 Cognito IDP client is created.
+        """
         self.config = config
         self.logger = Logger(service="AuthLambda", level=config.log_level)
         self.cognito_client = cognito_client or boto3.client("cognito-idp")
 
     def handle_login(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Processes a user login request using AWS Cognito and returns authentication tokens.
+        
+        Validates the presence of username and password in the request body, then attempts authentication via Cognito's ADMIN_USER_PASSWORD_AUTH flow. Returns a structured response with tokens on success, or an appropriate error response for invalid credentials, unconfirmed users, non-existent users, rate limiting, or unexpected errors.
+        """
         username = request_body.get("username")
         password = request_body.get("password")
 
@@ -82,7 +92,17 @@ class AuthService:
             )
 
     def handle_refresh(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
-        """Handles token refresh requests using a refresh token with Cognito."""
+        """
+        Processes a token refresh request using AWS Cognito and returns new authentication tokens.
+        
+        Validates the presence of a refresh token in the request body, then attempts to refresh authentication tokens via Cognito's REFRESH_TOKEN_AUTH flow. Returns appropriate HTTP responses for success, missing token, invalid or expired token, rate limiting, or unexpected errors.
+        
+        Args:
+            request_body: Dictionary containing the refresh token under the key "refreshToken".
+        
+        Returns:
+            A dictionary representing an HTTP response with status code, message, and new tokens if successful.
+        """
         refresh_token = request_body.get("refreshToken")
 
         if not refresh_token:
@@ -140,6 +160,11 @@ _lock = threading.Lock()
 
 
 def get_auth_service() -> AuthService:
+    """
+    Returns a singleton instance of AuthService, ensuring thread-safe initialisation.
+    
+    Initialises the AuthService with a new AuthConfig if it has not already been created, using double-checked locking to guarantee only one instance exists across threads.
+    """
     global _auth_service
     if _auth_service is None:
         with _lock:

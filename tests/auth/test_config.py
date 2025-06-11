@@ -4,6 +4,9 @@ from functions.auth.auth.config import AuthConfig
 class TestAuthConfig:
 
     def test_all_args(self):
+        """
+        Tests that AuthConfig correctly assigns explicit argument values to its attributes.
+        """
         test_client_id = "explicit-client-id-123"
         test_user_pool_id = "explicit-user-pool-id-456"
         test_log_level = "DEBUG"
@@ -19,6 +22,9 @@ class TestAuthConfig:
         assert config.log_level == test_log_level
 
     def test_env_args(self, monkeypatch):
+        """
+        Tests that AuthConfig correctly loads values from environment variables when explicit arguments are not provided.
+        """
         monkeypatch.setenv("COGNITO_CLIENT_ID", "env-client-id-789")
         monkeypatch.setenv("COGNITO_USER_POOL_ID", "env-user-pool-id-abc")
         monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "ERROR")

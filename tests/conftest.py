@@ -12,10 +12,9 @@ boto3.setup_default_session(region_name=AWS_REGION)
 @pytest.fixture(scope="function")
 def aws_credentials():
     """
-    Sets environment variables to provide fake AWS credentials and region for testing.
-
-    This fixture configures the environment so that AWS SDK clients use mock credentials,
-    enabling the use of the `moto` library to simulate AWS services during tests.
+    Sets environment variables with fake AWS credentials and region for test environments.
+    
+    Configures the environment so that AWS SDK clients operate with mock credentials, allowing AWS services to be simulated using the `moto` library during testing.
     """
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -41,9 +40,9 @@ def dynamo_resource(aws_credentials):
 def dynamo_table(dynamo_resource):
     """
     Creates a mocked DynamoDB table with a primary key on 'id' and a global secondary index on 'idempotencyKey'.
-
-    The table is provisioned with read and write capacity units of 5 and is synchronously created before returning its name.
-
+    
+    The table is provisioned with 5 read and write capacity units and is synchronously created before returning its name.
+    
     Returns:
         The name of the created mocked DynamoDB table.
     """
@@ -79,6 +78,12 @@ def dynamo_table(dynamo_resource):
 
 @pytest.fixture(scope="function")
 def cognito_client():
+    """
+    Provides a mocked AWS Cognito Identity Provider client for testing.
+    
+    Yields:
+        A boto3 Cognito Identity Provider client configured for the mocked AWS environment.
+    """
     with mock_aws():
         client = boto3.client("cognito-idp", region_name=AWS_REGION)
         yield client
@@ -86,6 +91,11 @@ def cognito_client():
 
 @pytest.fixture(scope="function")
 def mock_cognito_user_pool(cognito_client):
+    """
+    Provides a mocked Cognito user pool environment for testing.
+    
+    Creates a Cognito user pool with email auto-verification and a strict password policy, sets up a user pool client with explicit authentication flows, and creates a test user with a permanent password. Yields a dictionary containing the user pool ID, client ID, username, password, and the Cognito client for use in tests.
+    """
     user_pool_name = "test-user-pool"
     client_name = "test-app-client"
     test_username = "test_user"

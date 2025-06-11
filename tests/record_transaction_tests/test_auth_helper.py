@@ -45,6 +45,9 @@ def test_successful_token_verification(mock_jwks_client, mock_jwt):
 
 
 def test_missing_sub_claim(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises MissingSubClaimError when the ID token payload lacks the 'sub' claim.
+    """
     mock_jwt.decode.return_value = {"token_use": "id"}
 
     with pytest.raises(MissingSubClaimError) as exc_info:
@@ -55,6 +58,9 @@ def test_missing_sub_claim(mock_jwks_client, mock_jwt):
 
 
 def test_invalid_token_use(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises InvalidTokenError when the token's 'token_use' claim is not 'id'.
+    """
     mock_jwt.decode.return_value = {"token_use": "access", "sub": TEST_SUB}
 
     with pytest.raises(InvalidTokenError) as exc_info:
@@ -65,6 +71,9 @@ def test_invalid_token_use(mock_jwks_client, mock_jwt):
 
 
 def test_invalid_audience(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises InvalidTokenError when the token audience is invalid.
+    """
     mock_jwt.decode.side_effect = InvalidAudienceError("Invalid audience")
 
     with pytest.raises(InvalidTokenError) as exc_info:
@@ -85,6 +94,11 @@ def test_invalid_issuer(mock_jwks_client, mock_jwt):
 
 
 def test_expired_token(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises InvalidTokenError when the token is expired.
+    
+    Simulates an expired JWT by configuring the mock to raise ExpiredSignatureError, and asserts that the resulting exception contains the expected error message.
+    """
     mock_jwt.decode.side_effect = ExpiredSignatureError("Token has expired")
 
     with pytest.raises(InvalidTokenError) as exc_info:
@@ -95,6 +109,11 @@ def test_expired_token(mock_jwks_client, mock_jwt):
 
 
 def test_jwt_processing_error(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises InvalidTokenError when a generic JWT processing error occurs.
+    
+    Simulates a PyJWTError during token decoding and verifies that the resulting exception contains the expected error message.
+    """
     mock_jwt.decode.side_effect = PyJWTError("JWT processing failed")
 
     with pytest.raises(InvalidTokenError) as exc_info:
@@ -105,6 +124,11 @@ def test_jwt_processing_error(mock_jwks_client, mock_jwt):
 
 
 def test_auth_configuration_error(mock_jwks_client, mock_jwt):
+    """
+    Tests that an authentication configuration error is raised when the JWKS client fails to fetch signing keys.
+    
+    Simulates a failure in retrieving the JWKS signing key, asserting that `get_sub_from_id_token` raises `AuthConfigurationError` with an appropriate error message.
+    """
     mock_jwks_client.return_value.get_signing_key_from_jwt.side_effect = PyJWTError(
         "Failed to fetch jwks.json"
     )
@@ -117,6 +141,11 @@ def test_auth_configuration_error(mock_jwks_client, mock_jwt):
 
 
 def test_unexpected_error(mock_jwks_client, mock_jwt):
+    """
+    Tests that an unexpected exception during JWKS key retrieval raises AuthVerificationError.
+    
+    Verifies that if an unexpected error occurs while fetching the signing key, the get_sub_from_id_token function raises AuthVerificationError with the appropriate error message.
+    """
     mock_jwks_client.return_value.get_signing_key_from_jwt.side_effect = Exception(
         "Unexpected error"
     )
@@ -129,6 +158,9 @@ def test_unexpected_error(mock_jwks_client, mock_jwt):
 
 
 def test_no_user_pool_id(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises AuthConfigurationError when the Cognito User Pool ID is missing.
+    """
     with pytest.raises(AuthConfigurationError) as exc_info:
         get_sub_from_id_token(TEST_ID_TOKEN, None, TEST_CLIENT_ID, TEST_AWS_REGION)
 
@@ -136,6 +168,9 @@ def test_no_user_pool_id(mock_jwks_client, mock_jwt):
 
 
 def test_no_client_id(mock_jwks_client, mock_jwt):
+    """
+    Tests that get_sub_from_id_token raises AuthConfigurationError when the Cognito Client ID is missing.
+    """
     with pytest.raises(AuthConfigurationError) as exc_info:
         get_sub_from_id_token(TEST_ID_TOKEN, TEST_USER_POOL_ID, None, TEST_AWS_REGION)
 
@@ -143,6 +178,11 @@ def test_no_client_id(mock_jwks_client, mock_jwt):
 
 
 def test_authenticate_user_missing_authorization(valid_event, empty_headers):
+    """
+    Tests that authenticate_user returns a 401 response when the Authorization header is missing.
+    
+    Removes the "Authorization" header from the event and verifies that the function returns None for the user ID and a 401 response with an appropriate error message.
+    """
     valid_event["headers"].pop("Authorization")
 
     user_id, response = authenticate_user(
@@ -160,6 +200,9 @@ def test_authenticate_user_missing_authorization(valid_event, empty_headers):
 
 
 def test_authenticate_user_invalid_token(mock_auth, valid_event, headers_with_jwt):
+    """
+    Tests that authenticate_user returns a 401 response with an appropriate error message when an invalid authentication token is provided.
+    """
     mock_auth.side_effect = InvalidTokenError("Signature verification failed")
 
     user_id, response = authenticate_user(
@@ -181,6 +224,9 @@ def test_authenticate_user_invalid_token(mock_auth, valid_event, headers_with_jw
 
 
 def test_authenticate_user_missing_sub_claim(mock_auth, valid_event, headers_with_jwt):
+    """
+    Tests that authenticate_user returns a 401 response with an appropriate error message when the ID token is missing the 'sub' claim.
+    """
     mock_auth.side_effect = MissingSubClaimError("Missing sub claim")
 
     user_id, response = authenticate_user(
@@ -204,6 +250,9 @@ def test_authenticate_user_missing_sub_claim(mock_auth, valid_event, headers_wit
 def test_authenticate_user_auth_configuration_error(
     mock_auth, valid_event, headers_with_jwt
 ):
+    """
+    Tests that authenticate_user returns a 500 response with an appropriate error message when an AuthConfigurationError is raised during authentication.
+    """
     mock_auth.side_effect = AuthConfigurationError("Config error")
 
     user_id, response = authenticate_user(
@@ -219,6 +268,9 @@ def test_authenticate_user_auth_configuration_error(
 
 
 def test_authenticate_user_verification_error(mock_auth, valid_event, headers_with_jwt):
+    """
+    Tests that authenticate_user returns a 500 response with an internal authentication error message when AuthVerificationError is raised during token verification.
+    """
     mock_auth.side_effect = AuthVerificationError("Verification error")
 
     user_id, response = authenticate_user(
@@ -234,6 +286,9 @@ def test_authenticate_user_verification_error(mock_auth, valid_event, headers_wi
 
 
 def test_authenticate_user_unexpected_error(mock_auth, valid_event, headers_with_jwt):
+    """
+    Tests that authenticate_user returns a 500 response with an appropriate error message when an unexpected exception is raised during authentication.
+    """
     mock_auth.side_effect = Exception("Unknown error")
 
     user_id, response = authenticate_user(
@@ -249,6 +304,11 @@ def test_authenticate_user_unexpected_error(mock_auth, valid_event, headers_with
 
 
 def test_authenticate_user_no_user_id(mock_auth, valid_event, headers_with_jwt):
+    """
+    Tests that `authenticate_user` returns a 401 response when no user ID is extracted from a valid token.
+    
+    Verifies that if the authentication helper returns `None` for the user ID, the function responds with an appropriate error message and status code.
+    """
     mock_auth.return_value = None
 
     user_id, response = authenticate_user(

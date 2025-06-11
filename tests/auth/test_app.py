@@ -7,6 +7,9 @@ from functions.auth.auth.app import lambda_handler
 class TestApp:
 
     def test_options_request(self):
+        """
+        Tests that an OPTIONS HTTP request to the lambda handler returns a 200 status code and includes headers.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
         result = lambda_handler({"httpMethod": "OPTIONS"}, context)
@@ -15,6 +18,9 @@ class TestApp:
         assert result["headers"]
 
     def test_no_http_method(self):
+        """
+        Tests that the lambda_handler returns a 400 status code when the HTTP method is missing from the event.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
 
@@ -23,6 +29,9 @@ class TestApp:
         assert result["statusCode"] == 400
 
     def test_unsupported_method(self):
+        """
+        Tests that the lambda_handler returns a 405 status code and appropriate error message when an unsupported HTTP method is used.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
 
@@ -34,6 +43,9 @@ class TestApp:
         assert body.get("error") == "Method Not Allowed"
 
     def test_invalid_json(self):
+        """
+        Tests that the lambda_handler returns a 400 status code and appropriate error message when the request body contains invalid JSON.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
         result = lambda_handler(
@@ -50,6 +62,9 @@ class TestApp:
         assert body.get("error") == "Invalid JSON format in request body"
 
     def test_invalid_path(self):
+        """
+        Tests that the lambda_handler returns a 404 status code and appropriate error message when an unsupported path is requested.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
 
@@ -66,6 +81,11 @@ class TestApp:
         assert body.get("error") == "Not Found"
 
     def test_post_login_route(self):
+        """
+        Tests that a POST request to the /auth/login route returns a successful login response.
+        
+        Mocks the authentication service to simulate a successful login, sends a POST request with valid credentials, and verifies the response status code, message, and that the login handler is called once.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
         with patch("functions.auth.auth.app.get_auth_service") as mock_get_auth_service:
@@ -90,6 +110,11 @@ class TestApp:
             mock_auth_service.handle_login.assert_called_once()
 
     def test_post_refresh_route(self):
+        """
+        Tests that a POST request to the /auth/refresh route returns a successful token refresh response.
+        
+        Mocks the authentication service to simulate a successful token refresh, sends a POST request with a refresh token, and asserts that the response status code is 200, the response body contains the expected message, and the refresh handler is called exactly once.
+        """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
         with patch("functions.auth.auth.app.get_auth_service") as mock_get_auth_service:
