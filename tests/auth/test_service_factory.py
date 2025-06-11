@@ -1,13 +1,19 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 import functions.auth.auth.service
 from functions.auth.auth.service import get_auth_service
 
+@pytest.fixture(autouse=True)
+def reset_auth_service_singleton():
+    functions.auth.auth.service._auth_service = None
+    yield
+    functions.auth.auth.service._auth_service = None
 
 class TestAuthServiceFactory:
 
     def test_get_auth_service_creates_new_instance_when_none(self):
-        functions.auth.auth.service._auth_service = None
         with patch(
             "functions.auth.auth.service.AuthConfig"
         ) as mock_config_class, patch(
