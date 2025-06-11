@@ -27,9 +27,10 @@ class TestAuthServiceFactory:
             mock_service_class.return_value = mock_service
 
             result = get_auth_service()
+            result_cached = get_auth_service()
 
             mock_config_class.assert_called_once()
-
             mock_service_class.assert_called_once_with(mock_config)
 
             assert result == mock_service
+            assert result_cached is result
