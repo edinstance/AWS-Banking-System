@@ -51,7 +51,7 @@ class TestIdempotencyErrors:
             assert result["statusCode"] == 500
             assert (
                 "Error retrieving existing transaction"
-                in json.loads(result["body"])["error"]
+                in json.loads(result["body"])["message"]
             )
 
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):

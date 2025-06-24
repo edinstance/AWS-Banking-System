@@ -29,8 +29,7 @@ def handle_idempotency_error(idempotency_key, table, logger, transaction_id, err
             return create_response(
                 500,
                 {
-                    "error": "Error retrieving existing transaction",
-                    "idempotent": True,
+                    "message": "Error retrieving existing transaction",
                 },
                 "OPTIONS,POST",
             )
