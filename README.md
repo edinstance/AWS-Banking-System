@@ -172,10 +172,10 @@ aws dynamodb list-tables --endpoint-url http://localhost:8000
 ```
 
 This creates a DynamoDB table that:
-- Uses `idempotencyKey` as the primary key to prevent duplicate transactions
-- Has a global secondary index on `id` for looking up transactions by their ID
-- Uses on-demand capacity for automatic scaling
-- Stores all attributes in the secondary index (ProjectionType=ALL)
+* Uses `idempotencyKey` as the primary key to prevent duplicate transactions
+* Has a global secondary index on `id` for looking up transactions by their ID
+* Uses on-demand capacity for automatic scaling 
+* Stores all attributes in the secondary index (ProjectionType=ALL)
 
 ### Environment Variables
 
