@@ -106,7 +106,7 @@ class TestCheckExistingTransaction:
     def test_throughput_exceeded(self, mock_table, mock_logger):
         """
         Verify that a throughput exceeded error during transaction lookup raises a ClientError with the correct error code.
-        
+
         Simulates a DynamoDB ProvisionedThroughputExceededException when retrieving a transaction and asserts that the resulting exception contains the expected error code.
         """
         error_response = {

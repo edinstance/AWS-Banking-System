@@ -57,10 +57,10 @@ def validate_transaction_data(data, valid_transaction_types):
 def check_existing_transaction(idempotency_key: str, table, logger: Logger):
     """
     Check if a transaction with the specified idempotency key exists in the DynamoDB table.
-    
+
     Returns:
         The transaction item dictionary if found; otherwise, None.
-    
+
     Raises:
         Exception: If the DynamoDB table resource is not provided.
         ClientError: If a DynamoDB client error occurs.
@@ -93,9 +93,9 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
 def save_transaction(transaction_item, table, logger: Logger):
     """
     Save a transaction record to DynamoDB using the provided transaction data.
-    
+
     Raises an exception if the DynamoDB table resource is not configured or if a DynamoDB client error occurs. Relies on the uniqueness of the `idempotencyKey` hash key to enforce idempotency.
-    
+
     Returns:
         True if the transaction is saved successfully.
     """
@@ -124,9 +124,9 @@ def build_transaction_item(
 ) -> dict:
     """
     Constructs a transaction record dictionary for DynamoDB storage.
-    
+
     Normalises and extracts transaction details from the request, sets creation and TTL timestamps, and includes metadata such as user, environment, and idempotency information.
-    
+
     Parameters:
         transaction_id (str): Unique identifier for the transaction.
         request_body (dict): Transaction details from the incoming request.
@@ -134,7 +134,7 @@ def build_transaction_item(
         idempotency_key (str): Key to ensure transaction idempotency.
         environment_name (str): Name of the deployment environment.
         request_id (str): Unique identifier for the request.
-    
+
     Returns:
         dict: A dictionary representing the transaction item, suitable for insertion into DynamoDB.
     """

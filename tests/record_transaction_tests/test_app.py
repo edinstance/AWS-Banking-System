@@ -77,7 +77,7 @@ class TestLambdaHandler:
     ):
         """
         Test that the Lambda handler returns a 400 error when a transaction with a negative amount is submitted.
-        
+
         Verifies that the response includes an error message stating the amount must be positive.
         """
         valid_event["body"] = (
@@ -170,7 +170,7 @@ class TestLambdaHandler:
     ):
         """
         Verify that a ClientError during transaction save causes the Lambda handler to return a 500 internal server error response.
-        
+
         Simulates a conditional check failure when saving a transaction to the database and asserts that the handler responds with a 500 status code.
         """
         error_response = {
@@ -206,7 +206,7 @@ class TestLambdaHandler:
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
         Verify that the Lambda handler returns a 401 error when user authentication yields neither a user ID nor an authentication error.
-        
+
         This test mocks the authentication function to return `(None, None)` and asserts that the handler responds with a 401 status code and an appropriate unauthorised message.
         """
         with patch(
