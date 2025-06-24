@@ -5,8 +5,8 @@ import boto3
 from aws_lambda_powertools import Logger
 
 from .config import AuthConfig
+from .exceptions import AuthConfigurationError
 from .helpers import create_response
-from ...record_transactions.record_transactions.exceptions import AuthConfigurationError
 
 
 class AuthService:

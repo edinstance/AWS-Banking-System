@@ -93,7 +93,6 @@ Resources:
       Environment:
         Variables:
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
-          IDEMPOTENCY_EXPIRATION_DAYS: "7"
           DYNAMODB_ENDPOINT: ""
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
@@ -172,11 +171,9 @@ Resources:
     Properties:
       TableName: !Sub ${AWS::StackName}-transactions-table
       AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: createdAt
-          AttributeType: S
         - AttributeName: idempotencyKey
+          AttributeType: S
+        - AttributeName: id
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
@@ -184,14 +181,12 @@ Resources:
       SSESpecification:
         SSEEnabled: true
       KeySchema:
-        - AttributeName: id
+        - AttributeName: idempotencyKey
           KeyType: HASH
-        - AttributeName: createdAt
-          KeyType: RANGE
       GlobalSecondaryIndexes:
-        - IndexName: IdempotencyKeyIndex
+        - IndexName: TransactionIdIndex
           KeySchema:
-            - AttributeName: idempotencyKey
+            - AttributeName: id
               KeyType: HASH
           Projection:
             ProjectionType: ALL

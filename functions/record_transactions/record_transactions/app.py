@@ -9,12 +9,11 @@ Environment Variables:
     TRANSACTIONS_TABLE_NAME: Name of the DynamoDB table for storing transactions
     ENVIRONMENT_NAME: Current deployment environment (dev, staging, prod)
     POWERTOOLS_LOG_LEVEL: Log level for Lambda Powertools logger
-    IDEMPOTENCY_EXPIRATION_DAYS: Number of days to keep idempotency keys
 
 Request Headers:
     Idempotency-Key: A unique identifier (preferably UUID v4) to prevent duplicate
                      transactions. The same key will return the same transaction
-                     result if retried within 7 days.
+                     result if retried. Items automatically expire after 1 year via TTL.
                      Example: "123e4567-e89b-12d3-a456-426614174000"
 
 Request Format:
@@ -45,7 +44,7 @@ from .auth import (
 )
 from .dynamodb import get_dynamodb_resource
 from .helpers import create_response, validate_request_headers
-from .idempotency import handle_idempotency_check, handle_idempotency_error
+from .idempotency import handle_idempotency_error
 from .transactions import (
     validate_transaction_data,
     save_transaction,
@@ -55,7 +54,6 @@ from .transactions import (
 TRANSACTIONS_TABLE_NAME = os.environ.get("TRANSACTIONS_TABLE_NAME")
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
-IDEMPOTENCY_EXPIRATION_DAYS = int(os.environ.get("IDEMPOTENCY_EXPIRATION_DAYS", "7"))
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
@@ -76,16 +74,12 @@ else:
 @logger.inject_lambda_context
 def lambda_handler(event, context: LambdaContext):
     """
-    Processes API Gateway requests to record financial transactions with idempotency enforcement.
+    Handles API Gateway requests to record financial transactions, enforcing authentication and idempotency.
 
-    Validates authentication and the Idempotency-Key header, checks for duplicate transactions, parses and validates the request body, and stores new transactions in DynamoDB. Returns structured HTTP responses for validation errors, duplicate requests, and server or configuration errors.
-
-    Args:
-        event: The API Gateway event payload.
-        context: The Lambda execution context.
+    Authenticates the user, validates the presence and format of the Idempotency-Key header, parses and validates the transaction data, and attempts to store the transaction in DynamoDB. Ensures duplicate transactions are not recorded by leveraging DynamoDB constraints and returns appropriate HTTP responses for authentication failures, validation errors, duplicate requests, and server or configuration errors.
 
     Returns:
-        A dictionary formatted as an API Gateway HTTP response.
+        dict: An API Gateway-compatible HTTP response containing the result of the transaction recording attempt.
     """
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
@@ -100,9 +94,20 @@ def lambda_handler(event, context: LambdaContext):
     raw_headers = event.get("headers") or {}
     headers = {k.lower(): v for k, v in raw_headers.items()}
 
-    user_id = authenticate_user(
+    user_id, auth_error = authenticate_user(
         event, headers, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, AWS_REGION.lower()
     )
+
+    if auth_error:
+        return auth_error
+
+    if not user_id:
+        logger.error("Authentication failed: No user ID returned")
+        return create_response(
+            401,
+            {"error": "Unauthorized: User identity could not be determined"},
+            "OPTIONS,POST",
+        )
 
     try:
         idempotency_key_response = validate_request_headers(headers)
@@ -110,13 +115,6 @@ def lambda_handler(event, context: LambdaContext):
             return idempotency_key_response
 
         idempotency_key = headers["idempotency-key"]
-
-        existing_transaction_response = handle_idempotency_check(
-            idempotency_key, table, logger
-        )
-
-        if existing_transaction_response:
-            return existing_transaction_response
 
         try:
             body_raw = event.get("body") or "{}"
@@ -141,7 +139,6 @@ def lambda_handler(event, context: LambdaContext):
             request_body,
             user_id,
             idempotency_key,
-            IDEMPOTENCY_EXPIRATION_DAYS,
             ENVIRONMENT_NAME,
             request_id,
         )

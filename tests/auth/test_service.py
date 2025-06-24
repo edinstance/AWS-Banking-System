@@ -3,10 +3,9 @@ import json
 import pytest
 
 from functions.auth.auth.config import AuthConfig
+from functions.auth.auth.exceptions import AuthConfigurationError
 from functions.auth.auth.service import AuthService
-from functions.record_transactions.record_transactions.exceptions import (
-    AuthConfigurationError,
-)
+
 from tests.auth.conftest import (
     MockUserNotConfirmedException,
     MockTooManyRequestsException,
