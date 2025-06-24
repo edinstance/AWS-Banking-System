@@ -31,7 +31,7 @@ class TestIdempotencyErrors:
 
     def test_conditional_check_error(self, mock_table, mock_logger):
         """
-        Tests that a conditional check failure during idempotency error handling returns a 500 status code and an appropriate error message indicating the transaction was already processed.
+        Verify that a conditional check failure during idempotency error handling returns a 500 status code and an error message indicating failure to retrieve the existing transaction.
         """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
@@ -56,10 +56,9 @@ class TestIdempotencyErrors:
 
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):
         """
-        Tests that a conditional check failure with an existing transaction returns a 409 status.
+        Test that a conditional check failure with an existing transaction returns a 409 status and transaction details.
 
-        Verifies that when a `ConditionalCheckFailedException` occurs and an existing transaction is found,
-        the error handler responds with a 409 status code and includes the existing transaction ID in the response.
+        Simulates a `ConditionalCheckFailedException` during idempotency error handling where an existing transaction is found, and asserts that the response includes a 409 status code, a message indicating the transaction was already processed, the existing transaction ID, and an idempotency flag.
         """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"

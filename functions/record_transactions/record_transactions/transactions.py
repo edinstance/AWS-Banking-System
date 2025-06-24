@@ -56,22 +56,13 @@ def validate_transaction_data(data, valid_transaction_types):
 
 def check_existing_transaction(idempotency_key: str, table, logger: Logger):
     """
-    Checks for an existing transaction with the given idempotency key.
-
-    Since idempotencyKey is the partition key, we can directly get the item.
-    DynamoDB TTL will automatically remove expired items, so if we find an item,
-    it's still valid.
-
-    Args:
-        idempotency_key: The idempotency key to check.
-        table: The DynamoDB table resource.
-        logger: Logger instance for recording operations.
+    Check if a transaction with the specified idempotency key exists in the DynamoDB table.
 
     Returns:
-        The transaction item if found, None otherwise.
+        The transaction item dictionary if found; otherwise, None.
 
     Raises:
-        Exception: If the DynamoDB table is not configured.
+        Exception: If the DynamoDB table resource is not provided.
         ClientError: If a DynamoDB client error occurs.
     """
     if not table:
@@ -101,24 +92,12 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
 
 def save_transaction(transaction_item, table, logger: Logger):
     """
-    Saves a transaction record to DynamoDB.
+    Save a transaction record to DynamoDB using the provided transaction data.
 
-    Since idempotencyKey is the hash key, attempting to save a transaction with an existing
-    idempotencyKey will automatically fail with a ConditionalCheckFailedException.
-    This provides built-in idempotency without needing additional conditional expressions.
-
-    Args:
-        transaction_item: The transaction data to save.
-        table: The DynamoDB table resource.
-        logger: Logger instance for recording operations.
+    Raises an exception if the DynamoDB table resource is not configured or if a DynamoDB client error occurs. Relies on the uniqueness of the `idempotencyKey` hash key to enforce idempotency.
 
     Returns:
         True if the transaction is saved successfully.
-
-    Raises:
-        Exception: If the DynamoDB table is not configured.
-        ConditionalCheckFailedException: If a transaction with this idempotency key already exists.
-        ClientError: For other DynamoDB errors.
     """
     if not table:
         logger.error("DynamoDB table is not initialized for saving transaction.")
@@ -144,21 +123,20 @@ def build_transaction_item(
     request_id: str,
 ) -> dict:
     """
-    Builds a transaction item dictionary for storage in DynamoDB.
+    Constructs a transaction record dictionary for DynamoDB storage.
 
-    Assembles all required transaction fields, including normalised and serialised request data,
-    timestamps for creation and TTL, as well as metadata such as user and environment identifiers.
+    Normalises and extracts transaction details from the request, sets creation and TTL timestamps, and includes metadata such as user, environment, and idempotency information.
 
-    Args:
-        transaction_id: Unique identifier for the transaction.
-        request_body: Dictionary containing transaction details from the request.
-        user_id: Identifier of the user performing the transaction.
-        idempotency_key: Key used to ensure idempotency of the transaction.
-        environment_name: Name of the environment (e.g., "prod", "dev").
-        request_id: Unique identifier for the request.
+    Parameters:
+        transaction_id (str): Unique identifier for the transaction.
+        request_body (dict): Transaction details from the incoming request.
+        user_id (str): Identifier of the user initiating the transaction.
+        idempotency_key (str): Key to ensure transaction idempotency.
+        environment_name (str): Name of the deployment environment.
+        request_id (str): Unique identifier for the request.
 
     Returns:
-        A dictionary representing the transaction item, ready for insertion into DynamoDB.
+        dict: A dictionary representing the transaction item, suitable for insertion into DynamoDB.
     """
     account_id = request_body["accountId"]
     transaction_type = request_body["type"].upper()

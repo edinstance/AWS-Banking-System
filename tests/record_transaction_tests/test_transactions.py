@@ -74,12 +74,18 @@ class TestValidateTransactionData:
 
 class TestCheckExistingTransaction:
     def test_no_table_configured(self, mock_logger):
+        """
+        Test that an exception is raised when no database table is provided to check for an existing transaction.
+        """
         with pytest.raises(Exception) as exc_info:
             check_existing_transaction("test-key", None, mock_logger)
         assert "Database not configured" in str(exc_info.value)
         mock_logger.error.assert_called_once()
 
     def test_no_existing_transaction(self, mock_table, mock_logger):
+        """
+        Test that `check_existing_transaction` returns None when no transaction exists for the given idempotency key.
+        """
         mock_table.get_item.return_value = {"Item": None}
         result = check_existing_transaction("test-key", mock_table, mock_logger)
         assert result is None
@@ -99,9 +105,9 @@ class TestCheckExistingTransaction:
 
     def test_throughput_exceeded(self, mock_table, mock_logger):
         """
-        Tests that a throughput exceeded error during transaction lookup raises a service unavailable exception.
+        Verify that a throughput exceeded error during transaction lookup raises a ClientError with the correct error code.
 
-        Simulates a DynamoDB ProvisionedThroughputExceededException when querying for an existing transaction and asserts that an appropriate exception is raised.
+        Simulates a DynamoDB ProvisionedThroughputExceededException when retrieving a transaction and asserts that the resulting exception contains the expected error code.
         """
         error_response = {
             "Error": {
@@ -117,7 +123,7 @@ class TestCheckExistingTransaction:
 
     def test_unknown_error(self, mock_table, mock_logger):
         """
-        Tests that an unknown client error during transaction lookup raises an exception with the error code in the message.
+        Test that an unknown client error during transaction lookup raises a ClientError with the correct error code in the exception message.
         """
         error_response = {
             "Error": {
@@ -165,7 +171,7 @@ class TestSaveTransaction:
 
     def test_resource_not_found_on_save(self, mock_table, mock_logger):
         """
-        Tests that saving a transaction raises an exception with a configuration error message when the database table is not found.
+        Test that saving a transaction raises a ClientError with a 'ResourceNotFoundException' when the database table does not exist.
         """
         error_response = {
             "Error": {"Code": "ResourceNotFoundException", "Message": "Table not found"}
@@ -178,7 +184,7 @@ class TestSaveTransaction:
 
     def test_other_client_error_on_save(self, mock_table, mock_logger):
         """
-        Tests that save_transaction raises an exception with the correct error message when an unknown client error occurs during the save operation.
+        Test that save_transaction raises a ClientError with the correct error code when an unknown client error occurs during the save operation.
         """
         error_response = {
             "Error": {"Code": "UnknownError", "Message": "Unknown error occurred"}
@@ -214,6 +220,9 @@ class TestSaveTransaction:
 
 class TestBuildTransaction:
     def test_successful_item_creation(self):
+        """
+        Tests that build_transaction_item returns a dictionary containing the expected transaction ID and idempotency key fields.
+        """
         transaction_id = str(uuid.uuid4())
         request_body = {
             "accountId": str(uuid.uuid4()),

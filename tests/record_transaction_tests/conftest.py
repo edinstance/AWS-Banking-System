@@ -110,9 +110,9 @@ def empty_headers():
 @pytest.fixture
 def mock_table():
     """
-    Yields a mocked DynamoDB table object with empty get_item and query results for testing.
+    Yields a mocked DynamoDB table where both get_item and query return empty results.
 
-    This fixture patches the application's DynamoDB table so that any get_item or query returns an empty result, enabling isolated tests without real database access.
+    This fixture allows tests to simulate an empty database state by ensuring that any get_item call returns {"Item": None} and any query call returns {"Items": []}.
     """
     with patch("functions.record_transactions.record_transactions.app.table") as mock:
         mock.query.return_value = {"Items": []}
