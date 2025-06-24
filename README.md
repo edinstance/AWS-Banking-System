@@ -133,30 +133,49 @@ Cognito cannot be set up locally, so if you want to run the system locally you n
 To set up DynamoDB for local testing, ensure Docker is running and use the following command:
 
 ```shell
-
 docker compose up -d
 ```
-
 
 You need to create the DynamoDB tables using this command, ensure Docker Compose has successfully started the DynamoDB
 Local container before running this command.
 
-```shell
+### Setting up DynamoDB Local
 
- aws dynamodb create-table \
-  --table-name transactions-table-dev \
-  --attribute-definitions \
-    AttributeName=id,AttributeType=S \
-    AttributeName=createdAt,AttributeType=S \
-    AttributeName=idempotencyKey,AttributeType=S \
-  --key-schema \
-    AttributeName=id,KeyType=HASH \
-    AttributeName=createdAt,KeyType=RANGE \
-  --global-secondary-indexes \
-    'IndexName=IdempotencyKeyIndex,KeySchema=[{AttributeName=idempotencyKey,KeyType=HASH}],Projection={ProjectionType=ALL}' \
-  --billing-mode PAY_PER_REQUEST \
-  --endpoint-url http://localhost:8000
+Create the transactions table with idempotency support:
+
+```shell
+# Create the transactions table with:
+# - idempotencyKey as the hash/partition key
+# - A global secondary index on the transaction ID
+# - Pay-per-request billing for automatic scaling
+aws dynamodb create-table \
+    --table-name transactions-table-dev \
+    --attribute-definitions \
+        AttributeName=idempotencyKey,AttributeType=S \
+        AttributeName=id,AttributeType=S \
+    --key-schema \
+        AttributeName=idempotencyKey,KeyType=HASH \
+    --global-secondary-indexes '[
+        {
+            "IndexName": "TransactionIdIndex",
+            "KeySchema": [
+                {"AttributeName": "id", "KeyType": "HASH"}
+            ],
+            "Projection": {"ProjectionType": "ALL"}
+        }
+    ]' \
+    --billing-mode PAY_PER_REQUEST \
+    --endpoint-url http://localhost:8000
+
+# Verify the table was created
+aws dynamodb list-tables --endpoint-url http://localhost:8000
 ```
+
+This creates a DynamoDB table that:
+- Uses `idempotencyKey` as the primary key to prevent duplicate transactions
+- Has a global secondary index on `id` for looking up transactions by their ID
+- Uses on-demand capacity for automatic scaling
+- Stores all attributes in the secondary index (ProjectionType=ALL)
 
 ### Environment Variables
 
@@ -169,7 +188,6 @@ variables for your application.
 Finally, you can now run the system using:
 
 ```shell
-
 sam build
 sam local start-api --docker-network sam-network --env-vars env.json 
 ```
@@ -199,7 +217,6 @@ Before deploying, you need to build your application. This command packages your
 dependencies, and creates deployment artifacts in the `.aws-sam/build` directory.
 
 ```shell
-
 sam build
 ```
 
@@ -214,7 +231,6 @@ You can deploy to any environment defined in the `samconfig.toml` (e.g., `dev`, 
 To deploy to the **development (`dev`)** environment use this command and then follow the instructions:
 
 ```shell
-
 sam deploy --config-env dev
 ```
 
@@ -223,14 +239,12 @@ To deploy updates to the **development (`dev`)** environment run the same comman
 To deploy to the **production (`prod`)** environment:
 
 ```shell
-
 sam deploy --config-env prod
 ```
 
 To deploy to the **testing (`test`)** environment:
 
 ```shell
-
 sam deploy --config-env test
 ```
 
@@ -283,7 +297,6 @@ DynamoDB tables (and their data, unless `DeletionPolicy: Retain` is set on the t
 Using SAM CLI:
 
 ```shell
-
 # To delete the 'dev' environment stack
 sam delete --config-env dev
 
@@ -311,21 +324,18 @@ When deploying Cognito for production use:
 To deploy only cognito, you need to run:
 
 ```shell
-
 sam build --template-file cognito-template.yml
 ```
 
 and then to deploy it, you should run:
 
 ```shell
-
 sam deploy --template-file cognito-template.yml --config-file samconfig.cognito.toml
 ```
 
 finally to delete it, you should run:
 
 ```shell
-
 sam delete --config-file samconfig.cognito.toml  
 ```
 ## API Idempotency Requirements

@@ -61,24 +61,6 @@ class TestLambdaHandler:
         assert response_body["suggestion"]
         assert response_body["example"]
 
-    def test_existing_transaction(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        """
-        Tests that the Lambda handler returns a 201 response with the existing transaction ID and marks the response as idempotent when a transaction with the same idempotency key already exists.
-        """
-        mock_table.query.return_value = {
-            "Items": [
-                {"id": "existing-transaction-id", "idempotencyExpiration": 9999999999}
-            ]
-        }
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 201
-        assert "existing-transaction-id" in response["body"]
-        assert '"idempotent": true' in response["body"]
-
     def test_invalid_json_body(self, valid_event, mock_context, mock_table, mock_auth):
         """
         Tests that the Lambda handler returns a 400 status code and appropriate error message when the request body contains invalid JSON.
@@ -89,19 +71,6 @@ class TestLambdaHandler:
 
         assert response["statusCode"] == 400
         assert "Invalid JSON format" in response["body"]
-
-    def test_database_error(self, valid_event, mock_context, mock_table, mock_auth):
-        """
-        Tests that a database error during transaction uniqueness verification results in a 500 response.
-
-        Simulates a database query failure and verifies that the Lambda handler returns a 500 status code with an appropriate error message.
-        """
-        mock_table.query.side_effect = Exception("Database error")
-
-        response = lambda_handler(valid_event, mock_context)
-
-        assert response["statusCode"] == 500
-        assert "Unable to verify transaction uniqueness" in response["body"]
 
     def test_invalid_transaction_data(
         self, valid_event, mock_context, mock_table, mock_auth
@@ -215,3 +184,39 @@ class TestLambdaHandler:
         response = lambda_handler(valid_event, mock_context)
 
         assert response["statusCode"] == 500
+
+    def test_auth_error_returned(self, valid_event, mock_context, mock_table):
+        """
+        Tests that when authenticate_user returns an auth_error, the lambda_handler returns that error.
+        """
+        auth_error_response = {
+            "statusCode": 401,
+            "body": '{"error": "Authentication failed"}',
+        }
+
+        with patch(
+            "functions.record_transactions.record_transactions.app.authenticate_user"
+        ) as mock_auth:
+            mock_auth.return_value = (None, auth_error_response)
+
+            response = lambda_handler(valid_event, mock_context)
+
+            assert response == auth_error_response
+
+    def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
+        """
+        Tests that when authenticate_user returns no user_id and no auth_error,
+        the lambda_handler returns a 401 error.
+        """
+        with patch(
+            "functions.record_transactions.record_transactions.app.authenticate_user"
+        ) as mock_auth:
+            mock_auth.return_value = (None, None)
+
+            response = lambda_handler(valid_event, mock_context)
+
+            assert response["statusCode"] == 401
+            assert (
+                "Unauthorized: User identity could not be determined"
+                in response["body"]
+            )

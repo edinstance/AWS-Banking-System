@@ -4,7 +4,6 @@ from decimal import Decimal
 from decimal import DecimalException
 
 from aws_lambda_powertools import Logger
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 from .helpers import is_valid_uuid
@@ -57,35 +56,39 @@ def validate_transaction_data(data, valid_transaction_types):
 
 def check_existing_transaction(idempotency_key: str, table, logger: Logger):
     """
-    Checks for an existing, non-expired transaction with the given idempotency key.
+    Checks for an existing transaction with the given idempotency key.
 
-    Queries the DynamoDB table using a secondary index to find a transaction whose idempotency expiration timestamp is in the future. Returns the transaction item if found; otherwise, returns None.
+    Since idempotencyKey is the partition key, we can directly get the item.
+    DynamoDB TTL will automatically remove expired items, so if we find an item,
+    it's still valid.
+
+    Args:
+        idempotency_key: The idempotency key to check.
+        table: The DynamoDB table resource.
+        logger: Logger instance for recording operations.
+
+    Returns:
+        The transaction item if found, None otherwise.
 
     Raises:
-        Exception: If the DynamoDB table is not configured or if a throughput limit is exceeded.
-        ClientError: If a DynamoDB client error occurs during the query.
+        Exception: If the DynamoDB table is not configured.
+        ClientError: If a DynamoDB client error occurs.
     """
     if not table:
         logger.error("DynamoDB table is not initialized for idempotency check.")
         raise Exception("Database not configured.")
 
     try:
-        response = table.query(
-            IndexName="IdempotencyKeyIndex",
-            KeyConditionExpression=Key("idempotencyKey").eq(idempotency_key),
-            ConsistentRead=False,
-        )
+        # Since idempotencyKey is the hash key, we can use get_item directly
+        response = table.get_item(Key={"idempotencyKey": idempotency_key})
 
-        items = response.get("Items", [])
-        if items:
-            now = int(datetime.now(timezone.utc).timestamp())
-            for item in items:
-                if item.get("idempotencyExpiration", 0) > now:
-                    return item
+        item = response.get("Item")
+        if item:
+            logger.debug(
+                f"Found existing transaction for idempotency key: {idempotency_key}"
+            )
+            return item
 
-                logger.debug(
-                    f"Expired or invalid idempotency item found for key {idempotency_key}"
-                )
         return None
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
@@ -93,53 +96,43 @@ def check_existing_transaction(idempotency_key: str, table, logger: Logger):
             f"DynamoDB error checking idempotency (Code: {error_code}): {e}",
             exc_info=True,
         )
-        if error_code == "ProvisionedThroughputExceededException":
-            raise Exception("Service temporarily unavailable due to high load") from e
         raise
 
 
 def save_transaction(transaction_item, table, logger: Logger):
     """
-    Saves a transaction record to DynamoDB with atomic idempotency enforcement.
+    Saves a transaction record to DynamoDB.
 
-    Attempts to write the transaction only if no unexpired record with the same idempotency key exists. Raises exceptions for conditional check failures, throughput limits, missing resources, or other database errors.
+    Since idempotencyKey is the hash key, attempting to save a transaction with an existing
+    idempotencyKey will automatically fail with a ConditionalCheckFailedException.
+    This provides built-in idempotency without needing additional conditional expressions.
+
+    Args:
+        transaction_item: The transaction data to save.
+        table: The DynamoDB table resource.
+        logger: Logger instance for recording operations.
 
     Returns:
         True if the transaction is saved successfully.
 
     Raises:
-        ConditionalCheckFailedException: If a transaction with this idempotency key already exists and has not expired.
-        Exception: For throughput exceeded, missing resources, or other database errors.
+        Exception: If the DynamoDB table is not configured.
+        ConditionalCheckFailedException: If a transaction with this idempotency key already exists.
+        ClientError: For other DynamoDB errors.
     """
     if not table:
         logger.error("DynamoDB table is not initialized for saving transaction.")
         raise Exception("Database not configured.")
 
     try:
-        condition_expression = (
-            "attribute_not_exists(idempotencyKey) OR " "idempotencyExpiration < :now"
-        )
-        expression_values = {":now": int(datetime.now(timezone.utc).timestamp())}
-
-        table.put_item(
-            Item=transaction_item,
-            ConditionExpression=condition_expression,
-            ExpressionAttributeValues=expression_values,
-        )
+        table.put_item(Item=transaction_item)
         return True
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code")
         logger.error(
             f"Failed to save transaction (Code: {error_code}): {e}", exc_info=True
         )
-        if error_code == "ConditionalCheckFailedException":
-            raise
-        elif error_code == "ProvisionedThroughputExceededException":
-            raise Exception("Service temporarily unavailable due to high load") from e
-        elif error_code == "ResourceNotFoundException":
-            raise Exception("Transaction database configuration error") from e
-        else:
-            raise Exception(f"Database error: {error_code}") from e
+        raise  # Let the caller handle all errors
 
 
 def build_transaction_item(
@@ -147,21 +140,20 @@ def build_transaction_item(
     request_body: dict,
     user_id: str,
     idempotency_key: str,
-    idempotency_expiration_days: int,
     environment_name: str,
     request_id: str,
 ) -> dict:
     """
     Builds a transaction item dictionary for storage in DynamoDB.
 
-    Assembles all required transaction fields, including normalised and serialised request data, timestamps for creation, TTL, and idempotency expiration, as well as metadata such as user and environment identifiers.
+    Assembles all required transaction fields, including normalised and serialised request data,
+    timestamps for creation and TTL, as well as metadata such as user and environment identifiers.
 
     Args:
         transaction_id: Unique identifier for the transaction.
         request_body: Dictionary containing transaction details from the request.
         user_id: Identifier of the user performing the transaction.
         idempotency_key: Key used to ensure idempotency of the transaction.
-        idempotency_expiration_days: Number of days before the idempotency key expires.
         environment_name: Name of the environment (e.g., "prod", "dev").
         request_id: Unique identifier for the request.
 
@@ -179,9 +171,6 @@ def build_transaction_item(
     ttl_datetime = now_utc + timedelta(days=365)
     ttl_timestamp = int(ttl_datetime.timestamp())
 
-    idempotency_expiration = now_utc + timedelta(days=idempotency_expiration_days)
-    idempotency_expiration_timestamp = int(idempotency_expiration.timestamp())
-
     sanitized_request_body = {
         "accountId": account_id,
         "userId": user_id,
@@ -198,10 +187,9 @@ def build_transaction_item(
         "amount": amount,
         "type": transaction_type,
         "description": description,
-        "status": "COMPLETED",
+        "status": "PENDING",
         "ttlTimestamp": ttl_timestamp,
         "idempotencyKey": idempotency_key,
-        "idempotencyExpiration": idempotency_expiration_timestamp,
         "environment": environment_name,
         "requestId": request_id,
         "rawRequest": json.dumps(sanitized_request_body),

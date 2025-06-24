@@ -80,7 +80,7 @@ class TestCheckExistingTransaction:
         mock_logger.error.assert_called_once()
 
     def test_no_existing_transaction(self, mock_table, mock_logger):
-        mock_table.query.return_value = {"Items": []}
+        mock_table.get_item.return_value = {"Item": None}
         result = check_existing_transaction("test-key", mock_table, mock_logger)
         assert result is None
 
@@ -92,21 +92,10 @@ class TestCheckExistingTransaction:
         """
         future_timestamp = int(datetime.now(timezone.utc).timestamp()) + 3600
         mock_item = {"id": "test-id", "idempotencyExpiration": future_timestamp}
-        mock_table.query.return_value = {"Items": [mock_item]}
+        mock_table.get_item.return_value = {"Item": mock_item}
 
         result = check_existing_transaction("test-key", mock_table, mock_logger)
         assert result == mock_item
-
-    def test_expired_transaction(self, mock_table, mock_logger):
-        """
-        Tests that check_existing_transaction returns None when the idempotency expiration is in the past.
-        """
-        past_timestamp = int(datetime.now(timezone.utc).timestamp()) - 3600
-        mock_item = {"id": "test-id", "idempotencyExpiration": past_timestamp}
-        mock_table.query.return_value = {"Items": [mock_item]}
-
-        result = check_existing_transaction("test-key", mock_table, mock_logger)
-        assert result is None
 
     def test_throughput_exceeded(self, mock_table, mock_logger):
         """
@@ -120,11 +109,11 @@ class TestCheckExistingTransaction:
                 "Message": "Rate exceeded",
             }
         }
-        mock_table.query.side_effect = ClientError(error_response, "Query")
+        mock_table.get_item.side_effect = ClientError(error_response, "GetItem")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ClientError) as exc_info:
             check_existing_transaction("test-key", mock_table, mock_logger)
-        assert "Service temporarily unavailable" in str(exc_info.value)
+        assert "ProvisionedThroughputExceededException" in str(exc_info.value)
 
     def test_unknown_error(self, mock_table, mock_logger):
         """
@@ -136,9 +125,9 @@ class TestCheckExistingTransaction:
                 "Message": "Rate exceeded",
             }
         }
-        mock_table.query.side_effect = ClientError(error_response, "Query")
+        mock_table.get_item.side_effect = ClientError(error_response, "GetItem")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ClientError) as exc_info:
             check_existing_transaction("test-key", mock_table, mock_logger)
         assert "UnknownError" in str(exc_info.value)
 
@@ -170,9 +159,9 @@ class TestSaveTransaction:
         }
         mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ClientError) as exc_info:
             save_transaction({}, mock_table, mock_logger)
-        assert "Service temporarily unavailable" in str(exc_info.value)
+        assert "ProvisionedThroughputExceededException" in str(exc_info.value)
 
     def test_resource_not_found_on_save(self, mock_table, mock_logger):
         """
@@ -183,9 +172,9 @@ class TestSaveTransaction:
         }
         mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ClientError) as exc_info:
             save_transaction({}, mock_table, mock_logger)
-        assert "Transaction database configuration error" in str(exc_info.value)
+        assert "ResourceNotFoundException" in str(exc_info.value)
 
     def test_other_client_error_on_save(self, mock_table, mock_logger):
         """
@@ -196,9 +185,9 @@ class TestSaveTransaction:
         }
         mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ClientError) as exc_info:
             save_transaction({}, mock_table, mock_logger)
-        assert "Database error: UnknownError" in str(exc_info.value)
+        assert "UnknownError" in str(exc_info.value)
 
     def test_conditional_error(self, mock_table, mock_logger):
         """
@@ -234,7 +223,6 @@ class TestBuildTransaction:
         }
         user_id = str(uuid.uuid4())
         idempotency_key = str(uuid.uuid4())
-        idempotency_expiration_days = 7
         environment_name = "production"
         request_id = str(uuid.uuid4())
 
@@ -243,7 +231,6 @@ class TestBuildTransaction:
             request_body,
             user_id,
             idempotency_key,
-            idempotency_expiration_days,
             environment_name,
             request_id,
         )
