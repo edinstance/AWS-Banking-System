@@ -21,7 +21,7 @@ jobs:
       - name: Upgrade pip and install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
+          make init
 
       - name: Run tests
-        run: pytest -vv
+        run: make test
