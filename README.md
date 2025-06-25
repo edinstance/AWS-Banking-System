@@ -372,7 +372,7 @@ sam delete --config-file samconfig.cognito.toml
 
 ## Rollbacks
 
-To roll back a deployment to a specific commit or branch you can use
+To roll back a deployment to a specific commit or branch, you can use
 the [Rollback action](.github/workflows/rollback.yml). This action reverts to the commit you want to roll back to and
 then it rebuilds and deploys the application.
 
