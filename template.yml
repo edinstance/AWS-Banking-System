@@ -79,6 +79,12 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt BankingUserPool.Arn
+      Domain:
+        DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+        CertificateArn: !Ref ApiCertificate
+        EndpointConfiguration: REGIONAL
+        Route53:
+          HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
 
   # --- Lambda Functions ---
   RecordTransactionFunction:
@@ -203,31 +209,3 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
-
-  ApiGatewayDomainName:
-    Type: AWS::ApiGateway::DomainName
-    Properties:
-      DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
-      RegionalCertificateArn: !Ref ApiCertificate
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
-      SecurityPolicy: TLS_1_2
-
-  ApiGatewayBasePathMapping:
-    Type: AWS::ApiGateway::BasePathMapping
-    DependsOn: BankingApiGatewayStage
-    Properties:
-      DomainName: !Ref ApiGatewayDomainName
-      RestApiId: !Ref BankingApiGateway
-      Stage: !Ref Environment
-
-  ApiDomainRecord:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
-      Name: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt ApiGatewayDomainName.RegionalDomainName
-        HostedZoneId: !GetAtt ApiGatewayDomainName.RegionalHostedZoneId
