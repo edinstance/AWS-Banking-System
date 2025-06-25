@@ -312,24 +312,7 @@ After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
     - Check the "Status," "Events," and "Resources" sections.
 2. **Test the API Endpoint:**
     - Use a tool like `curl` or Postman to send requests to the custom domain you configured in SSM (
-      `/banking-app/<env>/DomainName`), e.g. `https://api.dev.yourdomain.com`.
-    - Example (replace with your actual endpoint and a valid idempotency key):
-      ```shell
-      API_ENDPOINT="https://api.dev.yourdomain.com"
-
-       IDEMPOTENCY_KEY=$(uuidgen)
-       ACCOUNT_ID=$(uuidgen)
-    
-       JSON_PAYLOAD=$(printf '{"accountId": "%s", "amount": 150.75,
-       "type": "DEPOSIT", "description": "Initial cloud deposit"}' "$
-       ACCOUNT_ID")
-            
-       curl -X POST \
-       -H "Content-Type: application/json" \
-       -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
-       -d "$JSON_PAYLOAD" \
-       "$API_ENDPOINT"
-        ```
+      `/banking-app/<env>/DomainName`), e.g. `https://dev.api.yourdomain.co.uk`.
 
 ### Deleting a Deployed Environment
 
