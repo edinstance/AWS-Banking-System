@@ -98,7 +98,7 @@ The template automatically creates:
 
 Currently, the gateway is configured to be a regional gateway, this means that the ACM Certification must be in the same
 region that the gateway is deployed in and that is how the template is set up. If you want to configure the gateway to
-be an EDGE gateway then the certificate must be in us-east-1.
+be an EDGE gateway, then the certificate must be in us-east-1.
 
 ## Project Dependencies
 
@@ -317,19 +317,19 @@ After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
       ```shell
       API_ENDPOINT="https://api.dev.yourdomain.com"
 
-   IDEMPOTENCY_KEY=$(uuidgen)
-   ACCOUNT_ID=$(uuidgen)
-
-   JSON_PAYLOAD=$(printf '{"accountId": "%s", "amount": 150.75,
-   "type": "DEPOSIT", "description": "Initial cloud deposit"}' "$
-   ACCOUNT_ID")
-
-   curl -X POST \
-   -H "Content-Type: application/json" \
-   -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
-   -d "$JSON_PAYLOAD" \
-   "$API_ENDPOINT"
-    ```
+       IDEMPOTENCY_KEY=$(uuidgen)
+       ACCOUNT_ID=$(uuidgen)
+    
+       JSON_PAYLOAD=$(printf '{"accountId": "%s", "amount": 150.75,
+       "type": "DEPOSIT", "description": "Initial cloud deposit"}' "$
+       ACCOUNT_ID")
+            
+       curl -X POST \
+       -H "Content-Type: application/json" \
+       -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+       -d "$JSON_PAYLOAD" \
+       "$API_ENDPOINT"
+        ```
 
 ### Deleting a Deployed Environment
 
