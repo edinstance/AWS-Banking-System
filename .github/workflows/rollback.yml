@@ -63,14 +63,20 @@ jobs:
             echo "sam_config_name=prod" >> $GITHUB_OUTPUT
           elif [ "${{ github.event.inputs.target_environment }}" == "development" ]; then
             echo "sam_config_name=dev" >> $GITHUB_OUTPUT
-          else
+          elif [ "${{ github.event.inputs.target_environment }}" == "testing" ]; then
             echo "sam_config_name=test" >> $GITHUB_OUTPUT
+          else
+            echo "Error: unsupported target_environment=${{ github.event.inputs.target_environment }}"
+            exit 1
           fi
 
       - name: Validate Rollback Commit
         id: validate_commit
         run: |
           COMMIT="${{ github.event.inputs.rollback_commit }}"
+          
+          # Fetch all commits
+          git fetch --all --tags --quiet
           
           RESOLVED_COMMIT=$(git rev-parse "$COMMIT")
           
