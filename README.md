@@ -50,7 +50,7 @@ configured on your system:
     - While full AWS credentials are not strictly required for interacting with DynamoDB Local, having the AWS CLI
       installed is necessary for the `aws dynamodb create-table` command. You can configure it with fake credentials
       for local use if preferred:
-    - Credentials are needed for deploying the system to an AWS Account.
+    - Credentials are required to deploy the system to an AWS Account.
 
 4. **Python (Version 3.12 or as specified in [template.yml](template.yml)):**
     - The runtime for the Lambda functions.
@@ -76,7 +76,7 @@ resources to be set up:
 
 aws ssm put-parameter \
     --name "/banking-app/dev/DomainName" \
-    --value "api-dev.yourdomain.com" \
+    --value "dev.api.yourdomain.co.uk" \
     --type "String"
 
 aws ssm put-parameter \
