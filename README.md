@@ -9,17 +9,18 @@ defining, building, and deploying the necessary cloud resources.
 This application provides core functionalities for managing financial transactions, designed with scalability,
 reliability, and modern cloud practices in mind. Key features and technologies include:
 
-* **Serverless Functions:** AWS Lambda is used for handling business logic, such as recording transactions, ensuring
+- **Serverless Functions:** AWS Lambda is used for handling business logic, such as recording transactions, ensuring
   that compute resources are only consumed when requests are being processed.
-* **API Gateway:** Amazon API Gateway exposes the Lambda functions as secure and scalable HTTP APIs, allowing client
+- **API Gateway:** Amazon API Gateway exposes the Lambda functions as secure and scalable HTTP APIs, allowing client
   applications to interact with the banking backend.
-* **NoSQL Database:** Amazon DynamoDB, a fully managed NoSQL database, is used for persistent storage of transaction
+- **NoSQL Database:** Amazon DynamoDB, a fully managed NoSQL database, is used for persistent storage of transaction
   data, offering high availability and performance.
-* **Idempotency:** Critical operations, like transaction recording, implement idempotency to prevent duplicate
+- **Idempotency:** Critical operations, like transaction recording, implement idempotency to prevent duplicate
   processing and ensure data integrity.
-* **Infrastructure as Code (IaC):** The entire infrastructure is defined using AWS SAM templates [template.yml](template.yml). This
+- **Infrastructure as Code (IaC):** The entire infrastructure is defined using AWS SAM
+  templates [template.yml](template.yml). This
   allows for repeatable deployments, version control of infrastructure, and easier management of cloud resources.
-* **Local Development & Testing:** The project is set up for efficient local development and testing using `sam local`
+- **Local Development & Testing:** The project is set up for efficient local development and testing using `sam local`
   and a local instance of DynamoDB (via Docker), enabling developers to iterate quickly before deploying to the cloud.
 
 ## Prerequisites
@@ -29,41 +30,80 @@ installed and
 configured on your system:
 
 1. **Docker & Docker Compose:**
-    * Required to run the local DynamoDB instance, Lambda's, and the API Gateway.
-    * Installation guides:
-        * Docker: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
-        * Docker Compose is typically included with Docker Desktop. For Linux, it might be a separate
+    - Required to run the local DynamoDB instance, Lambda's, and the API Gateway.
+    - Installation guides:
+        - Docker: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
+        - Docker Compose is typically included with Docker Desktop. For Linux, it might be a separate
           installation: [https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/)
-    * Ensure the Docker daemon is running before proceeding with the setup.
+    - Ensure the Docker daemon is running before proceeding with the setup.
 
 2. **AWS SAM CLI (Serverless Application Model Command Line Interface):**
-    * Used to build, test, and locally run your serverless application.
-    * Installation
+    - Used to build, test, and locally run your serverless application.
+    - Installation
       guide: [https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-    * Verify installation with `sam --version`.
-    * This is also used to deploy the system.
+    - Verify installation with `sam --version`.
+    - This is also used to deploy the system.
 
 3. **AWS CLI (Command Line Interface):**
-    * Used to interact with AWS services, including creating the local DynamoDB table.
-    * Installation guide: [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
-    * While full AWS credentials are not strictly required for interacting with DynamoDB Local, having the AWS CLI
+    - Used to interact with AWS services, including creating the local DynamoDB table.
+    - Installation guide: [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
+    - While full AWS credentials are not strictly required for interacting with DynamoDB Local, having the AWS CLI
       installed is necessary for the `aws dynamodb create-table` command. You can configure it with fake credentials
       for local use if preferred:
-    * Credentials are needed for deploying the system to an AWS Account.
+    - Credentials are required to deploy the system to an AWS Account.
 
 4. **Python (Version 3.12 or as specified in [template.yml](template.yml)):**
-    * The runtime for the Lambda functions.
-    * Download: [https://www.python.org/downloads/](https://www.python.org/downloads/)
-    * It's highly recommended to use a virtual environment:
-      ```shell
-      python3 -m venv .venv
-      source .venv/bin/activate  # On macOS/Linux
-      # .venv\Scripts\activate   # On Windows
-      ```
+    - The runtime for the Lambda functions.
+    - Download: [https://www.python.org/downloads/](https://www.python.org/downloads/)
+    - It's highly recommended to use a virtual environment:
+    ```shell
+    python3 -m venv .venv
+    source .venv/bin/activate  # On macOS/Linux
+    # .venv\Scripts\activate   # On Windows
+    ```
+
+## Custom Domain Configuration
+
+This application uses custom domain names for the API Gateway endpoints. The domain configuration requires several AWS
+resources to be set up:
+
+### Prerequisites for Custom Domain
+
+- A Route 53 hosted zone for your domain
+- The following SSM parameters configured in your AWS account:
+
+```shell
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/DomainName" \
+    --value "dev.api.yourdomain.co.uk" \
+    --type "String"
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/Route53HostedZoneId" \
+    --value "Z1234567890ABC" \
+    --type "String"
+```
+
+### Domain and Certification Resources
+
+The template automatically creates:
+
+- SSL certificate with DNS validation
+- API Gateway custom domain name
+- Route 53 A record pointing to the API Gateway
+- Base path mapping for the API stage
+
+### Regional vs EDGE Domain configuration
+
+Currently, the gateway is configured to be a regional gateway, this means that the ACM Certification must be in the same
+region that the gateway is deployed in and that is how the template is set up. If you want to configure the gateway to
+be an EDGE gateway, then the certificate must be in us-east-1.
 
 ## Project Dependencies
 
-Once your Python virtual environment is activated, you can initialize the project dependencies using the `make init` target:
+Once your Python virtual environment is activated, you can initialize the project dependencies using the `make init`
+target:
 
 ```shell
 make init
@@ -73,7 +113,8 @@ This will install the required Python packages for development, testing, and the
 
 ## Linting and Formatting
 
-To lint and format the Python code in this project, you can use the `make lint`, `make lint-fix`, and `make format` targets:
+To lint and format the Python code in this project, you can use the `make lint`, `make lint-fix`, and `make format`
+targets:
 
 - **Lint the code**:
   ```shell
@@ -100,7 +141,7 @@ To lint and format the Python code in this project, you can use the `make lint`,
   make format-check
   ```
 
-## Make Help 
+## Make Help
 
 You can also run `make` or `make help` to see all the options for make.
 
@@ -126,7 +167,8 @@ To test the project locally, you can use the `make test` or `make test-cov-repor
 
 ### Cognito
 
-Cognito cannot be set up locally, so if you want to run the system locally you need to use a deployed version of cognito, see below for details on how to deploy cognito.
+Cognito cannot be set up locally, so if you want to run the system locally you need to use a deployed version of
+cognito, see below for details on how to deploy cognito.
 
 ### DynamoDB
 
@@ -172,10 +214,11 @@ aws dynamodb list-tables --endpoint-url http://localhost:8000
 ```
 
 This creates a DynamoDB table that:
-* Uses `idempotencyKey` as the primary key to prevent duplicate transactions
-* Has a global secondary index on `id` for looking up transactions by their ID
-* Uses on-demand capacity for automatic scaling 
-* Stores all attributes in the secondary index (ProjectionType=ALL)
+
+- Uses `idempotencyKey` as the primary key to prevent duplicate transactions
+- Has a global secondary index on `id` for looking up transactions by their ID
+- Uses on-demand capacity for automatic scaling
+- Stores all attributes in the secondary index (ProjectionType=ALL)
 
 ### Environment Variables
 
@@ -201,10 +244,10 @@ different environments (e.g., `dev`, `test`, `prod`) are managed in the `samconf
 
 Ensure you have met all the items in the [Prerequisites](#prerequisites) section, especially:
 
-* An active AWS Account.
-* AWS CLI is configured with credentials that have sufficient permissions to create the resources defined in
+- An active AWS Account.
+- AWS CLI is configured with credentials that have sufficient permissions to create the resources defined in
   [template.yml](template.yml) (CloudFormation, S3, Lambda, API Gateway, DynamoDB, IAM roles, etc.).
-* AWS SAM CLI installed.
+- AWS SAM CLI installed.
 
 ### S3 Bucket for Artifacts
 
@@ -239,53 +282,37 @@ To deploy updates to the **development (`dev`)** environment run the same comman
 To deploy to the **production (`prod`)** environment:
 
 ```shell
+
 sam deploy --config-env prod
 ```
 
 To deploy to the **testing (`test`)** environment:
 
 ```shell
+
 sam deploy --config-env test
 ```
 
 **Deployment Process:**
 
-* The SAM CLI will use the parameters defined in `samconfig.toml` for the specified environment.
-* It uploads the built artifacts to the configured S3 bucket under the environment-specific prefix.
-* It creates an AWS CloudFormation changeset, which is a preview of the changes.
-* You will be prompted to review and confirm these changes before they are applied to your AWS environment (due to
+- The SAM CLI will use the parameters defined in `samconfig.toml` for the specified environment.
+- It uploads the built artifacts to the configured S3 bucket under the environment-specific prefix.
+- It creates an AWS CloudFormation changeset, which is a preview of the changes.
+- You will be prompted to review and confirm these changes before they are applied to your AWS environment (due to
   `confirm_changeset = true`). **Always review these changes carefully, especially for production deployments.**
-* If confirmed, CloudFormation will create or update your stack and all associated resources.
+- If confirmed, CloudFormation will create or update your stack and all associated resources.
 
 ### Verifying the Deployment
 
 After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
 
 1. **AWS CloudFormation Console:**
-    * Navigate to the CloudFormation console in the AWS region you deployed to.
-    * Select your stack (e.g., `banking-app-dev`).
-    * Check the "Status," "Events," "Resources," and especially the **"Outputs"** tab. The "Outputs" tab will contain
-      important information like your `BankingApiGatewayEndpoint`.
+    - Navigate to the CloudFormation console in the AWS region you deployed to.
+    - Select your stack (e.g., `banking-app-dev`).
+    - Check the "Status," "Events," and "Resources" sections.
 2. **Test the API Endpoint:**
-    * Use a tool like `curl` or Postman to send requests to the `BankingApiGatewayEndpoint` obtained from the
-      CloudFormation stack outputs.
-    * Example (replace with your actual endpoint and a valid idempotency key):
-     ```shell
-     API_ENDPOINT="YOUR_API_GATEWAY_ENDPOINT_FROM_OUTPUTS"
-
-    IDEMPOTENCY_KEY=$(uuidgen)
-    ACCOUNT_ID=$(uuidgen)
-
-    JSON_PAYLOAD=$(printf '{"accountId": "%s", "amount": 150.75, 
-    "type": "DEPOSIT", "description": "Initial cloud deposit"}' "$
-    ACCOUNT_ID")
-
-    curl -X POST \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
-    -d "$JSON_PAYLOAD" \
-    "$API_ENDPOINT"
-    ```
+    - Use a tool like `curl` or Postman to send requests to the custom domain you configured in SSM (
+      `/banking-app/<env>/DomainName`), e.g. `https://dev.api.yourdomain.co.uk`.
 
 ### Deleting a Deployed Environment
 
@@ -310,14 +337,18 @@ Monitor the deletion progress in the AWS CloudFormation console.
 
 ## Cognito
 
-To deploy Cognito for managing users or for local testing of the system, you can either use the normal sam deploy above and reuse the Cognito user pool ID and client ID, or you can use the [cognito-template.yml](cognito-template.yml) to only deploy Cognito. The users used in this must be created either in Cognito or with a custom flow, as this API does not support creating users.
+To deploy Cognito for managing users or for local testing of the system, you can either use the normal sam deploy above
+and reuse the Cognito user pool ID and client ID, or you can use the [cognito-template.yml](cognito-template.yml) to
+only deploy Cognito. The users used in this must be created either in Cognito or with a custom flow, as this API does
+not support creating users.
 
 ### Security Considerations
 
 When deploying Cognito for production use:
-* Ensure users are created through secure, audited processes
-* Consider implementing user invitation flows rather than allowing self-registration
-* Regularly review and rotate any temporary credentials used for user management
+
+- Ensure users are created through secure, audited processes
+- Consider implementing user invitation flows rather than allowing self-registration
+- Regularly review and rotate any temporary credentials used for user management
 
 ### Deploying just cognito
 
@@ -338,6 +369,7 @@ finally to delete it, you should run:
 ```shell
 sam delete --config-file samconfig.cognito.toml  
 ```
+
 ## API Idempotency Requirements
 
 ### Endpoints Requiring Idempotency Keys
@@ -367,11 +399,11 @@ String idempotencyKey = UUID.randomUUID().toString();
 
 ## TODO
 
-* Move authentication logic in record transactions to a Lambda layer
-* Add accounts to the system
-* Refactor `record_transaction` to `request_transaction`
-* Use DynamoDB Streams to update account balances after transactions
-* Once an account is updated, notify the user using SES, SNS, or other channels
-* Create a set of GraphQL APIs using AppSync
-* Experiment with AppSync events
-* Add an SQS queue
+- Move authentication logic in record transactions to a Lambda layer
+- Add accounts to the system
+- Refactor `record_transaction` to `request_transaction`
+- Use DynamoDB Streams to update account balances after transactions
+- Once an account is updated, notify the user using SES, SNS, or other channels
+- Create a set of GraphQL APIs using AppSync
+- Experiment with AppSync events
+- Add an SQS queue

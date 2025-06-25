@@ -7,7 +7,7 @@ Description: |
 Parameters:
   Environment:
     Type: String
-    Description: The deployment environment (e.g., dev, test, prod).
+    Description: The deployment environment (e.g. dev, test, prod).
     AllowedValues:
       - dev
       - test
@@ -79,6 +79,12 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt BankingUserPool.Arn
+      Domain:
+        DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+        CertificateArn: !Ref ApiCertificate
+        EndpointConfiguration: REGIONAL
+        Route53:
+          HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
 
   # --- Lambda Functions ---
   RecordTransactionFunction:
@@ -194,16 +200,12 @@ Resources:
         AttributeName: ttlTimestamp
         Enabled: true
 
-Outputs:
-  TransactionsTableName:
-    Description: Name of the DynamoDB Transactions table
-    Value: !Ref TransactionsTable
-  DeployedEnvironment:
-    Description: The environment this stack was deployed to.
-    Value: !Ref Environment
-  CognitoUserPoolId:
-    Description: The ID of the Cognito User Pool
-    Value: !Ref BankingUserPool
-  CognitoUserPoolClientId:
-    Description: The ID of the Cognito User Pool Client
-    Value: !Ref BankingUserPoolClient
+  # Domain Configuration
+  ApiCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+          HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
