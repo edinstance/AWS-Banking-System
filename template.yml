@@ -7,7 +7,7 @@ Description: |
 Parameters:
   Environment:
     Type: String
-    Description: The deployment environment (e.g., dev, test, prod).
+    Description: The deployment environment (e.g. dev, test, prod).
     AllowedValues:
       - dev
       - test
@@ -194,16 +194,40 @@ Resources:
         AttributeName: ttlTimestamp
         Enabled: true
 
-Outputs:
-  TransactionsTableName:
-    Description: Name of the DynamoDB Transactions table
-    Value: !Ref TransactionsTable
-  DeployedEnvironment:
-    Description: The environment this stack was deployed to.
-    Value: !Ref Environment
-  CognitoUserPoolId:
-    Description: The ID of the Cognito User Pool
-    Value: !Ref BankingUserPool
-  CognitoUserPoolClientId:
-    Description: The ID of the Cognito User Pool Client
-    Value: !Ref BankingUserPoolClient
+  # Domain Configuration
+  ApiCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+          HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
+
+  ApiGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+      RegionalCertificateArn: !Ref ApiCertificate
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+
+  ApiGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: BankingApiGatewayStage
+    Properties:
+      DomainName: !Ref ApiGatewayDomainName
+      RestApiId: !Ref BankingApiGateway
+      Stage: !Ref Environment
+
+  ApiDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
+      Name: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiGatewayDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiGatewayDomainName.RegionalHostedZoneId
