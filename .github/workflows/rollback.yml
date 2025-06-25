@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_environment:
-        description: 'Name of the SAM config environment to rollback (e.g., development, testing and production).'
+        description: "Name of the SAM config environment to rollback (e.g., development, testing and production)."
         required: true
         type: choice
         options:
@@ -12,7 +12,7 @@ on:
           - testing
           - production
       rollback_commit:
-        description: 'Commit hash to rollback to (e.g., abc1234 or HEAD~1) or branch name'
+        description: "Commit hash to rollback to (e.g., abc1234 or HEAD~1) or branch name"
         required: true
         type: string
       confirm_rollback:
@@ -74,17 +74,17 @@ jobs:
         id: validate_commit
         run: |
           COMMIT="${{ github.event.inputs.rollback_commit }}"
-          
+
           # Fetch all commits
           git fetch --all --tags --quiet
-          
+
           RESOLVED_COMMIT=$(git rev-parse "$COMMIT")
-          
+
           if ! git cat-file -e "$RESOLVED_COMMIT^{commit}" 2>/dev/null; then
             echo "Error: Invalid commit: $COMMIT"
             exit 1
           fi
-          
+
           echo "Valid commit found: $COMMIT (resolved to $RESOLVED_COMMIT)"
           echo "resolved_commit=$RESOLVED_COMMIT" >> "$GITHUB_OUTPUT"
 
@@ -100,7 +100,7 @@ jobs:
         run: |
           echo "Fetching current deployment information..."
           CURRENT_COMMIT=$(git rev-parse HEAD)
-          
+
           echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
           echo "Current deployment - Commit: $CURRENT_COMMIT"
 
