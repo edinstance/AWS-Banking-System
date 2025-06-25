@@ -61,6 +61,34 @@ configured on your system:
       # .venv\Scripts\activate   # On Windows
       ```
 
+## Custom Domain Configuration
+
+This application uses custom domain names for the API Gateway endpoints. The domain configuration requires several AWS resources to be set up:
+
+### Prerequisites for Custom Domain
+- A Route 53 hosted zone for your domain
+- The following SSM parameters configured in your AWS account:
+
+```shell
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/DomainName" \
+    --value "api-dev.yourdomain.com" \
+    --type "String"
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/Route53HostedZoneId" \
+    --value "Z1234567890ABC" \
+    --type "String"
+```
+
+### Domain Resources
+The template automatically creates:
+- SSL certificate with DNS validation
+- API Gateway custom domain name
+- Route 53 A record pointing to the API Gateway
+- Base path mapping for the API stage
+
 ## Project Dependencies
 
 Once your Python virtual environment is activated, you can initialize the project dependencies using the `make init` target:
