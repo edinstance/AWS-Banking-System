@@ -292,14 +292,12 @@ After a successful deployment (`CREATE_COMPLETE` or `UPDATE_COMPLETE` status):
 1. **AWS CloudFormation Console:**
     * Navigate to the CloudFormation console in the AWS region you deployed to.
     * Select your stack (e.g., `banking-app-dev`).
-    * Check the "Status," "Events," "Resources," and especially the **"Outputs"** tab. The "Outputs" tab will contain
-      important information like your `BankingApiGatewayEndpoint`.
+    * Check the "Status," "Events," and "Resources" sections.
 2. **Test the API Endpoint:**
-    * Use a tool like `curl` or Postman to send requests to the `BankingApiGatewayEndpoint` obtained from the
-      CloudFormation stack outputs.
+    * Use a tool like `curl` or Postman to send requests to the `BankingApiGatewayEndpoint` that you set in ssm.
     * Example (replace with your actual endpoint and a valid idempotency key):
      ```shell
-     API_ENDPOINT="YOUR_API_GATEWAY_ENDPOINT_FROM_OUTPUTS"
+     API_ENDPOINT="YOUR_API_GATEWAY_ENDPOINT"
 
     IDEMPOTENCY_KEY=$(uuidgen)
     ACCOUNT_ID=$(uuidgen)
