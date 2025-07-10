@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: |
   SAM template for a banking transaction system with intuitive transaction types.
@@ -23,7 +23,7 @@ Globals:
     Environment:
       Variables:
         POWERTOOLS_LOG_LEVEL: INFO
-        POWERTOOLS_SERVICE_NAME: transactions
+        POWERTOOLS_SERVICE_NAME: !Sub ${AWS::StackName}
         ENVIRONMENT_NAME: !Ref Environment
 
 Resources:
@@ -31,7 +31,7 @@ Resources:
   BankingUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub ${AWS::StackName}-user-pool-${Environment}
+      UserPoolName: !Sub ${AWS::StackName}-user-pool
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -56,7 +56,7 @@ Resources:
   BankingUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: !Sub ${AWS::StackName}-user-pool-client-${Environment}
+      ClientName: !Sub ${AWS::StackName}-user-pool-client
       UserPoolId: !Ref BankingUserPool
       ExplicitAuthFlows:
         - ALLOW_ADMIN_USER_PASSWORD_AUTH
@@ -87,26 +87,28 @@ Resources:
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
 
   # --- Lambda Functions ---
-  RecordTransactionFunction:
+  RequestTransactionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-record-transaction
+      FunctionName: !Sub ${AWS::StackName}-request-transaction
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
-        - ResourceName: RecordTransactionFunction
-      CodeUri: functions/record_transactions/
-      Handler: record_transactions.app.lambda_handler
+        - ResourceName: RequestTransactionFunction
+      CodeUri: functions/request_transaction/
+      Handler: request_transaction.app.lambda_handler
       Environment:
         Variables:
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
-          DYNAMODB_ENDPOINT: ""
+          DYNAMODB_ENDPOINT: ''
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
       Events:
         ApiSaveTransactionEvent:
           Type: Api
           Properties:
-            Path: /save/transaction
+            Path: /transactions
             Method: POST
             RestApiId: !Ref BankingApiGateway
             Auth:
@@ -128,6 +130,8 @@ Resources:
         Variables:
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
       Events:
         ApiLoginEvent:
           Type: Api
@@ -155,12 +159,25 @@ Resources:
               - cognito-idp:AdminRespondToAuthChallenge
             Resource: !GetAtt BankingUserPool.Arn
 
-  RecordTransactionFunctionLogGroup:
+  # --- Lambda Layers ---
+  PythonHelpersLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-helpers-layer
+      ContentUri: layers/python/helpers
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  # --- Log Groups ---
+  RequestTransactionFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      LogGroupName: !Sub /aws/lambda/${RecordTransactionFunction}
+      LogGroupName: !Sub /aws/lambda/${RequestTransactionFunction}
       RetentionInDays: 7
 
   AuthFunctionLogGroup:
@@ -176,6 +193,9 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub ${AWS::StackName}-transactions-table
+      KeySchema:
+        - AttributeName: idempotencyKey
+          KeyType: HASH
       AttributeDefinitions:
         - AttributeName: idempotencyKey
           AttributeType: S
@@ -186,9 +206,6 @@ Resources:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
-      KeySchema:
-        - AttributeName: idempotencyKey
-          KeyType: HASH
       GlobalSecondaryIndexes:
         - IndexName: TransactionIdIndex
           KeySchema:

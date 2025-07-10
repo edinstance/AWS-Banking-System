@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from botocore.exceptions import ClientError
 
-from functions.record_transactions.record_transactions.idempotency import (
+from functions.request_transaction.request_transaction.idempotency import (
     handle_idempotency_error,
 )
 
@@ -37,7 +37,7 @@ class TestIdempotencyErrors:
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
         )
         with patch(
-            "functions.record_transactions.record_transactions.idempotency.check_existing_transaction",
+            "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             side_effect=Exception("New error"),
         ):
             result = handle_idempotency_error(
@@ -66,7 +66,7 @@ class TestIdempotencyErrors:
 
         existing_transaction = {"id": "existing-txn-123"}
         with patch(
-            "functions.record_transactions.record_transactions.idempotency.check_existing_transaction",
+            "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             return_value=existing_transaction,
         ):
             result = handle_idempotency_error(

@@ -5,13 +5,13 @@ from decimal import Decimal
 import pytest
 from botocore.exceptions import ClientError
 
-from functions.record_transactions.record_transactions.transactions import (
+from functions.request_transaction.request_transaction.transactions import (
     validate_transaction_data,
     check_existing_transaction,
     save_transaction,
     build_transaction_item,
 )
-from tests.record_transaction_tests.conftest import VALID_TRANSACTION_TYPES, VALID_UUID
+from tests.request_transaction_tests.conftest import VALID_TRANSACTION_TYPES, VALID_UUID
 
 
 class TestValidateTransactionData:
@@ -232,7 +232,6 @@ class TestBuildTransaction:
         }
         user_id = str(uuid.uuid4())
         idempotency_key = str(uuid.uuid4())
-        environment_name = "production"
         request_id = str(uuid.uuid4())
 
         result = build_transaction_item(
@@ -240,7 +239,6 @@ class TestBuildTransaction:
             request_body,
             user_id,
             idempotency_key,
-            environment_name,
             request_id,
         )
 

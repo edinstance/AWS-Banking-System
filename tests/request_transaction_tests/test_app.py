@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from botocore.exceptions import ClientError
 
-from functions.record_transactions.record_transactions.app import lambda_handler
-from tests.record_transaction_tests.conftest import VALID_UUID
+from functions.request_transaction.request_transaction.app import lambda_handler
+from tests.request_transaction_tests.conftest import VALID_UUID
 
 
 class TestLambdaHandler:
@@ -14,7 +14,7 @@ class TestLambdaHandler:
         response = lambda_handler(valid_event, mock_context)
         assert response["statusCode"] == 201
         assert "transactionId" in response["body"]
-        assert "Transaction recorded successfully" in response["body"]
+        assert "Transaction requested successfully" in response["body"]
 
     def test_missing_idempotency_key(
         self, valid_event, mock_context, mock_table, mock_auth
@@ -153,7 +153,7 @@ class TestLambdaHandler:
         Tests that the Lambda handler returns a 500 status code and a generic error message when an unexpected exception, such as a MemoryError during JSON parsing, occurs.
         """
         with patch(
-            "functions.record_transactions.record_transactions.app.json.loads"
+            "functions.request_transaction.request_transaction.app.json.loads"
         ) as mock_json_loads:
             mock_json_loads.side_effect = MemoryError("Unexpected memory error")
 
@@ -195,7 +195,7 @@ class TestLambdaHandler:
         }
 
         with patch(
-            "functions.record_transactions.record_transactions.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_user"
         ) as mock_auth:
             mock_auth.return_value = (None, auth_error_response)
 
@@ -210,7 +210,7 @@ class TestLambdaHandler:
         This test mocks the authentication function to return `(None, None)` and asserts that the handler responds with a 401 status code and an appropriate unauthorised message.
         """
         with patch(
-            "functions.record_transactions.record_transactions.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_user"
         ) as mock_auth:
             mock_auth.return_value = (None, None)
 

@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from functions.record_transactions.record_transactions import app
+from functions.request_transaction.request_transaction import app
 
 VALID_UUID = str(uuid.uuid4())
 TEST_USER_ID = str(uuid.uuid4())
@@ -114,7 +114,7 @@ def mock_table():
 
     This fixture allows tests to simulate an empty database state by ensuring that any get_item call returns {"Item": None} and any query call returns {"Items": []}.
     """
-    with patch("functions.record_transactions.record_transactions.app.table") as mock:
+    with patch("functions.request_transaction.request_transaction.app.table") as mock:
         mock.query.return_value = {"Items": []}
         mock.get_item.return_value = {"Item": None}
         yield mock
@@ -129,7 +129,7 @@ def mock_auth():
         The patched mock object for use in tests requiring authentication mocking.
     """
     with patch(
-        "functions.record_transactions.record_transactions.auth.get_sub_from_id_token"
+        "functions.request_transaction.request_transaction.auth.get_sub_from_id_token"
     ) as mock:
         mock.return_value = TEST_USER_ID
         yield mock
@@ -143,7 +143,7 @@ def mock_jwks_client():
     Yields a mock PyJWKClient instance whose `get_signing_key_from_jwt` method returns a mock signing key with a dummy key attribute.
     """
     with patch(
-        "functions.record_transactions.record_transactions.auth.PyJWKClient"
+        "functions.request_transaction.request_transaction.auth.PyJWKClient"
     ) as mock_client:
         mock_instance = MagicMock()
         mock_signing_key = MagicMock()
@@ -159,7 +159,7 @@ def mock_jwt():
     Yields a patched mock of the JWT library used in the authentication module for testing purposes.
     """
     with patch(
-        "functions.record_transactions.record_transactions.auth.jwt"
+        "functions.request_transaction.request_transaction.auth.jwt"
     ) as mock_jwt:
         yield mock_jwt
 
@@ -194,9 +194,9 @@ def mock_create_response():
     Yields a patched mock of the idempotency response creation function for testing.
 
     This fixture allows tests to intercept and control calls to the `create_response`
-    function within the idempotency module of the record_transactions app.
+    function within the idempotency module of the request_transaction app.
     """
     with patch(
-        "functions.record_transactions.record_transactions.idempotency.create_response"
+        "functions.request_transaction.request_transaction.idempotency.create_response"
     ) as mock:
         yield mock

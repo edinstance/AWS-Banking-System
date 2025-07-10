@@ -8,17 +8,17 @@ from jwt.exceptions import (
     ExpiredSignatureError,
 )
 
-from functions.record_transactions.record_transactions.auth import (
+from functions.request_transaction.request_transaction.auth import (
     get_sub_from_id_token,
     authenticate_user,
 )
-from functions.record_transactions.record_transactions.exceptions import (
+from functions.request_transaction.request_transaction.exceptions import (
     MissingSubClaimError,
     InvalidTokenError,
     AuthConfigurationError,
     AuthVerificationError,
 )
-from tests.record_transaction_tests.conftest import (
+from tests.request_transaction_tests.conftest import (
     TEST_SUB,
     TEST_ID_TOKEN,
     TEST_USER_POOL_ID,

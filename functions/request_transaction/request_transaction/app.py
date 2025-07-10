@@ -1,7 +1,7 @@
 """
-Transaction Recording Lambda Function
+Transaction Requesting Lambda Function
 
-This Lambda function records financial transactions in a DynamoDB table with
+This Lambda function requests financial transactions in a DynamoDB table with
 idempotency support to prevent duplicate transactions. It validates incoming
 requests, processes transaction data, and stores it securely.
 
@@ -39,12 +39,13 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
+from dynamodb import get_dynamodb_resource
+from response_helpers import create_response
 from .auth import (
     authenticate_user,
 )
-from .dynamodb import get_dynamodb_resource
-from .helpers import create_response, validate_request_headers
 from .idempotency import handle_idempotency_error
+from .transaction_helpers import validate_request_headers
 from .transactions import (
     validate_transaction_data,
     save_transaction,
@@ -54,7 +55,7 @@ from .transactions import (
 TRANSACTIONS_TABLE_NAME = os.environ.get("TRANSACTIONS_TABLE_NAME")
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
-VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
+VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL"]
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
@@ -139,7 +140,6 @@ def lambda_handler(event, context: LambdaContext):
             request_body,
             user_id,
             idempotency_key,
-            ENVIRONMENT_NAME,
             request_id,
         )
 
@@ -165,9 +165,9 @@ def lambda_handler(event, context: LambdaContext):
             )
 
         response_payload = {
-            "message": "Transaction recorded successfully!",
+            "message": "Transaction requested successfully!",
             "transactionId": transaction_id,
-            "status": "COMPLETED",
+            "status": "REQUESTED",
             "timestamp": transaction_item["createdAt"],
             "idempotencyKey": idempotency_key,
         }

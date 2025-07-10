@@ -6,7 +6,7 @@ from decimal import DecimalException
 from aws_lambda_powertools import Logger
 from botocore.exceptions import ClientError
 
-from .helpers import is_valid_uuid
+from .transaction_helpers import is_valid_uuid
 
 
 def validate_transaction_data(data, valid_transaction_types):
@@ -119,7 +119,6 @@ def build_transaction_item(
     request_body: dict,
     user_id: str,
     idempotency_key: str,
-    environment_name: str,
     request_id: str,
 ) -> dict:
     """
@@ -132,7 +131,6 @@ def build_transaction_item(
         request_body (dict): Transaction details from the incoming request.
         user_id (str): Identifier of the user initiating the transaction.
         idempotency_key (str): Key to ensure transaction idempotency.
-        environment_name (str): Name of the deployment environment.
         request_id (str): Unique identifier for the request.
 
     Returns:
@@ -165,10 +163,9 @@ def build_transaction_item(
         "amount": amount,
         "type": transaction_type,
         "description": description,
-        "status": "PENDING",
+        "status": "REQUESTED",
         "ttlTimestamp": ttl_timestamp,
         "idempotencyKey": idempotency_key,
-        "environment": environment_name,
         "requestId": request_id,
         "rawRequest": json.dumps(sanitized_request_body),
     }

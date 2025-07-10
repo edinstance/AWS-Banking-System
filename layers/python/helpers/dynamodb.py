@@ -11,6 +11,7 @@ def get_dynamodb_resource(dynamodb_endpoint: str, aws_region: str, logger: Logge
     Args:
         dynamodb_endpoint: Custom DynamoDB endpoint URL. If not provided, the default AWS endpoint is used.
         aws_region: AWS region in which to initialise the DynamoDB resource.
+        logger: Logger instance to use.
 
     Returns:
         A boto3 DynamoDB resource instance.
