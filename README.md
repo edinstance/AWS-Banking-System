@@ -382,7 +382,7 @@ then it rebuilds and deploys the application.
 
 The following endpoints require an `Idempotency-Key` header to prevent duplicate operations:
 
-- `POST /save/transaction` - For recording financial transactions
+- `POST /transaction` - For recording financial transactions
 
 ### Generating Idempotency Keys
 
@@ -407,7 +407,6 @@ String idempotencyKey = UUID.randomUUID().toString();
 
 - Move authentication logic in record transactions to a Lambda layer
 - Add accounts to the system
-- Refactor `record_transaction` to `request_transaction`
 - Use DynamoDB Streams to update account balances after transactions
 - Once an account is updated, notify the user using SES, SNS, or other channels
 - Create a set of GraphQL APIs using AppSync
