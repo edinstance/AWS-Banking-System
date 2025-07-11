@@ -12,7 +12,7 @@ class TestGetDynamoDBResource:
         """
         mock_logger = MagicMock()
         endpoint_url = "http://localhost:8000"
-        region = "us-west-2"
+        region = "eu-west-2"
 
         with patch("boto3.resource") as mock_boto3_resource:
             mock_resource = MagicMock()

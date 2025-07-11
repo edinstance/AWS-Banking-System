@@ -6,7 +6,7 @@ from functions.auth.auth.config import AuthConfig
 from functions.auth.auth.exceptions import AuthConfigurationError
 from functions.auth.auth.service import AuthService
 
-from tests.auth.conftest import (
+from tests.functions.auth.conftest import (
     MockUserNotConfirmedException,
     MockTooManyRequestsException,
     MockNotAuthorizedException,

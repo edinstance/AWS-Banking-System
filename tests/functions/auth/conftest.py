@@ -4,7 +4,7 @@ import pytest
 
 from functions.auth.auth.config import AuthConfig
 from functions.auth.auth.service import AuthService
-from tests.auth.mock_exceptions import (
+from tests.functions.auth.mock_exceptions import (
     MockUserNotConfirmedException,
     MockNotAuthorizedException,
     MockUserNotFoundException,

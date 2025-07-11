@@ -11,7 +11,10 @@ from functions.request_transaction.request_transaction.transactions import (
     save_transaction,
     build_transaction_item,
 )
-from tests.request_transaction_tests.conftest import VALID_TRANSACTION_TYPES, VALID_UUID
+from tests.functions.request_transaction.conftest import (
+    VALID_TRANSACTION_TYPES,
+    VALID_UUID,
+)
 
 
 class TestValidateTransactionData:

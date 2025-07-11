@@ -8,7 +8,6 @@ from functions.request_transaction.request_transaction import app
 
 VALID_UUID = str(uuid.uuid4())
 TEST_USER_ID = str(uuid.uuid4())
-TEST_REQUEST_ID = str(uuid.uuid4())
 TEST_ID_TOKEN = "dummy.jwt.token"
 TEST_USER_POOL_ID = "eu-west-2-testpool"
 TEST_CLIENT_ID = "test_client_id"
@@ -18,13 +17,13 @@ VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 
 
 @pytest.fixture(scope="function")
-def app_with_mocked_table(monkeypatch, dynamo_resource, dynamo_table):
+def app_with_mocked_table(monkeypatch, dynamo_resource, mock_transactions_dynamo_table):
     """
     Provides the app module configured to use a mocked DynamoDB table for testing.
 
     Sets necessary environment variables and patches AWS resources so that the app module interacts with a mocked DynamoDB table. Yields the reloaded app module with the mocked table assigned for use in tests.
     """
-    table_name = dynamo_table
+    table_name = mock_transactions_dynamo_table
     monkeypatch.setenv("TRANSACTIONS_TABLE_NAME", table_name)
     monkeypatch.setenv("ENVIRONMENT_NAME", "test")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "INFO")
@@ -51,19 +50,6 @@ def app_without_table(monkeypatch):
     reload(app)
 
     yield app
-
-
-@pytest.fixture
-def mock_context():
-    """
-    Creates a mocked AWS Lambda context object with a preset request ID.
-
-    Returns:
-        A MagicMock instance simulating the Lambda context, with the aws_request_id attribute set.
-    """
-    context = MagicMock()
-    context.aws_request_id = TEST_REQUEST_ID
-    return context
 
 
 @pytest.fixture

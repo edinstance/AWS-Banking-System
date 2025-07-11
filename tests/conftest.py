@@ -1,10 +1,13 @@
 import os
+import uuid
 
 import boto3
 import pytest
 from moto import mock_aws
+from unittest.mock import MagicMock
 
 AWS_REGION = "eu-west-2"
+TEST_REQUEST_ID = str(uuid.uuid4())
 
 boto3.setup_default_session(region_name=AWS_REGION)
 
@@ -24,6 +27,14 @@ def aws_credentials():
 
 
 @pytest.fixture(scope="function")
+def aws_ses_credentials():
+    os.environ["SES_ENABLED"] = "True"
+    os.environ["SES_SENDER_EMAIL"] = "sender@example.com"
+    os.environ["SES_REPLY_EMAIL"] = "reply@example.com"
+    os.environ["SES_BOUNCE_EMAIL"] = "bounce@example.com"
+
+
+@pytest.fixture(scope="function")
 def dynamo_resource(aws_credentials):
     """
     Provides a mocked DynamoDB resource for use in tests.
@@ -37,7 +48,7 @@ def dynamo_resource(aws_credentials):
 
 
 @pytest.fixture(scope="function")
-def dynamo_table(dynamo_resource):
+def mock_transactions_dynamo_table(dynamo_resource):
     """
     Creates a mocked DynamoDB table with a primary key on 'id' and a global secondary index on 'idempotencyKey'.
 
@@ -66,6 +77,26 @@ def dynamo_table(dynamo_resource):
                     "WriteCapacityUnits": 5,
                 },
             }
+        ],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+
+    # Wait for the table to be created
+    table.meta.client.get_waiter("table_exists").wait(TableName=table_name)
+
+    return table_name
+
+
+@pytest.fixture(scope="function")
+def mock_accounts_dynamo_table(dynamo_resource):
+    table_name = "test-accounts-table"
+
+    # Create the table with just a hash key for 'id'
+    table = dynamo_resource.create_table(
+        TableName=table_name,
+        KeySchema=[{"AttributeName": "accountId", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "accountId", "AttributeType": "S"},
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
@@ -150,3 +181,33 @@ def mock_cognito_user_pool(cognito_client):
         "password": test_password,
         "cognito_client": cognito_client,
     }
+
+
+@pytest.fixture
+def mock_ses_client():
+    with mock_aws():
+        client = boto3.client("ses", region_name=AWS_REGION)
+
+        yield client
+
+
+@pytest.fixture
+def mock_get_ses_client(monkeypatch):
+    mock_client = MagicMock()
+    mock_get_client = MagicMock(return_value=mock_client)
+    monkeypatch.setattr("ses.get_ses_client", mock_get_client)
+
+    yield mock_get_client, mock_client
+
+
+@pytest.fixture
+def mock_context():
+    """
+    Creates a mocked AWS Lambda context object with a preset request ID.
+
+    Returns:
+        A MagicMock instance simulating the Lambda context, with the aws_request_id attribute set.
+    """
+    context = MagicMock()
+    context.aws_request_id = TEST_REQUEST_ID
+    return context

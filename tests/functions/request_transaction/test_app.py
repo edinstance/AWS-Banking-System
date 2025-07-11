@@ -4,7 +4,7 @@ from unittest.mock import patch
 from botocore.exceptions import ClientError
 
 from functions.request_transaction.request_transaction.app import lambda_handler
-from tests.request_transaction_tests.conftest import VALID_UUID
+from tests.functions.request_transaction.conftest import VALID_UUID
 
 
 class TestLambdaHandler:

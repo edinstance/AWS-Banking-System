@@ -18,7 +18,7 @@ from functions.request_transaction.request_transaction.exceptions import (
     AuthConfigurationError,
     AuthVerificationError,
 )
-from tests.request_transaction_tests.conftest import (
+from tests.functions.request_transaction.conftest import (
     TEST_SUB,
     TEST_ID_TOKEN,
     TEST_USER_POOL_ID,
