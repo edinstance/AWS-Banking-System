@@ -62,6 +62,39 @@ configured on your system:
     # .venv\Scripts\activate   # On Windows
     ```
 
+## AWS Simple Email Service (SES)
+
+This application uses AWS SES to send emails to customers, to set up SES
+follow [this guide](https://docs.aws.amazon.com/ses/latest/dg/setting-up.html). The application also requires production
+access of SES so that emails can be sent to users emails,
+follow [this guide](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html) to request production
+access.
+
+You will also need to configure if SES is enabled in the parameters of the [samconfig.toml](samconfig.toml)
+
+### SES Systems Manager Parameter Store Setup
+
+The SAM Template gets the environment variables for the SES setup from AWS SSM Parameter Store, the required parameters
+are below, but you will need to configure them with your own values.
+
+```shell
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/SesSenderEmail" \
+    --value "sender@yourdomain.co.uk" \
+    --type "String"
+
+aws ssm put-parameter \
+    --name "/banking-app/dev/SesReplyEmail" \
+    --value "reply@yourdomain.co.uk" \
+    --type "String"
+    
+aws ssm put-parameter \
+    --name "/banking-app/dev/SESBounceEmail" \
+    --value "bounce@yourdomain.co.uk" \
+    --type "String" 
+```
+
 ## Custom Domain Configuration
 
 This application uses custom domain names for the API Gateway endpoints. The domain configuration requires several AWS
@@ -106,6 +139,7 @@ Once your Python virtual environment is activated, you can initialize the projec
 target:
 
 ```shell
+
 make init
 ```
 

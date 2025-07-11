@@ -13,6 +13,17 @@ Parameters:
       - test
       - prod
     Default: dev
+  AwsRegion:
+    Type: String
+    Description: The region to deploy the infrastructure in.
+    Default: eu-west-2
+  SesEnabled:
+    Type: String
+    Description: Whether to enable SES email sending (true/false).
+    AllowedValues:
+      - true
+      - false
+    Default: true
 
 Globals:
   Function:
@@ -25,6 +36,10 @@ Globals:
         POWERTOOLS_LOG_LEVEL: INFO
         POWERTOOLS_SERVICE_NAME: !Sub ${AWS::StackName}
         ENVIRONMENT_NAME: !Ref Environment
+        SES_ENABLED: !Ref SesEnabled
+        SES_SENDER_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesSenderEmail}}'
+        SES_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesReplyEmail}}'
+        SES_BOUNCE_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SESBounceEmail}}'
 
 Resources:
   # --- Cognito User Pool ---

@@ -28,6 +28,8 @@ stack_name = "banking-app-prod"
 region = "eu-west-2"
 parameter_overrides=[
     "Environment=prod",
+    "AwsRegion=eu-west-2",
+    "SesEnabled=true"
 ]
 
 # --- Development Environment ---
@@ -41,6 +43,8 @@ stack_name = "banking-app-dev"
 region = "eu-west-2"
 parameter_overrides=[
     "Environment=dev",
+    "AwsRegion=eu-west-2",
+    "SesEnabled=true"
 ]
 
 # --- Testing Environment ---
@@ -54,4 +58,6 @@ stack_name = "banking-app-test"
 region = "eu-west-2"
 parameter_overrides=[
     "Environment=test",
+    "AwsRegion=eu-west-2",
+    "SesEnabled=false"
 ]
