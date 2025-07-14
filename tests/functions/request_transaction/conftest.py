@@ -151,14 +151,6 @@ def mock_jwt():
 
 
 @pytest.fixture
-def mock_logger():
-    """
-    Provides a MagicMock instance to simulate a logger for testing purposes.
-    """
-    return MagicMock()
-
-
-@pytest.fixture
 def valid_transaction_data():
     """
     Provides a dictionary representing valid transaction data for testing purposes.

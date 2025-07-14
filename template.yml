@@ -134,6 +134,57 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionsTable
 
+  ProcessTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-process-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: ProcessTransactionsFunction
+      CodeUri: functions/process_transactions/
+      Handler: process_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAccountsLambdaLayer
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt TransactionsTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 10
+            MaximumRetryAttempts: 1
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - DynamoDBStreamReadPolicy:
+            TableName: !Ref TransactionsTable
+            StreamName: !Select
+              - 3
+              - !Split
+                - /
+                - !GetAtt TransactionsTable.StreamArn
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminGetUser
+            Resource: !GetAtt BankingUserPool.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt TransactionProcessingDLQ.Arn
+
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -242,6 +293,13 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${AuthFunction}
       RetentionInDays: 7
 
+  ProcessTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProcessTransactionsFunction}
+      RetentionInDays: 7
 
   CognitoPostSignUpFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -279,7 +337,9 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttlTimestamp
         Enabled: true
-        
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
   # --- DynamoDB Table for Accounts ---
   AccountsTable:
     Type: AWS::DynamoDB::Table
@@ -299,6 +359,12 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttlTimestamp
         Enabled: true
+
+  # --- SQS Queues ---
+  TransactionProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-transaction-processing-dlq
 
   # --- Permissions ---
   CognitoPostSignUpFunctionPermission:

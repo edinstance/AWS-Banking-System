@@ -1,10 +1,10 @@
 import os
 import uuid
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
 from moto import mock_aws
-from unittest.mock import MagicMock
 
 AWS_REGION = "eu-west-2"
 TEST_REQUEST_ID = str(uuid.uuid4())
@@ -24,6 +24,20 @@ def aws_credentials():
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = AWS_REGION
+    os.environ["AWS_REGION"] = AWS_REGION
+
+
+@pytest.fixture(scope="function")
+def environment_variables():
+    os.environ["ACCOUNTS_TABLE_NAME"] = "test-accounts-table"
+    os.environ["TRANSACTIONS_TABLE_NAME"] = "test-transactions-table"
+    os.environ["TRANSACTION_PROCESSING_DLQ_URL"] = (
+        "https://sqs.test.amazonaws.com/123456789012/test-dlq"
+    )
+    os.environ["SQS_ENDPOINT"] = "https://sqs.test.amazonaws.com"
+    os.environ["COGNITO_USER_POOL_ID"] = "test-user-pool"
+    os.environ["ENVIRONMENT_NAME"] = "test"
+    os.environ["POWERTOOLS_LOG_LEVEL"] = "DEBUG"
 
 
 @pytest.fixture(scope="function")
@@ -219,3 +233,18 @@ def mock_context():
     context = MagicMock()
     context.aws_request_id = TEST_REQUEST_ID
     return context
+
+
+@pytest.fixture
+def mock_logger():
+    return MagicMock()
+
+
+@pytest.fixture
+def magic_mock_transactions_table():
+    return MagicMock()
+
+
+@pytest.fixture
+def magic_mock_accounts_table():
+    return MagicMock()
