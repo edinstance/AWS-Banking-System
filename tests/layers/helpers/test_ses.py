@@ -12,14 +12,14 @@ class TestGetSesClient:
         mock_logger = MagicMock()
         region = "eu-west-2"
 
-        with patch("boto3.client") as mock_boto3_resource:
-            mock_resource = MagicMock()
-            mock_boto3_resource.return_value = mock_resource
+        with patch("boto3.client") as mock_boto3_client:
+            mock_client = MagicMock()
+            mock_boto3_client.return_value = mock_client
 
             result = get_ses_client(region, mock_logger)
 
-            mock_boto3_resource.assert_called_once_with("ses", region_name=region)
-            assert result == mock_resource
+            mock_boto3_client.assert_called_once_with("ses", region_name=region)
+            assert result == mock_client
             mock_logger.info.assert_called_once_with(
                 "Initialized SES client with default endpoint"
             )
@@ -28,8 +28,8 @@ class TestGetSesClient:
         mock_logger = MagicMock()
         region = "eu-west-2"
 
-        with patch("boto3.client") as mock_boto3_resource:
-            mock_boto3_resource.side_effect = Exception("Connection error")
+        with patch("boto3.client") as mock_boto3_client:
+            mock_boto3_client.side_effect = Exception("Connection error")
 
             with pytest.raises(Exception) as exc_info:
                 get_ses_client(region, mock_logger)
