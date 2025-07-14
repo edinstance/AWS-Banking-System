@@ -105,6 +105,20 @@ class TestPostSignUp:
             with pytest.raises(ClientError):
                 lambda_handler(event, mock_context)
 
+    def test_no_account_id_returned(self, mock_context):
+        mock_table = MagicMock()
+
+        with patch(
+            "functions.cognito.post_sign_up.post_sign_up.app.table", mock_table
+        ), patch(
+            "functions.cognito.post_sign_up.post_sign_up.app.create_account_if_not_exists",
+            return_value=None,
+        ):
+            with pytest.raises(Exception) as exception_info:
+                lambda_handler(event, mock_context)
+
+            assert "Failed to create account for user" in str(exception_info.value)
+
     def test_missing_username(self, mock_context):
         mock_table = MagicMock()
         event_without_username = {
