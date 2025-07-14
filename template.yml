@@ -160,6 +160,10 @@ Resources:
             StartingPosition: TRIM_HORIZON
             BatchSize: 10
             MaximumRetryAttempts: 1
+            DestinationConfig:
+              OnFailure:
+                Type: SQS
+                Destination: !GetAtt TransactionProcessingDLQ.Arn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionsTable
