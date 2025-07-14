@@ -21,6 +21,7 @@ def create_account_if_not_exists(
             "userId": user_id,
             "balance": 0,
             "createdAt": datetime.datetime.now(datetime.UTC).isoformat(),
+            "updatedAt": datetime.datetime.now(datetime.UTC).isoformat(),
         }
 
         table.put_item(
