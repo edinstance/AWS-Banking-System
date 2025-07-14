@@ -39,6 +39,19 @@ class TestCheckUserOwnsAccount:
 
         assert result is True
 
+    def test_user_id_mismatch(self):
+        user_id = str(uuid.uuid4())
+        account_id = str(uuid.uuid4())
+
+        mock_table = MagicMock()
+        mock_table.get_item.return_value = {
+            "Item": {"accountId": account_id, "userId": str(uuid.uuid4())}
+        }
+
+        result = check_user_owns_account(account_id, user_id, mock_table)
+
+        assert result is False
+
     def test_no_item_returned(self):
         mock_table = MagicMock()
         mock_table.get_item.return_value = {}
