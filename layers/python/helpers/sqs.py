@@ -20,7 +20,7 @@ def get_sqs_client(sqs_endpoint: str, aws_region: str, logger: Logger):
 
 def send_dynamodb_record_to_dlq(
     record: dict,
-    sqs_url: str,
+    sqs_endpoint: str,
     dlq_url: str,
     aws_region: str,
     error_message: str,
@@ -31,7 +31,7 @@ def send_dynamodb_record_to_dlq(
         return False
 
     sqs_client = get_sqs_client(
-        sqs_endpoint=sqs_url, aws_region=aws_region, logger=logger
+        sqs_endpoint=sqs_endpoint, aws_region=aws_region, logger=logger
     )
 
     try:

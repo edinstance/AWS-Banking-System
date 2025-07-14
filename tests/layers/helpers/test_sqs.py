@@ -62,7 +62,7 @@ class TestSendDynamoDbRecordToDLQ:
         mock_logger = MagicMock()
         result = send_dynamodb_record_to_dlq(
             record={},
-            sqs_url="",
+            sqs_endpoint="",
             dlq_url="",
             aws_region="",
             error_message="",
@@ -81,7 +81,7 @@ class TestSendDynamoDbRecordToDLQ:
                 "SequenceNumber": "123456789012345678901",
             }
         }
-        sqs_url = "http://localhost:4566"
+        sqs_endpoint = "http://localhost:4566"
         dlq_url = "http://localhost:4566/queue/dlq"
         aws_region = "eu-west-2"
         error_message = "Test error message"
@@ -91,7 +91,7 @@ class TestSendDynamoDbRecordToDLQ:
         ) as mock_get_client:
             result = send_dynamodb_record_to_dlq(
                 record=record,
-                sqs_url=sqs_url,
+                sqs_endpoint=sqs_endpoint,
                 dlq_url=dlq_url,
                 aws_region=aws_region,
                 error_message=error_message,
@@ -100,7 +100,7 @@ class TestSendDynamoDbRecordToDLQ:
 
         assert result is True
         mock_get_client.assert_called_once_with(
-            sqs_endpoint=sqs_url, aws_region=aws_region, logger=mock_logger
+            sqs_endpoint=sqs_endpoint, aws_region=aws_region, logger=mock_logger
         )
 
         mock_sqs_client.send_message.assert_called_once()
@@ -118,7 +118,7 @@ class TestSendDynamoDbRecordToDLQ:
                 "SequenceNumber": "123456789012345678901",
             }
         }
-        sqs_url = "http://localhost:4566"
+        sqs_endpoint = "http://localhost:4566"
         dlq_url = "http://localhost:4566/queue/dlq"
         aws_region = "eu-west-2"
         error_message = "Test error message"
@@ -127,7 +127,7 @@ class TestSendDynamoDbRecordToDLQ:
         with patch("sqs.get_sqs_client", return_value=mock_sqs_client):
             result = send_dynamodb_record_to_dlq(
                 record=record,
-                sqs_url=sqs_url,
+                sqs_endpoint=sqs_endpoint,
                 dlq_url=dlq_url,
                 aws_region=aws_region,
                 error_message=error_message,
