@@ -8,6 +8,16 @@ from .exceptions import BusinessLogicError
 
 
 def get_account_balance(account_id: str, logger: Logger, accounts_table) -> Decimal:
+    """
+    Retrieve the balance for a specified account ID from the accounts table.
+
+    Raises:
+        BusinessLogicError: If the account does not exist in the database.
+        SystemError: If a database client error or unexpected exception occurs.
+
+    Returns:
+        Decimal: The account balance as a decimal value.
+    """
     try:
         response = accounts_table.get_item(
             Key={"accountId": account_id}, ProjectionExpression="balance"
@@ -28,6 +38,12 @@ def get_account_balance(account_id: str, logger: Logger, accounts_table) -> Deci
 def update_account_balance(
     account_id: str, new_balance: Decimal, logger: Logger, accounts_table
 ):
+    """
+    Update the balance and last updated timestamp for a specified account in the accounts table.
+
+    Raises:
+        SystemError: If a database client error or unexpected exception occurs during the update.
+    """
     try:
         accounts_table.update_item(
             Key={"accountId": account_id},

@@ -51,7 +51,7 @@ class TestGetDynamoDBResource:
 
     def test_get_dynamodb_resource_error_handling(self):
         """
-        Tests that get_dynamodb_resource logs an error and raises an exception when boto3.resource fails.
+        Verify that get_dynamodb_resource logs an error and re-raises an exception if boto3.resource fails during initialisation.
         """
         mock_logger = MagicMock()
         region = "us-west-2"

@@ -13,6 +13,11 @@ from functions.process_transactions.process_transactions.validation import (
 
 @pytest.fixture
 def valid_event():
+    """
+    Return a sample valid transaction event dictionary formatted with DynamoDB-style type annotations.
+
+    The returned dictionary includes fields for account ID, user ID, transaction ID, idempotency key, transaction type, and amount, each with appropriate type wrappers.
+    """
     return {
         "accountId": {"S": str(uuid.uuid4())},
         "userId": {"S": str(uuid.uuid4())},
@@ -25,6 +30,9 @@ def valid_event():
 
 class TestValidation:
     def test_missing_fields(self, mock_logger):
+        """
+        Test that validation fails with a specific error when all required transaction fields are missing.
+        """
         with pytest.raises(TransactionProcessingError) as exception_info:
             validate_transaction_data({}, mock_logger)
 
@@ -35,6 +43,9 @@ class TestValidation:
         )
 
     def test_invalid_transaction_type(self, mock_logger, valid_event):
+        """
+        Test that an invalid transaction type in the event data raises a TransactionProcessingError with the expected message.
+        """
         event_with_invalid_type = valid_event.copy()
         event_with_invalid_type["type"]["S"] = "INVALID"
 
@@ -45,6 +56,9 @@ class TestValidation:
         assert str(exception_info.value) == "Invalid transaction type: INVALID"
 
     def test_negative_amount(self, mock_logger, valid_event):
+        """
+        Test that a negative transaction amount raises a TransactionProcessingError with the correct message.
+        """
         event_with_invalid_amount = valid_event.copy()
         event_with_invalid_amount["amount"]["N"] = "-1"
 
@@ -55,6 +69,9 @@ class TestValidation:
         assert str(exception_info.value) == "Amount must be positive: -1"
 
     def test_success(self, mock_logger, valid_event):
+        """
+        Test that valid transaction event data is correctly validated and mapped to the expected output fields.
+        """
         result = validate_transaction_data(valid_event, mock_logger)
 
         assert result["account_id"] == valid_event["accountId"]["S"]
@@ -65,6 +82,9 @@ class TestValidation:
         assert result["amount"] == Decimal(valid_event["amount"]["N"])
 
     def test_exception(self, mock_logger, valid_event):
+        """
+        Test that a transaction event missing the transaction type value raises a TransactionProcessingError with an invalid record format message.
+        """
         event_with_invalid_type = valid_event.copy()
         del event_with_invalid_type["type"]["S"]
 

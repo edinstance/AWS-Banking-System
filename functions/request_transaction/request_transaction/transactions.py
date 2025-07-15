@@ -11,16 +11,16 @@ from .transaction_helpers import is_valid_uuid
 
 def validate_transaction_data(data, valid_transaction_types):
     """
-    Validates transaction data for required fields and business rules.
+    Validate transaction data against required fields and business rules.
 
-    Checks that the transaction includes a valid account ID (UUID), a positive numeric amount, a supported transaction type (case-insensitive), and that the optional description is a string if present.
+    Checks that the transaction includes a valid UUID account ID, a positive numeric amount, a supported transaction type (case-insensitive), and that the optional description is a string if present.
 
-    Args:
-        data: The transaction data to validate.
-        valid_transaction_types: List of allowed transaction types.
+    Parameters:
+        data (dict): The transaction data to validate.
+        valid_transaction_types (list): Allowed transaction types.
 
     Returns:
-        Tuple of (is_valid, error_message), where is_valid is True if the data is valid, otherwise False, and error_message provides the reason for invalidity or None if valid.
+        tuple: (is_valid, error_message) where is_valid is True if the data is valid, otherwise False, and error_message provides the reason for invalidity or None if valid.
     """
     required_fields = ["accountId", "amount", "type"]
     missing_fields = [field for field in required_fields if not data.get(field)]
@@ -122,19 +122,19 @@ def build_transaction_item(
     request_id: str,
 ) -> dict:
     """
-    Constructs a transaction record dictionary for DynamoDB storage.
+    Constructs a transaction dictionary with normalised fields and metadata for DynamoDB storage.
 
-    Normalises and extracts transaction details from the request, sets creation and TTL timestamps, and includes metadata such as user, environment, and idempotency information.
+    Extracts and formats transaction details from the request, sets creation and TTL timestamps, and includes user, idempotency, and request metadata.
 
     Parameters:
         transaction_id (str): Unique identifier for the transaction.
-        request_body (dict): Transaction details from the incoming request.
+        request_body (dict): Dictionary containing transaction details from the request.
         user_id (str): Identifier of the user initiating the transaction.
-        idempotency_key (str): Key to ensure transaction idempotency.
+        idempotency_key (str): Unique key to ensure idempotency of the transaction.
         request_id (str): Unique identifier for the request.
 
     Returns:
-        dict: A dictionary representing the transaction item, suitable for insertion into DynamoDB.
+        dict: Transaction item ready for insertion into DynamoDB.
     """
     account_id = request_body["accountId"]
     transaction_type = request_body["type"].upper()

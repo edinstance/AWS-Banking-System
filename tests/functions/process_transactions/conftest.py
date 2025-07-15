@@ -13,6 +13,11 @@ def process_app_with_mocked_tables(
     mock_transactions_dynamo_table,
     mock_accounts_dynamo_table,
 ):
+    """
+    Pytest fixture that configures the process_transactions app with mocked DynamoDB tables for testing.
+
+    Sets environment variables and patches AWS resource calls to use provided mock tables, then yields the configured app instance for use in tests.
+    """
     transactions_table_name = mock_transactions_dynamo_table
     accounts_table_name = mock_accounts_dynamo_table
 

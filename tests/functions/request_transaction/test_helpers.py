@@ -58,12 +58,18 @@ class TestIsValidUUID:
         assert is_valid_uuid(12345) is False
 
     def test_non_string_input(self):
+        """
+        Test that passing a non-string input to is_valid_uuid returns False.
+        """
         assert is_valid_uuid(123) is False
 
 
 class TestValidateRequestHeaders:
 
     def test_no_idempotency_key(self):
+        """
+        Test that omitting the "Idempotency-Key" header results in a 400 error response indicating the header is required.
+        """
         headers = {}
 
         response = validate_request_headers(headers)

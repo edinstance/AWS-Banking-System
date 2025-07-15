@@ -42,6 +42,20 @@ cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 
 @logger.inject_lambda_context
 def lambda_handler(event, _context: LambdaContext):
+    """
+    Processes DynamoDB stream INSERT events for transaction records, handling business and system errors with DLQ fallback.
+
+    This AWS Lambda handler filters incoming DynamoDB stream events for new transaction inserts, processes each transaction, and manages error handling by updating transaction status or sending failed records to a dead-letter queue (DLQ) as appropriate. It returns a summary of processing results, including counts of successful and failed records.
+
+    Parameters:
+        event (dict): The DynamoDB stream event payload.
+
+    Returns:
+        dict: A summary containing the status code, number of processed records, and counts of successful, business logic, and system failures.
+
+    Raises:
+        TransactionSystemError: If critical failures occur that prevent records from being processed or sent to the DLQ.
+    """
     logger.info("Processing DynamoDB stream event")
 
     if not accounts_table:

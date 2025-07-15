@@ -10,6 +10,19 @@ def create_account_if_not_exists(
     logger: Logger,
     user_id: str,
 ) -> str:
+    """
+    Create a new account record in the DynamoDB table for the specified user if it does not already exist.
+
+    Parameters:
+        user_id (str): The unique identifier of the user for whom the account is to be created.
+
+    Returns:
+        str: The generated account ID for the newly created account.
+
+    Raises:
+        ValueError: If `user_id` is not provided.
+        ClientError: If the DynamoDB operation fails.
+    """
     if not user_id:
         raise ValueError("user_id is required")
 

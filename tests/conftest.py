@@ -15,9 +15,9 @@ boto3.setup_default_session(region_name=AWS_REGION)
 @pytest.fixture(scope="function")
 def aws_credentials():
     """
-    Sets environment variables with fake AWS credentials and region for test environments.
+    Set environment variables with mock AWS credentials and region for testing.
 
-    Configures the environment so that AWS SDK clients operate with mock credentials, allowing AWS services to be simulated using the `moto` library during testing.
+    Ensures AWS SDK clients use fake credentials and the specified region, enabling AWS service simulation with the `moto` library during tests.
     """
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -29,6 +29,9 @@ def aws_credentials():
 
 @pytest.fixture(scope="function")
 def environment_variables():
+    """
+    Set environment variables for AWS resource names, endpoints, and logging configuration used during tests.
+    """
     os.environ["ACCOUNTS_TABLE_NAME"] = "test-accounts-table"
     os.environ["TRANSACTIONS_TABLE_NAME"] = "test-transactions-table"
     os.environ["TRANSACTION_PROCESSING_DLQ_URL"] = (
@@ -42,6 +45,11 @@ def environment_variables():
 
 @pytest.fixture(scope="function")
 def aws_ses_credentials():
+    """
+    Set environment variables for AWS SES configuration for use in tests.
+
+    This fixture enables SES and specifies sender, reply, and bounce email addresses to simulate SES-related behaviour during testing.
+    """
     os.environ["SES_ENABLED"] = "True"
     os.environ["SES_SENDER_EMAIL"] = "sender@example.com"
     os.environ["SES_REPLY_EMAIL"] = "reply@example.com"
@@ -64,12 +72,12 @@ def dynamo_resource(aws_credentials):
 @pytest.fixture(scope="function")
 def mock_transactions_dynamo_table(dynamo_resource):
     """
-    Creates a mocked DynamoDB table with a primary key on 'id' and a global secondary index on 'idempotencyKey'.
+    Create a mocked DynamoDB table for transactions with a primary key on 'id' and a global secondary index on 'idempotencyKey'.
 
     The table is provisioned with 5 read and write capacity units and is synchronously created before returning its name.
 
     Returns:
-        The name of the created mocked DynamoDB table.
+        str: The name of the created mocked DynamoDB table.
     """
     table_name = "test-transactions-table"
 
@@ -103,6 +111,12 @@ def mock_transactions_dynamo_table(dynamo_resource):
 
 @pytest.fixture(scope="function")
 def mock_accounts_dynamo_table(dynamo_resource):
+    """
+    Create a mocked DynamoDB table named "test-accounts-table" with a primary key on 'accountId' for testing purposes.
+
+    Returns:
+        str: The name of the created mocked DynamoDB table.
+    """
     table_name = "test-accounts-table"
 
     # Create the table with just a hash key for 'id'
@@ -137,9 +151,9 @@ def cognito_client():
 @pytest.fixture(scope="function")
 def mock_cognito_user_pool(cognito_client):
     """
-    Provides a mocked Cognito user pool environment for testing.
+    Yield a mocked AWS Cognito user pool environment for authentication-related testing.
 
-    Creates a Cognito user pool with email auto-verification and a strict password policy, sets up a user pool client with explicit authentication flows, and creates a test user with a permanent password. Yields a dictionary containing the user pool ID, client ID, username, password, and the Cognito client for use in tests.
+    Creates a Cognito user pool with email auto-verification and a strict password policy, sets up a user pool client with explicit authentication flows, and provisions a test user with a permanent password. Yields a dictionary containing the user pool ID, client ID, username, password, and the Cognito client for use in tests.
     """
     user_pool_name = "test-user-pool"
     client_name = "test-app-client"
@@ -199,6 +213,12 @@ def mock_cognito_user_pool(cognito_client):
 
 @pytest.fixture
 def mock_ses_client():
+    """
+    Provides a mocked AWS SES client for use in tests.
+
+    Yields:
+        A boto3 SES client configured to use the mocked AWS environment.
+    """
     with mock_aws():
         client = boto3.client("ses", region_name=AWS_REGION)
 
@@ -207,6 +227,12 @@ def mock_ses_client():
 
 @pytest.fixture
 def mock_get_ses_client(monkeypatch):
+    """
+    Pytest fixture that monkeypatches the SES client getter to return a mocked SES client.
+
+    Yields:
+        tuple: A tuple containing the mocked SES client getter function and the mocked SES client instance.
+    """
     mock_client = MagicMock()
     mock_get_client = MagicMock(return_value=mock_client)
     monkeypatch.setattr("ses.get_ses_client", mock_get_client)
@@ -216,6 +242,12 @@ def mock_get_ses_client(monkeypatch):
 
 @pytest.fixture
 def mock_sqs_client():
+    """
+    Provides a mocked AWS SQS client using moto for use in tests.
+
+    Yields:
+        A boto3 SQS client configured to interact with the moto mock environment.
+    """
     with mock_aws():
         client = boto3.client("sqs", region_name=AWS_REGION)
 
@@ -225,10 +257,10 @@ def mock_sqs_client():
 @pytest.fixture
 def mock_context():
     """
-    Creates a mocked AWS Lambda context object with a preset request ID.
+    Create a mocked AWS Lambda context object with a fixed request ID.
 
     Returns:
-        A MagicMock instance simulating the Lambda context, with the aws_request_id attribute set.
+        MagicMock: A mock Lambda context with the aws_request_id attribute set to a test UUID.
     """
     context = MagicMock()
     context.aws_request_id = TEST_REQUEST_ID
@@ -237,14 +269,23 @@ def mock_context():
 
 @pytest.fixture
 def mock_logger():
+    """
+    Return a MagicMock instance to simulate a logger for use in tests.
+    """
     return MagicMock()
 
 
 @pytest.fixture
 def magic_mock_transactions_table():
+    """
+    Return a MagicMock instance intended to mock the transactions DynamoDB table in tests.
+    """
     return MagicMock()
 
 
 @pytest.fixture
 def magic_mock_accounts_table():
+    """
+    Return a MagicMock instance intended to simulate the accounts DynamoDB table in tests.
+    """
     return MagicMock()
