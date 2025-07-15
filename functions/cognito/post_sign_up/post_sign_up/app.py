@@ -47,7 +47,9 @@ def lambda_handler(event, _context: LambdaContext):
         )
 
         if account_id is None:
-            logger.error(f"Failed to create account for user {username}. Skipping email notification.")
+            logger.error(
+                f"Failed to create account for user {username}. Skipping email notification."
+            )
             raise Exception(f"Failed to create account for user {username}.")
 
         if SES_ENABLED:
