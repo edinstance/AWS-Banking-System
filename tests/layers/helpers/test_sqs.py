@@ -77,7 +77,7 @@ class TestSendDynamoDbRecordToDLQ:
     def test_send_message_success(self):
         """
         Tests that a DynamoDB record is successfully sent to the DLQ and logs the operation.
-        
+
         Verifies that the SQS client is initialised with the correct parameters, the message is sent, and a success log entry is created.
         """
         mock_logger = MagicMock()

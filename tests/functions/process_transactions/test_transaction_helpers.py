@@ -20,7 +20,7 @@ from functions.process_transactions.process_transactions.transaction_helpers imp
 def transaction_helpers_valid_event():
     """
     Provides a sample DynamoDB event dictionary representing a valid new transaction.
-    
+
     Returns:
         dict: A dictionary simulating a DynamoDB event with fields for account ID, user ID, transaction ID, idempotency key, transaction type, and amount.
     """
@@ -137,7 +137,7 @@ class TestUpdateTransactionStatus:
     ):
         """
         Test that a ClientError during transaction status update raises TransactionSystemError.
-        
+
         Simulates a DynamoDB ClientError when updating a transaction's status and verifies that a TransactionSystemError is raised with the appropriate error message.
         """
         magic_mock_transactions_table.update_item.side_effect = ClientError(
@@ -392,7 +392,7 @@ class TestProcessSingleTransaction:
     ):
         """
         Test that `process_single_transaction` raises a `BusinessLogicError` when a withdrawal is attempted with insufficient account balance.
-        
+
         Simulates a withdrawal transaction where the account balance is less than the withdrawal amount, and verifies that the correct error is raised with an appropriate message.
         """
         mock_validate_transaction_data.return_value = {
@@ -440,7 +440,7 @@ class TestProcessSingleTransaction:
     ):
         """
         Test that process_single_transaction raises BusinessLogicError for unsupported transaction types.
-        
+
         Simulates a transaction event with an invalid transaction type and verifies that the function raises a BusinessLogicError with an appropriate error message.
         """
         mock_validate_transaction_data.return_value = {
@@ -485,7 +485,7 @@ class TestProcessSingleTransaction:
     ):
         """
         Test that a TransactionSystemError is raised when retrieving the account balance fails during transaction processing.
-        
+
         Simulates an exception in the account balance retrieval step and verifies that the error is correctly propagated as a TransactionSystemError with an appropriate message.
         """
         mock_logger = MagicMock()
@@ -593,7 +593,7 @@ class TestProcessSingleTransaction:
     ):
         """
         Test that a TransactionSystemError is raised if updating the transaction status fails after processing.
-        
+
         Simulates a successful transaction processing flow where the status update operation raises an exception, and verifies that the correct error is raised with the expected message.
         """
         mock_validate_transaction_data.return_value = {

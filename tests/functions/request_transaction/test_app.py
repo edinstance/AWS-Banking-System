@@ -206,7 +206,7 @@ class TestLambdaHandler:
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
         Test that the Lambda handler returns a 401 error when authentication provides neither a user ID nor an authentication error.
-        
+
         This test ensures that if the authentication function returns `(None, None)`, the handler responds with a 401 status code and an unauthorised message indicating user identity could not be determined.
         """
         with patch(

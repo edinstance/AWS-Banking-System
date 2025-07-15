@@ -16,7 +16,7 @@ boto3.setup_default_session(region_name=AWS_REGION)
 def aws_credentials():
     """
     Set environment variables with mock AWS credentials and region for testing.
-    
+
     Ensures AWS SDK clients use fake credentials and the specified region, enabling AWS service simulation with the `moto` library during tests.
     """
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -47,7 +47,7 @@ def environment_variables():
 def aws_ses_credentials():
     """
     Set environment variables for AWS SES configuration for use in tests.
-    
+
     This fixture enables SES and specifies sender, reply, and bounce email addresses to simulate SES-related behaviour during testing.
     """
     os.environ["SES_ENABLED"] = "True"
@@ -73,9 +73,9 @@ def dynamo_resource(aws_credentials):
 def mock_transactions_dynamo_table(dynamo_resource):
     """
     Create a mocked DynamoDB table for transactions with a primary key on 'id' and a global secondary index on 'idempotencyKey'.
-    
+
     The table is provisioned with 5 read and write capacity units and is synchronously created before returning its name.
-    
+
     Returns:
         str: The name of the created mocked DynamoDB table.
     """
@@ -113,7 +113,7 @@ def mock_transactions_dynamo_table(dynamo_resource):
 def mock_accounts_dynamo_table(dynamo_resource):
     """
     Create a mocked DynamoDB table named "test-accounts-table" with a primary key on 'accountId' for testing purposes.
-    
+
     Returns:
         str: The name of the created mocked DynamoDB table.
     """
@@ -152,7 +152,7 @@ def cognito_client():
 def mock_cognito_user_pool(cognito_client):
     """
     Yield a mocked AWS Cognito user pool environment for authentication-related testing.
-    
+
     Creates a Cognito user pool with email auto-verification and a strict password policy, sets up a user pool client with explicit authentication flows, and provisions a test user with a permanent password. Yields a dictionary containing the user pool ID, client ID, username, password, and the Cognito client for use in tests.
     """
     user_pool_name = "test-user-pool"
@@ -215,7 +215,7 @@ def mock_cognito_user_pool(cognito_client):
 def mock_ses_client():
     """
     Provides a mocked AWS SES client for use in tests.
-    
+
     Yields:
         A boto3 SES client configured to use the mocked AWS environment.
     """
@@ -229,7 +229,7 @@ def mock_ses_client():
 def mock_get_ses_client(monkeypatch):
     """
     Pytest fixture that monkeypatches the SES client getter to return a mocked SES client.
-    
+
     Yields:
         tuple: A tuple containing the mocked SES client getter function and the mocked SES client instance.
     """
@@ -244,7 +244,7 @@ def mock_get_ses_client(monkeypatch):
 def mock_sqs_client():
     """
     Provides a mocked AWS SQS client using moto for use in tests.
-    
+
     Yields:
         A boto3 SQS client configured to interact with the moto mock environment.
     """
@@ -258,7 +258,7 @@ def mock_sqs_client():
 def mock_context():
     """
     Create a mocked AWS Lambda context object with a fixed request ID.
-    
+
     Returns:
         MagicMock: A mock Lambda context with the aws_request_id attribute set to a test UUID.
     """

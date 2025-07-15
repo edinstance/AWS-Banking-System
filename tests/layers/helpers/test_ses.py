@@ -52,7 +52,7 @@ class TestSendEmail:
     def setup(self, mock_get_ses_client):
         """
         Initialises common test data and mock objects for SES email sending tests.
-        
+
         This setup method prepares mock logger, email parameters, and mock SES client instances for use in test cases.
         """
         self.mock_logger = MagicMock()
@@ -74,7 +74,7 @@ class TestSendEmail:
     def test_send_user_email_success(self, mock_ses_client):
         """
         Test that send_user_email sends an email with all parameters and logs success.
-        
+
         Verifies that the SES client's send_email method is called with the correct arguments, the logger records a success message, and the function returns True.
         """
         result = send_user_email(

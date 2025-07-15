@@ -14,7 +14,7 @@ from functions.process_transactions.process_transactions.exceptions import (
 def sample_event_with_records():
     """
     Return a sample DynamoDB stream event containing a single INSERT record with transaction details.
-    
+
     Returns:
         dict: A dictionary representing a DynamoDB event with one INSERT record, including fields for id, accountId, userId, idempotencyKey, amount, and type.
     """
@@ -165,7 +165,7 @@ class TestLambdaHandler:
     ):
         """
         Test that the lambda_handler processes a single valid INSERT record successfully.
-        
+
         Verifies that the handler returns a 200 status code with correct counts when processing succeeds, and that process_single_transaction is called once.
         """
         mock_process_single_transaction.return_value = None
@@ -205,7 +205,7 @@ class TestLambdaHandler:
     ):
         """
         Test that the lambda_handler correctly handles a BusinessLogicError when an idempotency key is present in the transaction record.
-        
+
         Verifies that the transaction status is updated and the response indicates a business logic failure with no successful or system failures.
         """
         mock_process_single_transaction.side_effect = BusinessLogicError(
@@ -247,7 +247,7 @@ class TestLambdaHandler:
     ):
         """
         Test that a business logic error without an idempotency key results in the record being sent to the DLQ.
-        
+
         Simulates an INSERT event where `process_single_transaction` raises a `BusinessLogicError` and the record lacks an idempotency key. Verifies that the handler sends the record to the dead-letter queue and returns a response indicating one business logic failure.
         """
         event = {
@@ -306,7 +306,7 @@ class TestLambdaHandler:
     ):
         """
         Test that a TransactionSystemError is raised when a business logic error occurs, the record lacks an idempotency key, and sending to the DLQ fails.
-        
+
         This verifies that the lambda_handler raises a critical failure if it cannot process a record or send it to the dead-letter queue.
         """
         mock_process_single_transaction.side_effect = BusinessLogicError(
@@ -353,7 +353,7 @@ class TestLambdaHandler:
     ):
         """
         Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler reports a business logic failure.
-        
+
         Simulates `process_single_transaction` raising a `BusinessLogicError`, `update_transaction_status` raising an exception, and `send_dynamodb_record_to_dlq` succeeding. Verifies the handler returns a 200 response with one business logic failure and that the DLQ function is called once.
         """
         mock_process_single_transaction.side_effect = BusinessLogicError(
@@ -401,7 +401,7 @@ class TestLambdaHandler:
     ):
         """
         Test that a TransactionSystemError is raised when both updating transaction status and sending to DLQ fail after a BusinessLogicError.
-        
+
         Simulates a business logic error during transaction processing, with both status update and DLQ operations failing, and verifies that a critical system error is raised.
         """
         mock_process_single_transaction.side_effect = BusinessLogicError(
@@ -483,7 +483,7 @@ class TestLambdaHandler:
     ):
         """
         Test that a TransactionSystemError is raised when both transaction processing and sending to the DLQ fail.
-        
+
         Simulates a system error during transaction processing and a failure to send the record to the dead-letter queue, verifying that the lambda handler raises a critical TransactionSystemError.
         """
         mock_process_single_transaction.side_effect = TransactionSystemError(
@@ -523,7 +523,7 @@ class TestLambdaHandler:
     ):
         """
         Test that the lambda_handler correctly handles a generic exception during transaction processing.
-        
+
         Simulates a scenario where process_single_transaction raises an unexpected exception, and verifies that the record is sent to the DLQ and the response indicates a system failure.
         """
         mock_process_single_transaction.side_effect = Exception("Unexpected error")
@@ -564,7 +564,7 @@ class TestLambdaHandler:
     ):
         """
         Test that a generic exception during transaction processing and a failed DLQ send results in a critical system error.
-        
+
         Simulates a scenario where `process_single_transaction` raises a generic exception and sending the record to the dead-letter queue (DLQ) also fails. Expects the `lambda_handler` to raise a `TransactionSystemError` indicating a critical failure.
         """
         mock_process_single_transaction.side_effect = Exception("Unexpected error")
@@ -605,7 +605,7 @@ class TestLambdaHandler:
     ):
         """
         Test that the lambda_handler correctly processes multiple records with mixed outcomes.
-        
+
         Simulates three INSERT records: one processed successfully, one raising a BusinessLogicError, and one raising a TransactionSystemError. Verifies that the handler aggregates results, updates transaction status or sends to DLQ as appropriate, and returns the correct summary in the response.
         """
         event = {

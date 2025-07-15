@@ -12,13 +12,13 @@ from .transaction_helpers import is_valid_uuid
 def validate_transaction_data(data, valid_transaction_types):
     """
     Validate transaction data against required fields and business rules.
-    
+
     Checks that the transaction includes a valid UUID account ID, a positive numeric amount, a supported transaction type (case-insensitive), and that the optional description is a string if present.
-    
+
     Parameters:
         data (dict): The transaction data to validate.
         valid_transaction_types (list): Allowed transaction types.
-    
+
     Returns:
         tuple: (is_valid, error_message) where is_valid is True if the data is valid, otherwise False, and error_message provides the reason for invalidity or None if valid.
     """
@@ -123,16 +123,16 @@ def build_transaction_item(
 ) -> dict:
     """
     Constructs a transaction dictionary with normalised fields and metadata for DynamoDB storage.
-    
+
     Extracts and formats transaction details from the request, sets creation and TTL timestamps, and includes user, idempotency, and request metadata.
-    
+
     Parameters:
         transaction_id (str): Unique identifier for the transaction.
         request_body (dict): Dictionary containing transaction details from the request.
         user_id (str): Identifier of the user initiating the transaction.
         idempotency_key (str): Unique key to ensure idempotency of the transaction.
         request_id (str): Unique identifier for the request.
-    
+
     Returns:
         dict: Transaction item ready for insertion into DynamoDB.
     """

@@ -15,12 +15,12 @@ def validate_transaction_data(
 ) -> Dict[str, Any]:
     """
     Validate and extract transaction details from a DynamoDB record dictionary.
-    
+
     Checks for the presence and correctness of required transaction fields, converts values to appropriate types, and ensures the transaction type and amount are valid. Raises a TransactionProcessingError if validation fails.
-    
+
     Parameters:
         new_image (Dict[str, Any]): A dictionary representing a DynamoDB record with attribute values.
-    
+
     Returns:
         Dict[str, Any]: A dictionary containing validated and typed transaction details.
     """

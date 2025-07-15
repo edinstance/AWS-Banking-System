@@ -20,7 +20,7 @@ VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 def app_with_mocked_table(monkeypatch, dynamo_resource, mock_transactions_dynamo_table):
     """
     Yield the app module configured to use a mocked DynamoDB table for testing.
-    
+
     Sets environment variables and patches AWS resources so that the app interacts with a mocked DynamoDB table, enabling isolated and repeatable tests.
     """
     table_name = mock_transactions_dynamo_table
@@ -40,7 +40,7 @@ def app_with_mocked_table(monkeypatch, dynamo_resource, mock_transactions_dynamo
 def app_without_table(monkeypatch):
     """
     Pytest fixture that yields the app module with DynamoDB table configuration removed.
-    
+
     Removes the DynamoDB table environment variable and sets test environment variables, then reloads and yields the app module for tests simulating the absence of a table.
     """
     monkeypatch.delenv("TRANSACTIONS_TABLE_NAME", raising=False)
@@ -56,7 +56,7 @@ def app_without_table(monkeypatch):
 def valid_event():
     """
     Return a sample event dictionary simulating a valid transaction request.
-    
+
     The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
     """
     return {
@@ -97,7 +97,7 @@ def empty_headers():
 def mock_table():
     """
     Fixture that yields a mocked DynamoDB table with empty results for get_item and query operations.
-    
+
     Simulates an empty database state by ensuring get_item returns {"Item": None} and query returns {"Items": []}.
     """
     with patch("functions.request_transaction.request_transaction.app.table") as mock:
@@ -110,7 +110,7 @@ def mock_table():
 def mock_auth():
     """
     Pytest fixture that mocks the extraction of the user ID from an ID token.
-    
+
     Yields:
         The patched mock object for use in tests that require bypassing actual token decoding.
     """
@@ -125,7 +125,7 @@ def mock_auth():
 def mock_jwks_client():
     """
     Pytest fixture that mocks the JWKS client for JWT verification.
-    
+
     Yields a patched PyJWKClient whose `get_signing_key_from_jwt` method returns a mock signing key with a dummy key attribute, enabling tests to bypass actual key retrieval.
     """
     with patch(
@@ -143,7 +143,7 @@ def mock_jwks_client():
 def mock_jwt():
     """
     Yields a patched mock of the JWT library used in the authentication module for test cases.
-    
+
     This fixture allows tests to control or inspect JWT operations by providing a mock object in place of the actual JWT library.
     """
     with patch(
@@ -156,7 +156,7 @@ def mock_jwt():
 def valid_transaction_data():
     """
     Return a dictionary with valid transaction data fields for use in tests.
-    
+
     Returns:
         dict: Contains account ID, amount, transaction type, and description.
     """
@@ -172,7 +172,7 @@ def valid_transaction_data():
 def mock_create_response():
     """
     Yields a patched mock of the `create_response` function from the idempotency module for use in tests.
-    
+
     This fixture enables tests to intercept and control idempotency response creation within the request_transaction app.
     """
     with patch(

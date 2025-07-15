@@ -32,9 +32,9 @@ else:
 def lambda_handler(event, _context: LambdaContext):
     """
     Handles the AWS Cognito post-sign-up event by creating a user account in DynamoDB and optionally sending a confirmation email via SES.
-    
+
     If the DynamoDB table is not configured, the function logs an error and returns the event unchanged. On successful account creation, and if SES email sending is enabled, it sends a thank-you email to the user containing their account ID. Any failure in account creation or email sending results in an error being logged and an exception being raised.
-    
+
     Returns:
         dict: The original event dictionary.
     """

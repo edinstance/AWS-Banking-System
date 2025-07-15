@@ -84,7 +84,7 @@ class TestPostSignUp:
     def test_failed_email_sending(self, aws_ses_credentials, mock_context):
         """
         Test that the lambda_handler raises an exception when email sending fails after account creation with SES enabled.
-        
+
         Simulates successful account creation but failed email delivery, and asserts that an exception containing "Failed to send email" is raised.
         """
         mock_table = MagicMock()
@@ -125,7 +125,7 @@ class TestPostSignUp:
     def test_no_account_id_returned(self, mock_context):
         """
         Test that the lambda_handler raises an exception when account creation does not return an account ID.
-        
+
         Asserts that an appropriate error message is included in the raised exception.
         """
         mock_table = MagicMock()
@@ -144,7 +144,7 @@ class TestPostSignUp:
     def test_missing_username(self, mock_context):
         """
         Test that the lambda_handler raises a ValueError when the event is missing the userName key.
-        
+
         Asserts that the exception message contains 'user_id is required'.
         """
         mock_table = MagicMock()
@@ -168,7 +168,7 @@ class TestPostSignUp:
     def test_missing_email_with_ses_enabled(self, mock_context):
         """
         Test that the lambda_handler raises an exception when SES is enabled but the user's email is missing and email sending fails.
-        
+
         Simulates a post sign-up event without an email attribute, mocks successful account creation, enables SES, and forces email sending to fail. Asserts that an exception with a relevant error message is raised.
         """
         mock_table = MagicMock()

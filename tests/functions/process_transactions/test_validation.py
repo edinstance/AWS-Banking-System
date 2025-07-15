@@ -15,7 +15,7 @@ from functions.process_transactions.process_transactions.validation import (
 def valid_event():
     """
     Return a sample valid transaction event dictionary formatted with DynamoDB-style type annotations.
-    
+
     The returned dictionary includes fields for account ID, user ID, transaction ID, idempotency key, transaction type, and amount, each with appropriate type wrappers.
     """
     return {
