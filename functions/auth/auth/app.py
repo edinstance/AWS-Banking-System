@@ -2,7 +2,7 @@ import json
 
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
-from .helpers import create_response
+from response_helpers import create_response
 from .service import get_auth_service
 
 

@@ -7,26 +7,26 @@ init:
 	pip install --upgrade -r dev-requirements.txt
 
 test:
-	pytest --cov functions --cov-report term-missing --cov-fail-under 95 -n auto tests/
+	pytest --cov functions --cov layers --cov-report term-missing --cov-fail-under 95 -n auto tests/
 
 test-cov-report:
-	pytest --cov functions --cov-report term-missing --cov-report html --cov-fail-under 95 -n auto tests/
+	pytest --cov functions --cov layers --cov-report term-missing --cov-report html -n auto tests/
 	xdg-open htmlcov/index.html &> /dev/null || open htmlcov/index.html &> /dev/null || true
 
 lint:
-	ruff check functions tests
+	ruff check functions tests layers/python
 
 lint-fix:
-	ruff check --fix functions tests
+	ruff check --fix functions tests layers/python
 
 lint-diff:
-	ruff check --diff functions tests
+	ruff check --diff functions tests layers/python
 
 format:
-	black functions tests
+	black functions tests layers/python
 
 format-check:
-	black --check functions tests
+	black --check functions tests layers/python
 
 build:
 	sam build
