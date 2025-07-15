@@ -5,9 +5,10 @@ from response_helpers import create_response
 
 def is_valid_uuid(val: str) -> bool:
     """
-    Checks if the given string is a valid UUID.
-
-    Returns True if the input is a non-empty string that can be parsed as a UUID; otherwise, returns False.
+    Determine whether a given string is a valid UUID.
+    
+    Returns:
+        bool: True if the input is a non-empty string that can be parsed as a UUID, otherwise False.
     """
     if not val or not isinstance(val, str):
         return False

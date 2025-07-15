@@ -150,7 +150,7 @@ class TestLambdaHandler:
         self, valid_event, mock_context, mock_table, mock_auth
     ):
         """
-        Tests that the Lambda handler returns a 500 status code and a generic error message when an unexpected exception, such as a MemoryError during JSON parsing, occurs.
+        Verify that the Lambda handler returns a 500 status code and a generic internal server error message when an unexpected exception, such as a MemoryError during JSON parsing, is raised.
         """
         with patch(
             "functions.request_transaction.request_transaction.app.json.loads"
@@ -187,7 +187,7 @@ class TestLambdaHandler:
 
     def test_auth_error_returned(self, valid_event, mock_context, mock_table):
         """
-        Verify that the Lambda handler returns an authentication error response when the authentication function indicates failure.
+        Test that the Lambda handler returns the authentication error response unchanged when authentication fails.
         """
         auth_error_response = {
             "statusCode": 401,
@@ -205,9 +205,9 @@ class TestLambdaHandler:
 
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
-        Verify that the Lambda handler returns a 401 error when user authentication yields neither a user ID nor an authentication error.
-
-        This test mocks the authentication function to return `(None, None)` and asserts that the handler responds with a 401 status code and an appropriate unauthorised message.
+        Test that the Lambda handler returns a 401 error when authentication provides neither a user ID nor an authentication error.
+        
+        This test ensures that if the authentication function returns `(None, None)`, the handler responds with a 401 status code and an unauthorised message indicating user identity could not be determined.
         """
         with patch(
             "functions.request_transaction.request_transaction.app.authenticate_user"

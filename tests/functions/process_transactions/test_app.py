@@ -12,6 +12,12 @@ from functions.process_transactions.process_transactions.exceptions import (
 
 @pytest.fixture
 def sample_event_with_records():
+    """
+    Return a sample DynamoDB stream event containing a single INSERT record with transaction details.
+    
+    Returns:
+        dict: A dictionary representing a DynamoDB event with one INSERT record, including fields for id, accountId, userId, idempotencyKey, amount, and type.
+    """
     return {
         "Records": [
             {
@@ -42,6 +48,9 @@ class TestLambdaHandler:
         MagicMock(),
     )
     def test_accounts_table_not_initialized(self, mock_context, environment_variables):
+        """
+        Test that lambda_handler raises TransactionSystemError when the accounts table is not initialised.
+        """
         event = {"Records": []}
 
         with pytest.raises(TransactionSystemError) as exc_info:
@@ -60,6 +69,9 @@ class TestLambdaHandler:
     def test_transactions_table_not_initialized(
         self, mock_context, environment_variables
     ):
+        """
+        Test that the lambda_handler raises a TransactionSystemError when the transactions table is not initialised.
+        """
         event = {"Records": []}
 
         with pytest.raises(TransactionSystemError) as exc_info:
@@ -70,6 +82,9 @@ class TestLambdaHandler:
     def test_table_initialization_with_environment_variables(
         self, process_app_with_mocked_tables
     ):
+        """
+        Verify that the transactions and accounts tables are initialised using the expected environment variable table names.
+        """
         assert process_app_with_mocked_tables.transactions_table is not None
         assert process_app_with_mocked_tables.accounts_table is not None
 
@@ -90,6 +105,9 @@ class TestLambdaHandler:
         MagicMock(),
     )
     def test_no_records(self, mock_context, environment_variables):
+        """
+        Test that the lambda_handler returns a 200 response with an appropriate message when the event contains no records.
+        """
         event = {"Records": []}
 
         result = lambda_handler(event, mock_context)
@@ -105,6 +123,9 @@ class TestLambdaHandler:
         MagicMock(),
     )
     def test_no_insert_records(self, mock_context, environment_variables):
+        """
+        Test that the lambda_handler returns a 200 response with an appropriate message when no INSERT records are present in the event.
+        """
         event = {
             "Records": [
                 {
@@ -142,6 +163,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that the lambda_handler processes a single valid INSERT record successfully.
+        
+        Verifies that the handler returns a 200 status code with correct counts when processing succeeds, and that process_single_transaction is called once.
+        """
         mock_process_single_transaction.return_value = None
 
         result = lambda_handler(sample_event_with_records, mock_context)
@@ -177,6 +203,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that the lambda_handler correctly handles a BusinessLogicError when an idempotency key is present in the transaction record.
+        
+        Verifies that the transaction status is updated and the response indicates a business logic failure with no successful or system failures.
+        """
         mock_process_single_transaction.side_effect = BusinessLogicError(
             "Test business logic error"
         )
@@ -214,6 +245,11 @@ class TestLambdaHandler:
         mock_context,
         environment_variables,
     ):
+        """
+        Test that a business logic error without an idempotency key results in the record being sent to the DLQ.
+        
+        Simulates an INSERT event where `process_single_transaction` raises a `BusinessLogicError` and the record lacks an idempotency key. Verifies that the handler sends the record to the dead-letter queue and returns a response indicating one business logic failure.
+        """
         event = {
             "Records": [
                 {
@@ -268,6 +304,11 @@ class TestLambdaHandler:
         environment_variables,
         sample_event_with_records,
     ):
+        """
+        Test that a TransactionSystemError is raised when a business logic error occurs, the record lacks an idempotency key, and sending to the DLQ fails.
+        
+        This verifies that the lambda_handler raises a critical failure if it cannot process a record or send it to the dead-letter queue.
+        """
         mock_process_single_transaction.side_effect = BusinessLogicError(
             "Test business logic error"
         )
@@ -310,6 +351,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler reports a business logic failure.
+        
+        Simulates `process_single_transaction` raising a `BusinessLogicError`, `update_transaction_status` raising an exception, and `send_dynamodb_record_to_dlq` succeeding. Verifies the handler returns a 200 response with one business logic failure and that the DLQ function is called once.
+        """
         mock_process_single_transaction.side_effect = BusinessLogicError(
             "Test business logic error"
         )
@@ -353,6 +399,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that a TransactionSystemError is raised when both updating transaction status and sending to DLQ fail after a BusinessLogicError.
+        
+        Simulates a business logic error during transaction processing, with both status update and DLQ operations failing, and verifies that a critical system error is raised.
+        """
         mock_process_single_transaction.side_effect = BusinessLogicError(
             "Test business logic error"
         )
@@ -389,6 +440,9 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that the lambda_handler correctly handles a TransactionSystemError by sending the record to the DLQ and reporting a system failure in the response.
+        """
         mock_process_single_transaction.side_effect = TransactionSystemError(
             "Test system error"
         )
@@ -427,6 +481,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that a TransactionSystemError is raised when both transaction processing and sending to the DLQ fail.
+        
+        Simulates a system error during transaction processing and a failure to send the record to the dead-letter queue, verifying that the lambda handler raises a critical TransactionSystemError.
+        """
         mock_process_single_transaction.side_effect = TransactionSystemError(
             "Test system error"
         )
@@ -462,6 +521,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that the lambda_handler correctly handles a generic exception during transaction processing.
+        
+        Simulates a scenario where process_single_transaction raises an unexpected exception, and verifies that the record is sent to the DLQ and the response indicates a system failure.
+        """
         mock_process_single_transaction.side_effect = Exception("Unexpected error")
         mock_send_to_dlq.return_value = True
 
@@ -498,6 +562,11 @@ class TestLambdaHandler:
         sample_event_with_records,
         environment_variables,
     ):
+        """
+        Test that a generic exception during transaction processing and a failed DLQ send results in a critical system error.
+        
+        Simulates a scenario where `process_single_transaction` raises a generic exception and sending the record to the dead-letter queue (DLQ) also fails. Expects the `lambda_handler` to raise a `TransactionSystemError` indicating a critical failure.
+        """
         mock_process_single_transaction.side_effect = Exception("Unexpected error")
         mock_send_to_dlq.return_value = False
 
@@ -534,6 +603,11 @@ class TestLambdaHandler:
         mock_context,
         environment_variables,
     ):
+        """
+        Test that the lambda_handler correctly processes multiple records with mixed outcomes.
+        
+        Simulates three INSERT records: one processed successfully, one raising a BusinessLogicError, and one raising a TransactionSystemError. Verifies that the handler aggregates results, updates transaction status or sends to DLQ as appropriate, and returns the correct summary in the response.
+        """
         event = {
             "Records": [
                 {

@@ -59,6 +59,9 @@ class TestGetSqsClient:
 
 class TestSendDynamoDbRecordToDLQ:
     def test_no_dlq_url(self, mock_sqs_client):
+        """
+        Test that send_dynamodb_record_to_dlq returns False when the DLQ URL is empty.
+        """
         mock_logger = MagicMock()
         result = send_dynamodb_record_to_dlq(
             record={},
@@ -72,6 +75,11 @@ class TestSendDynamoDbRecordToDLQ:
         assert result is False
 
     def test_send_message_success(self):
+        """
+        Tests that a DynamoDB record is successfully sent to the DLQ and logs the operation.
+        
+        Verifies that the SQS client is initialised with the correct parameters, the message is sent, and a success log entry is created.
+        """
         mock_logger = MagicMock()
         mock_sqs_client = MagicMock()
 
@@ -109,6 +117,9 @@ class TestSendDynamoDbRecordToDLQ:
         )
 
     def test_send_message_failure(self):
+        """
+        Test that send_dynamodb_record_to_dlq returns False and logs an error when sending a message to the DLQ fails due to an exception.
+        """
         mock_logger = MagicMock()
         mock_sqs_client = MagicMock()
 

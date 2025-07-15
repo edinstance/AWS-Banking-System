@@ -9,6 +9,9 @@ from ses import get_ses_client, send_user_email
 class TestGetSesClient:
 
     def test_get_ses_client_success(self):
+        """
+        Test that `get_ses_client` successfully creates and returns an SES client for the specified region and logs the initialisation message.
+        """
         mock_logger = MagicMock()
         region = "eu-west-2"
 
@@ -25,6 +28,9 @@ class TestGetSesClient:
             )
 
     def test_get_ses_client_exception(self):
+        """
+        Test that get_ses_client raises an exception and logs an error when SES client creation fails.
+        """
         mock_logger = MagicMock()
         region = "eu-west-2"
 
@@ -44,6 +50,11 @@ class TestSendEmail:
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_get_ses_client):
+        """
+        Initialises common test data and mock objects for SES email sending tests.
+        
+        This setup method prepares mock logger, email parameters, and mock SES client instances for use in test cases.
+        """
         self.mock_logger = MagicMock()
         self.aws_region = "eu-west-2"
         self.sender_email = "sender@example.com"
@@ -61,6 +72,11 @@ class TestSendEmail:
         self.mock_get_client, self.mock_ses_client = mock_get_ses_client
 
     def test_send_user_email_success(self, mock_ses_client):
+        """
+        Test that send_user_email sends an email with all parameters and logs success.
+        
+        Verifies that the SES client's send_email method is called with the correct arguments, the logger records a success message, and the function returns True.
+        """
         result = send_user_email(
             aws_region=self.aws_region,
             logger=self.mock_logger,
@@ -123,6 +139,9 @@ class TestSendEmail:
         assert result is False
 
     def test_send_user_email_no_body(self, mock_ses_client):
+        """
+        Test that send_user_email returns False and logs an error when neither text nor HTML body is provided.
+        """
         result = send_user_email(
             aws_region=self.aws_region,
             logger=self.mock_logger,

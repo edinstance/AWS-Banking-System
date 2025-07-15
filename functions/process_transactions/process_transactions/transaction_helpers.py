@@ -26,6 +26,11 @@ def update_transaction_status(
     processed_at: str = None,
     failure_reason: str = None,
 ):
+    """
+    Update the status of a transaction record in the transactions DynamoDB table.
+    
+    Optionally sets the processed timestamp and failure reason for the transaction. Raises a TransactionSystemError if the table is not configured or if the update operation fails.
+    """
     try:
         if not transactions_table:
             logger.error("Transactions table not initialized")
@@ -62,6 +67,11 @@ def update_transaction_status(
 def process_single_transaction(
     record: Dict[str, Any], logger: Logger, accounts_table, transactions_table
 ) -> None:
+    """
+    Processes a single financial transaction from a DynamoDB stream record, applying the transaction to the relevant account and updating its status.
+    
+    Validates transaction data, checks account existence and ownership, ensures sufficient funds for withdrawals, updates the account balance, and marks the transaction as processed. Raises `BusinessLogicError` for invalid data, insufficient funds, or unsupported transaction types, and `TransactionSystemError` for system-level failures.
+    """
     try:
         new_image = record["dynamodb"]["NewImage"]
 

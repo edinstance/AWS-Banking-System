@@ -16,6 +16,9 @@ class TestCheckAccountExists:
         assert result is True
 
     def test_check_account_failure(self):
+        """
+        Test that `check_account_exists_in_database` returns False when a ClientError is raised during the database query.
+        """
         mock_table = MagicMock()
         mock_table.get_item.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Connection Error"}},
@@ -34,6 +37,9 @@ class TestCheckAccountExists:
 class TestCheckUserOwnsAccount:
 
     def test_check_user_success(self):
+        """
+        Test that `check_user_owns_account` returns True when the database returns an item with matching account and user IDs.
+        """
         user_id = str(uuid.uuid4())
 
         mock_table = MagicMock()
@@ -59,6 +65,9 @@ class TestCheckUserOwnsAccount:
         assert result is False
 
     def test_no_item_returned(self):
+        """
+        Test that `check_user_owns_account` returns False when the database returns no item.
+        """
         mock_table = MagicMock()
         mock_table.get_item.return_value = {}
 
@@ -69,6 +78,9 @@ class TestCheckUserOwnsAccount:
         assert result is False
 
     def test_client_error(self):
+        """
+        Test that `check_user_owns_account` returns False when a ClientError is raised during the database query.
+        """
         mock_table = MagicMock()
         mock_table.get_item.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Connection Error"}},

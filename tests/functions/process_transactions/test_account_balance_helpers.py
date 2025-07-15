@@ -81,6 +81,9 @@ class TestGetAccountBalance:
 class TestUpdateAccountBalance:
 
     def test_update_account_balance_success(self):
+        """
+        Test that updating an account balance completes successfully and returns None.
+        """
         account_id = str(uuid.uuid4())
         new_balance = Decimal("100")
         mock_logger = MagicMock()
@@ -93,6 +96,9 @@ class TestUpdateAccountBalance:
         assert result is None
 
     def test_update_account_balance_client_error(self):
+        """
+        Test that a ClientError during account balance update raises a SystemError with the correct message.
+        """
         account_id = str(uuid.uuid4())
         new_balance = Decimal("100")
         mock_logger = MagicMock()
@@ -113,6 +119,9 @@ class TestUpdateAccountBalance:
         assert "Connection Error" in str(exception_info.value)
 
     def test_update_account_balance_generic_error(self):
+        """
+        Test that `update_account_balance` raises a `SystemError` with the correct message when a generic exception occurs during the update operation.
+        """
         account_id = str(uuid.uuid4())
         new_balance = Decimal("100")
         mock_logger = MagicMock()

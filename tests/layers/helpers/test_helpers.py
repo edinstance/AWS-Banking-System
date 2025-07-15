@@ -31,6 +31,9 @@ class TestCreateResponse:
         assert response["headers"]["Access-Control-Allow-Methods"] == "DELETE"
 
     def test_complex_body(self):
+        """
+        Test that create_response correctly handles a complex nested dictionary body and returns the expected JSON structure and headers.
+        """
         body = {"data": {"id": 1, "items": ["a", "b", "c"], "nested": {"key": "value"}}}
         response = create_response(200, body, "PUT")
 

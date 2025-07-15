@@ -6,6 +6,12 @@ from aws_lambda_powertools import Logger
 
 
 def get_ses_client(aws_region: str, logger: Logger):
+    """
+    Initialise and return an AWS SES client for the specified region.
+    
+    Raises:
+        Exception: If the SES client cannot be initialised.
+    """
     try:
         logger.info("Initialized SES client with default endpoint")
         return boto3.client("ses", region_name=aws_region)
@@ -31,6 +37,29 @@ def send_user_email(
     return_path: Optional[str] = None,
     tags: Optional[List[Dict[str, str]]] = None,
 ):
+    """
+    Send an email using AWS SES with configurable sender, recipients, subject, and body content.
+    
+    At least one of `text_body_data` or `html_body_data` must be provided. Supports optional CC, BCC, reply-to addresses, return path, and message tags. Returns `True` if the email is sent successfully, or `False` if sending fails or required body content is missing.
+    
+    Parameters:
+        sender_email (str): The email address of the sender.
+        to_addresses (List[str]): List of recipient email addresses.
+        subject_data (str): The subject line of the email.
+        subject_charset (str): Character set for the subject line.
+        text_body_data (Optional[str]): Plain text content of the email body.
+        text_body_charset (Optional[str]): Character set for the plain text body.
+        html_body_data (Optional[str]): HTML content of the email body.
+        html_body_charset (Optional[str]): Character set for the HTML body.
+        cc_addresses (Optional[List[str]]): List of CC recipient email addresses.
+        bcc_addresses (Optional[List[str]]): List of BCC recipient email addresses.
+        reply_to_addresses (Optional[List[str]]): List of reply-to email addresses.
+        return_path (Optional[str]): Email address for bounce and complaint notifications.
+        tags (Optional[List[Dict[str, str]]]): List of tags to apply to the email.
+    
+    Returns:
+        bool: True if the email was sent successfully, False otherwise.
+    """
     ses_client = get_ses_client(aws_region=aws_region, logger=logger)
 
     message_body = {}
