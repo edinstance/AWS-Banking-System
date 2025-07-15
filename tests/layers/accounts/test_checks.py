@@ -24,6 +24,12 @@ class TestCheckAccountExists:
         result = check_account_exists_in_database(str(uuid.uuid4()), mock_table)
         assert result is False
 
+    def test_no_item_returned(self):
+        mock_table = MagicMock()
+        mock_table.get_item.return_value = {}
+        result = check_account_exists_in_database(str(uuid.uuid4()), mock_table)
+        assert result is False
+
 
 class TestCheckUserOwnsAccount:
 
