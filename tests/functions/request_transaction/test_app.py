@@ -9,7 +9,7 @@ from tests.functions.request_transaction.conftest import VALID_UUID
 
 class TestLambdaHandler:
     def test_successful_transaction(
-        self, valid_event, mock_context, mock_table, mock_auth
+        self, mock_table, valid_event, mock_context, mock_auth
     ):
         response = lambda_handler(valid_event, mock_context)
         assert response["statusCode"] == 201
@@ -189,19 +189,24 @@ class TestLambdaHandler:
         """
         Test that the Lambda handler returns the authentication error response unchanged when authentication fails.
         """
-        auth_error_response = {
-            "statusCode": 401,
-            "body": '{"error": "Authentication failed"}',
-        }
+        auth_error_response = {"statusCode": 401, "error": "Authentication failed"}
 
         with patch(
             "functions.request_transaction.request_transaction.app.authenticate_user"
         ) as mock_auth:
-            mock_auth.return_value = (None, auth_error_response)
+            mock_auth.return_value = (
+                None,
+                {
+                    "status_code": auth_error_response["statusCode"],
+                    "error": auth_error_response["error"],
+                },
+            )
 
             response = lambda_handler(valid_event, mock_context)
+            body = json.loads(response["body"])
 
-            assert response == auth_error_response
+            assert response["statusCode"] == auth_error_response["statusCode"]
+            assert body["error"] == auth_error_response["error"]
 
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """

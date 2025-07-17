@@ -4,9 +4,9 @@ from typing import Dict, Any
 import boto3
 from aws_lambda_powertools import Logger
 
+from authentication.exceptions import AuthConfigurationError
 from response_helpers import create_response
 from .config import AuthConfig
-from .exceptions import AuthConfigurationError
 
 
 class AuthService:

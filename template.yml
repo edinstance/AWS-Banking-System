@@ -121,6 +121,7 @@ Resources:
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Layers:
         - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiSaveTransactionEvent:
           Type: Api
@@ -204,6 +205,7 @@ Resources:
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Layers:
         - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiLoginEvent:
           Type: Api
@@ -274,6 +276,17 @@ Resources:
     Properties:
       LayerName: !Sub ${AWS::StackName}-banking-python-accounts-layer
       ContentUri: layers/python/accounts
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  PythonAuthenticationLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-authentication-layer
+      ContentUri: layers/python/authentication
       CompatibleRuntimes:
         - python3.12
     Metadata:

@@ -39,11 +39,10 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
+from authentication.api_gateway_authentication import authenticate_user
 from dynamodb import get_dynamodb_resource
 from response_helpers import create_response
-from .auth import (
-    authenticate_user,
-)
+
 from .idempotency import handle_idempotency_error
 from .transaction_helpers import validate_request_headers
 from .transactions import (
@@ -96,11 +95,18 @@ def lambda_handler(event, context: LambdaContext):
     headers = {k.lower(): v for k, v in raw_headers.items()}
 
     user_id, auth_error = authenticate_user(
-        event, headers, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, AWS_REGION.lower()
+        event,
+        headers,
+        COGNITO_USER_POOL_ID,
+        COGNITO_CLIENT_ID,
+        AWS_REGION.lower(),
+        logger,
     )
 
     if auth_error:
-        return auth_error
+        return create_response(
+            auth_error["status_code"], {"error": auth_error["error"]}, "OPTIONS, POST"
+        )
 
     if not user_id:
         logger.error("Authentication failed: No user ID returned")

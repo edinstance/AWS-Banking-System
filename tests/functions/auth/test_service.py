@@ -3,7 +3,7 @@ import json
 import pytest
 
 from functions.auth.auth.config import AuthConfig
-from functions.auth.auth.exceptions import AuthConfigurationError
+from authentication.exceptions import AuthConfigurationError
 from functions.auth.auth.service import AuthService
 
 from tests.functions.auth.conftest import (
@@ -38,7 +38,9 @@ class TestAuthService:
         result_body = json.loads(result["body"])
         assert result_body["error"] == "Username and password are required."
 
-    def test_handle_login_success(self, auth_service_instance, mock_cognito_user_pool):
+    def test_handle_login_success(
+        self, auth_service_instance, mock_cognito_user_pool, cognito_client
+    ):
         """
         Tests successful login flow, verifying token issuance and logging.
 
@@ -78,7 +80,7 @@ class TestAuthService:
         )
 
     def test_handle_login_user_not_confirmed(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that login returns a 403 status and appropriate error message when the user is not confirmed.
@@ -108,7 +110,7 @@ class TestAuthService:
         mock_cognito_client.admin_initiate_auth.assert_called_once()
 
     def test_handle_login_not_authorized_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that login with invalid credentials returns a 401 status and appropriate error message.
@@ -133,7 +135,7 @@ class TestAuthService:
         mock_cognito_client.admin_initiate_auth.assert_called_once()
 
     def test_handle_login_user_not_found_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that login returns a 404 status and appropriate error message when the user does not exist.
@@ -156,7 +158,7 @@ class TestAuthService:
         mock_cognito_client.admin_initiate_auth.assert_called_once()
 
     def test_handle_login_too_many_requests_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that the login handler returns a 429 status and appropriate error message when Cognito rate limits login attempts.
@@ -179,7 +181,7 @@ class TestAuthService:
         mock_cognito_client.admin_initiate_auth.assert_called_once()
 
     def test_handle_login_generic_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that a generic exception during login results in a 500 response and appropriate error logging.
@@ -221,7 +223,10 @@ class TestAuthService:
         )
 
     def test_handle_refresh_success(
-        self, auth_service_instance_with_mock_cognito, mock_cognito_user_pool
+        self,
+        auth_service_instance_with_mock_cognito,
+        mock_cognito_user_pool,
+        cognito_client,
     ):
         """
         Tests successful token refresh using a valid refresh token.
@@ -259,7 +264,7 @@ class TestAuthService:
         )
 
     def test_handle_refresh_not_authorized_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that handle_refresh returns a 401 status and appropriate error message when an invalid or expired refresh token triggers a NotAuthorizedException.
@@ -282,7 +287,7 @@ class TestAuthService:
         mock_cognito_client.initiate_auth.assert_called_once()
 
     def test_handle_refresh_too_many_requests_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that the refresh handler returns a 429 status code and appropriate error message when Cognito raises a rate limiting exception during token refresh.
@@ -305,7 +310,7 @@ class TestAuthService:
         mock_cognito_client.initiate_auth.assert_called_once()
 
     def test_handle_refresh_generic_exception(
-        self, auth_service_instance_with_mock_cognito
+        self, auth_service_instance_with_mock_cognito, cognito_client
     ):
         """
         Tests that a generic exception during token refresh returns a 500 status and logs the error.

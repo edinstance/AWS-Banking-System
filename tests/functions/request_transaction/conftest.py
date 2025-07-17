@@ -6,13 +6,10 @@ import pytest
 
 from functions.request_transaction.request_transaction import app
 
+# Constants needed by other test modules
 VALID_UUID = str(uuid.uuid4())
-TEST_USER_ID = str(uuid.uuid4())
-TEST_ID_TOKEN = "dummy.jwt.token"
-TEST_USER_POOL_ID = "eu-west-2-testpool"
-TEST_CLIENT_ID = "test_client_id"
-TEST_AWS_REGION = "eu-west-2"
 TEST_SUB = str(uuid.uuid4())
+TEST_ID_TOKEN = "dummy.jwt.token"
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 
 
@@ -61,11 +58,11 @@ def valid_event():
     """
     return {
         "headers": {
-            "Idempotency-Key": VALID_UUID,
+            "Idempotency-Key": str(uuid.uuid4()),
             "Authorization": "Bearer valid-token",
         },
         "body": '{"accountId": "'
-        + VALID_UUID
+        + str(uuid.uuid4())
         + '", "amount": "100.50", "type": "DEPOSIT", "description": "Test deposit"}',
     }
 
@@ -115,41 +112,10 @@ def mock_auth():
         The patched mock object for use in tests that require bypassing actual token decoding.
     """
     with patch(
-        "functions.request_transaction.request_transaction.auth.get_sub_from_id_token"
+        "functions.request_transaction.request_transaction.app.authenticate_user"
     ) as mock:
-        mock.return_value = TEST_USER_ID
+        mock.return_value = (str(uuid.uuid4()), None)
         yield mock
-
-
-@pytest.fixture
-def mock_jwks_client():
-    """
-    Pytest fixture that mocks the JWKS client for JWT verification.
-
-    Yields a patched PyJWKClient whose `get_signing_key_from_jwt` method returns a mock signing key with a dummy key attribute, enabling tests to bypass actual key retrieval.
-    """
-    with patch(
-        "functions.request_transaction.request_transaction.auth.PyJWKClient"
-    ) as mock_client:
-        mock_instance = MagicMock()
-        mock_signing_key = MagicMock()
-        mock_signing_key.key = "dummy_key"
-        mock_instance.get_signing_key_from_jwt.return_value = mock_signing_key
-        mock_client.return_value = mock_instance
-        yield mock_client
-
-
-@pytest.fixture
-def mock_jwt():
-    """
-    Yields a patched mock of the JWT library used in the authentication module for test cases.
-
-    This fixture allows tests to control or inspect JWT operations by providing a mock object in place of the actual JWT library.
-    """
-    with patch(
-        "functions.request_transaction.request_transaction.auth.jwt"
-    ) as mock_jwt:
-        yield mock_jwt
 
 
 @pytest.fixture
@@ -161,7 +127,7 @@ def valid_transaction_data():
         dict: Contains account ID, amount, transaction type, and description.
     """
     return {
-        "accountId": VALID_UUID,
+        "accountId": str(uuid.uuid4()),
         "amount": "100.50",
         "type": "DEPOSIT",
         "description": "Test transaction",
