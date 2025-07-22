@@ -1,3 +1,8 @@
+from aws_lambda_powertools.event_handler.exceptions import (
+    UnauthorizedError,
+    InternalServerError,
+)
+
 from .exceptions import (
     MissingSubClaimError,
     InvalidTokenError,
@@ -42,42 +47,36 @@ def authenticate_user(
             )
 
             if not user_id:
-                return None, {
-                    "status_code": 404,
-                    "error": "Unauthorized: User identity could not be determined. Please ensure a valid token is provided.",
-                }
+                return None, UnauthorizedError(
+                    "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
+                )
 
             return user_id, None
 
         except (MissingSubClaimError, InvalidTokenError) as e:
             logger.warning(f"Authentication failed (Invalid Token/Claims): {e}")
-            return None, {
-                "status_code": 401,
-                "error": f"Unauthorized: Invalid authentication token ({e})",
-            }
+            return None, UnauthorizedError(
+                f"Unauthorized: Invalid authentication token ({e})"
+            )
         except AuthConfigurationError as e:
             logger.critical(f"Authentication configuration error: {e}", exc_info=True)
-            return None, {
-                "status_code": 500,
-                "error": "Server authentication configuration error. Please contact support.",
-            }
+            return None, InternalServerError(
+                "Server authentication configuration error. Please contact support."
+            )
         except AuthVerificationError as e:
             logger.error(
                 f"Generic authentication verification error: {e}", exc_info=True
             )
-            return None, {
-                "status_code": 500,
-                "error": "Internal authentication error. Please contact support.",
-            }
+            return None, InternalServerError(
+                "Internal authentication error. Please contact support."
+            )
         except Exception as e:
             logger.exception(f"Unexpected error during direct token verification: {e}")
-            return None, {
-                "status_code": 500,
-                "error": "An unexpected error occurred during authentication.",
-            }
+            return None, InternalServerError(
+                "An unexpected error occurred during authentication.",
+            )
 
-    logger.error(f"Failed to determine user ID after all attempts.")
-    return None, {
-        "status_code": 401,
-        "error": "Unauthorized: User identity could not be determined. Please ensure a valid token is provided.",
-    }
+    logger.error("Failed to determine user ID after all attempts.")
+    return None, UnauthorizedError(
+        "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
+    )

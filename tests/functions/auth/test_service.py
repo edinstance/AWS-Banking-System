@@ -1,6 +1,10 @@
-import json
-
 import pytest
+from aws_lambda_powertools.event_handler.exceptions import (
+    BadRequestError,
+    UnauthorizedError,
+    NotFoundError,
+    InternalServerError,
+)
 
 from functions.auth.auth.config import AuthConfig
 from authentication.exceptions import AuthConfigurationError
@@ -32,11 +36,11 @@ class TestAuthService:
         Verifies that the authentication service returns an appropriate error message if required credentials are not provided in the login request.
         """
         request_body = {}
-        result = auth_service_instance.handle_login(request_body)
+        with pytest.raises(BadRequestError) as exception_info:
+            auth_service_instance.handle_login(request_body)
 
-        assert result["statusCode"] == 400
-        result_body = json.loads(result["body"])
-        assert result_body["error"] == "Username and password are required."
+        assert exception_info.type == BadRequestError
+        assert exception_info.value.msg == "Username and password are required."
 
     def test_handle_login_success(
         self, auth_service_instance, mock_cognito_user_pool, cognito_client
@@ -68,13 +72,11 @@ class TestAuthService:
         request_body = {"username": test_username, "password": test_password}
         response = auth_service_instance.handle_login(request_body)
 
-        assert response["statusCode"] == 200
-        body = json.loads(response["body"])
-        assert body["message"] == "Login successful!"
-        assert "idToken" in body
-        assert "accessToken" in body
-        assert "refreshToken" in body
-        assert "expiresIn" in body
+        assert response["message"] == "Login successful!"
+        assert "idToken" in response
+        assert "accessToken" in response
+        assert "refreshToken" in response
+        assert "expiresIn" in response
         auth_service_instance.logger.info.assert_called_once_with(
             f"Successfully initiated auth for user: {test_username}"
         )
@@ -94,13 +96,13 @@ class TestAuthService:
         )
 
         request_body = {"username": "unconfirmed_user", "password": "Password123!"}
-        response = auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        assert response["statusCode"] == 403
+        with pytest.raises(UnauthorizedError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        response_body_dict = json.loads(response["body"])
+        assert exception_info.type == UnauthorizedError
         assert (
-            response_body_dict["error"]
+            exception_info.value.msg
             == "User not confirmed. Please verify your account."
         )
 
@@ -123,12 +125,13 @@ class TestAuthService:
         )
 
         request_body = {"username": "test_user", "password": "wrong_password"}
-        response = auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        assert response["statusCode"] == 401
-        assert json.loads(response["body"]) == {
-            "error": "Invalid username or password."
-        }
+        with pytest.raises(UnauthorizedError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_login(request_body)
+
+        assert exception_info.type == UnauthorizedError
+        assert exception_info.value.msg == "Invalid username or password."
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "Authentication failed for user: test_user (Invalid credentials)."
         )
@@ -148,10 +151,13 @@ class TestAuthService:
         )
 
         request_body = {"username": "non_existent_user", "password": "any_password"}
-        response = auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        assert response["statusCode"] == 404
-        assert json.loads(response["body"]) == {"error": "User not found."}
+        with pytest.raises(NotFoundError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_login(request_body)
+
+        assert exception_info.type == NotFoundError
+        assert exception_info.value.msg == "User not found."
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "User non_existent_user not found."
         )
@@ -169,12 +175,16 @@ class TestAuthService:
         )
 
         request_body = {"username": "test_user", "password": "some_password"}
-        response = auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        assert response["statusCode"] == 429
-        assert json.loads(response["body"]) == {
-            "error": "Too many login attempts, please try again later."
-        }
+        with pytest.raises(InternalServerError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_login(request_body)
+
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Too many login attempts, please try again later."
+        )
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "Too many requests to Cognito (login)."
         )
@@ -194,12 +204,16 @@ class TestAuthService:
         )
 
         request_body = {"username": "test_user", "password": "password"}
-        response = auth_service_instance_with_mock_cognito.handle_login(request_body)
 
-        assert response["statusCode"] == 500
-        assert json.loads(response["body"]) == {
-            "error": "Authentication service error. Please try again later."
-        }
+        with pytest.raises(InternalServerError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_login(request_body)
+
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Authentication service error. Please try again later."
+        )
+
         auth_service_instance_with_mock_cognito.logger.exception.assert_called_once_with(
             "Cognito login error for user test_user: Some unexpected error"
         )
@@ -214,10 +228,13 @@ class TestAuthService:
         Verifies that the response contains an appropriate error message and that a warning is logged.
         """
         request_body = {}
-        response = auth_service_instance_with_mock_cognito.handle_refresh(request_body)
 
-        assert response["statusCode"] == 400
-        assert json.loads(response["body"]) == {"error": "Refresh token is required."}
+        with pytest.raises(BadRequestError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_refresh(request_body)
+
+        assert exception_info.type == BadRequestError
+        assert exception_info.value.msg == "Refresh token is required."
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "Missing refreshToken for token refresh."
         )
@@ -245,12 +262,10 @@ class TestAuthService:
         request_body = {"refreshToken": "valid_refresh_token"}
         response = auth_service_instance_with_mock_cognito.handle_refresh(request_body)
 
-        assert response["statusCode"] == 200
-        body = json.loads(response["body"])
-        assert body["message"] == "Tokens refreshed successfully!"
-        assert body["idToken"] == "new_mock_id_token"
-        assert body["accessToken"] == "new_mock_access_token"
-        assert body["expiresIn"] == 3600
+        assert response["message"] == "Token refreshed successfully"
+        assert response["idToken"] == "new_mock_id_token"
+        assert response["accessToken"] == "new_mock_access_token"
+        assert response["expiresIn"] == 3600
 
         mock_cognito_client.initiate_auth.assert_called_once_with(
             AuthFlow="REFRESH_TOKEN_AUTH",
@@ -275,12 +290,16 @@ class TestAuthService:
         )
 
         request_body = {"refreshToken": "invalid_refresh_token"}
-        response = auth_service_instance_with_mock_cognito.handle_refresh(request_body)
 
-        assert response["statusCode"] == 401
-        assert json.loads(response["body"]) == {
-            "error": "Refresh token invalid or expired. Please re-authenticate."
-        }
+        with pytest.raises(UnauthorizedError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_refresh(request_body)
+
+        assert exception_info.type == UnauthorizedError
+        assert (
+            exception_info.value.msg
+            == "Refresh token invalid or expired. Please re-authenticate."
+        )
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "Refresh token is invalid or expired."
         )
@@ -298,12 +317,16 @@ class TestAuthService:
         )
 
         request_body = {"refreshToken": "valid_refresh_token"}
-        response = auth_service_instance_with_mock_cognito.handle_refresh(request_body)
 
-        assert response["statusCode"] == 429
-        assert json.loads(response["body"]) == {
-            "error": "Too many refresh attempts, please try again later."
-        }
+        with pytest.raises(InternalServerError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_refresh(request_body)
+
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Too many refresh attempts, please try again later."
+        )
+
         auth_service_instance_with_mock_cognito.logger.warning.assert_called_once_with(
             "Too many requests to Cognito (refresh)."
         )
@@ -323,12 +346,16 @@ class TestAuthService:
         )
 
         request_body = {"refreshToken": "valid_refresh_token"}
-        response = auth_service_instance_with_mock_cognito.handle_refresh(request_body)
 
-        assert response["statusCode"] == 500
-        assert json.loads(response["body"]) == {
-            "error": "Authentication service error. Please try again later."
-        }
+        with pytest.raises(InternalServerError) as exception_info:
+            auth_service_instance_with_mock_cognito.handle_refresh(request_body)
+
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Authentication service error. Please try again later."
+        )
+
         auth_service_instance_with_mock_cognito.logger.exception.assert_called_once_with(
             "Cognito refresh error: Another unexpected error"
         )

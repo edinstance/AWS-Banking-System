@@ -29,7 +29,13 @@ class TestDynamoDBInteractions:
         with patch.object(app_without_table, "logger") as mock_logger:
             mock_logger.inject_lambda_context.return_value = lambda f: f
 
-            response = app_without_table.lambda_handler({}, mock_context)
+            response = app_without_table.lambda_handler(
+                {
+                    "httpMethod": "POST",
+                    "path": "/transactions",
+                },
+                mock_context,
+            )
 
             assert response["statusCode"] == 500
             assert "Server configuration error" in response["body"]
@@ -54,6 +60,8 @@ class TestDynamoDBInteractions:
             mock_logger.inject_lambda_context.return_value = lambda f: f
 
             event = {
+                "httpMethod": "POST",
+                "path": "/transactions",
                 "headers": {},
                 "requestContext": {
                     "authorizer": {"claims": {"sub": str(uuid.uuid4())}}

@@ -36,12 +36,20 @@ import os
 import uuid
 
 from aws_lambda_powertools import Logger
+from aws_lambda_powertools.event_handler import (
+    APIGatewayRestResolver,
+    CORSConfig,
+)
+from aws_lambda_powertools.event_handler.exceptions import (
+    InternalServerError,
+    BadRequestError,
+    UnauthorizedError,
+)
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
 from authentication.api_gateway_authentication import authenticate_user
 from dynamodb import get_dynamodb_resource
-from response_helpers import create_response
 
 from .idempotency import handle_idempotency_error
 from .transaction_helpers import validate_request_headers
@@ -61,6 +69,9 @@ COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID")
 
 logger = Logger(service="RecordTransaction", level=POWERTOOLS_LOG_LEVEL)
+app = APIGatewayRestResolver(
+    cors=CORSConfig(allow_headers=["Content-Type", "Authorization", "Idempotency-Key"])
+)
 
 dynamodb = get_dynamodb_resource(DYNAMODB_ENDPOINT, AWS_REGION, logger)
 if TRANSACTIONS_TABLE_NAME:
@@ -71,31 +82,19 @@ else:
     table = None
 
 
-@logger.inject_lambda_context
-def lambda_handler(event, context: LambdaContext):
-    """
-    Processes API Gateway requests to request financial transactions, enforcing user authentication and idempotency.
-
-    Authenticates the user via Cognito, validates the Idempotency-Key header, parses and validates transaction data, and attempts to store the transaction in DynamoDB. Ensures duplicate requests are not processed by leveraging DynamoDB constraints. Returns API Gateway-compatible HTTP responses for authentication failures, validation errors, duplicate requests, and server or configuration errors.
-
-    Returns:
-        dict: An HTTP response suitable for API Gateway, indicating the result of the transaction request.
-    """
-    request_id = context.aws_request_id
-    logger.append_keys(request_id=request_id)
-    logger.info(f"Processing transaction request in {ENVIRONMENT_NAME} environment")
-
+@app.post("/transactions")
+def request_transaction():
+    """Handle transaction request."""
     if not table:
         logger.error("DynamoDB table resource is not initialized")
-        return create_response(
-            500, {"error": "Server configuration error"}, "OPTIONS,POST"
-        )
+        raise InternalServerError("Server configuration error")
 
+    event = app.current_event
     raw_headers = event.get("headers") or {}
     headers = {k.lower(): v for k, v in raw_headers.items()}
 
     user_id, auth_error = authenticate_user(
-        event,
+        event.raw_event,
         headers,
         COGNITO_USER_POOL_ID,
         COGNITO_CLIENT_ID,
@@ -104,85 +103,95 @@ def lambda_handler(event, context: LambdaContext):
     )
 
     if auth_error:
-        return create_response(
-            auth_error["status_code"], {"error": auth_error["error"]}, "OPTIONS, POST"
-        )
+        raise auth_error
 
     if not user_id:
         logger.error("Authentication failed: No user ID returned")
-        return create_response(
-            401,
-            {"error": "Unauthorized: User identity could not be determined"},
-            "OPTIONS,POST",
-        )
+        raise UnauthorizedError("Unauthorized: User identity could not be determined")
+
+    validate_request_headers(headers)
+
+    idempotency_key = headers["idempotency-key"]
+    request_id = event.request_context.request_id
 
     try:
-        idempotency_key_response = validate_request_headers(headers)
-        if idempotency_key_response:
-            return idempotency_key_response
+        request_body = event.json_body
+    except json.JSONDecodeError as e:
+        logger.warning(f"Invalid JSON in request body: {e}")
+        raise BadRequestError("Invalid JSON format in request body")
 
-        idempotency_key = headers["idempotency-key"]
+    is_valid, validation_error = validate_transaction_data(
+        request_body, VALID_TRANSACTION_TYPES
+    )
 
-        try:
-            body_raw = event.get("body") or "{}"
-            request_body = json.loads(body_raw)
-        except json.JSONDecodeError as e:
-            logger.warning(f"Invalid JSON in request body: {e}")
-            return create_response(
-                400, {"error": "Invalid JSON format in request body"}, "OPTIONS,POST"
-            )
+    if not is_valid:
+        logger.warning(f"Validation error: {validation_error}")
+        raise BadRequestError(validation_error)
 
-        is_valid, validation_error = validate_transaction_data(
-            request_body, VALID_TRANSACTION_TYPES
+    transaction_id = str(uuid.uuid4())
+    transaction_item = build_transaction_item(
+        transaction_id,
+        request_body,
+        user_id,
+        idempotency_key,
+        request_id,
+    )
+
+    try:
+        save_transaction(transaction_item, table, logger)
+        logger.info(
+            f"Successfully saved transaction {transaction_id} for user {user_id}"
         )
-        if not is_valid:
-            logger.warning(f"Validation error: {validation_error}")
-            return create_response(400, {"error": validation_error}, "POST")
-
-        transaction_id = str(uuid.uuid4())
-
-        transaction_item = build_transaction_item(
-            transaction_id,
-            request_body,
-            user_id,
-            idempotency_key,
-            request_id,
-        )
-
+    except ClientError as e:
         try:
-            save_transaction(transaction_item, table, logger)
-            logger.info(
-                f"Successfully saved transaction {transaction_id} for user {user_id}"
-            )
-        except ClientError as e:
             error_response = handle_idempotency_error(
                 idempotency_key, table, logger, transaction_id, e
             )
-
-            return error_response
-        except Exception as e:
+            if isinstance(error_response, tuple):
+                return error_response
+            else:
+                return error_response
+        except Exception as idempotency_error:
             logger.error(
-                f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
+                f"Error handling idempotency: {idempotency_error}", exc_info=True
             )
-            return create_response(
-                500,
-                {"error": "Failed to process transaction. Please try again."},
-                "OPTIONS,POST",
-            )
-
-        response_payload = {
-            "message": "Transaction requested successfully!",
-            "transactionId": transaction_id,
-            "status": "REQUESTED",
-            "timestamp": transaction_item["createdAt"],
-            "idempotencyKey": idempotency_key,
-        }
-        return create_response(201, response_payload, "OPTIONS,POST")
-
+            raise idempotency_error
     except Exception as e:
-        logger.exception(f"Unhandled exception in lambda_handler: {str(e)}")
-        return create_response(
-            500,
-            {"error": "Internal server error. Please contact support."},
-            "OPTIONS,POST",
+        logger.error(
+            f"Failed to save transaction {transaction_id}: {str(e)}", exc_info=True
         )
+        raise InternalServerError(
+            "Failed to process transaction. Please try again.",
+        )
+
+    response_payload = {
+        "message": "Transaction requested successfully!",
+        "transactionId": transaction_id,
+        "status": "REQUESTED",
+        "timestamp": transaction_item["createdAt"],
+        "idempotencyKey": idempotency_key,
+    }
+    return response_payload, 201
+
+
+@logger.inject_lambda_context
+def lambda_handler(event, context: LambdaContext):
+    """
+    AWS Lambda handler for processing transaction-related HTTP requests.
+
+    Uses AWS Lambda Powertools APIGatewayRestResolver for streamlined HTTP handling.
+    Automatically handles CORS, JSON parsing, and routing.
+
+    Args:
+        event: The Lambda event payload containing HTTP request details.
+        context: The Lambda context object providing runtime information.
+
+    Returns:
+        A dictionary representing the HTTP response, including status code, headers, and body.
+    """
+    logger.append_keys(request_id=context.aws_request_id)
+    logger.info(
+        f"Processing transaction request in {ENVIRONMENT_NAME} environment via APIGatewayRestResolver."
+    )
+
+    return app.resolve(event, context)

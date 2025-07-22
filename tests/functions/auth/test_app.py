@@ -1,6 +1,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
+
 from functions.auth.auth.app import lambda_handler
 
 
@@ -12,35 +13,11 @@ class TestApp:
         """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
-        result = lambda_handler({"httpMethod": "OPTIONS"}, context)
+        result = lambda_handler(
+            {"httpMethod": "OPTIONS", "path": "/auth/login"}, context
+        )
 
-        assert result["statusCode"] == 200
-        assert result["headers"]
-
-    def test_no_http_method(self, auth_service_instance_with_mock_cognito):
-        """
-        Tests that the lambda_handler returns a 400 status code when the HTTP method is missing from the event.
-        """
-        context = MagicMock()
-        context.aws_request_id = "test-request-id"
-
-        result = lambda_handler({}, context)
-
-        assert result["statusCode"] == 400
-
-    def test_unsupported_method(self, auth_service_instance_with_mock_cognito):
-        """
-        Tests that the lambda_handler returns a 405 status code and appropriate error message when an unsupported HTTP method is used.
-        """
-        context = MagicMock()
-        context.aws_request_id = "test-request-id"
-
-        result = lambda_handler({"httpMethod": "GET"}, context)
-
-        assert result["statusCode"] == 405
-
-        body = json.loads(result["body"])
-        assert body.get("error") == "Method Not Allowed"
+        assert result["statusCode"] == 204
 
     def test_invalid_json(self, auth_service_instance_with_mock_cognito):
         """
@@ -48,6 +25,7 @@ class TestApp:
         """
         context = MagicMock()
         context.aws_request_id = "test-request-id"
+
         result = lambda_handler(
             {
                 "httpMethod": "POST",
@@ -56,10 +34,8 @@ class TestApp:
             },
             context,
         )
-
         assert result["statusCode"] == 400
-        body = json.loads(result["body"])
-        assert body.get("error") == "Invalid JSON format in request body"
+        assert result["body"] == "Invalid JSON format in request body."
 
     def test_invalid_path(self, auth_service_instance_with_mock_cognito):
         """
@@ -78,7 +54,7 @@ class TestApp:
 
         assert result["statusCode"] == 404
         body = json.loads(result["body"])
-        assert body.get("error") == "Not Found"
+        assert body.get("message") == "Not found"
 
     def test_post_login_route(self, auth_service_instance_with_mock_cognito):
         """
@@ -92,8 +68,7 @@ class TestApp:
             mock_auth_service = MagicMock()
             mock_get_auth_service.return_value = mock_auth_service
             mock_auth_service.handle_login.return_value = {
-                "statusCode": 200,
-                "body": json.dumps({"message": "Login successful"}),
+                "message": "Login successful"
             }
             result = lambda_handler(
                 {
@@ -121,8 +96,7 @@ class TestApp:
             mock_auth_service = MagicMock()
             mock_get_auth_service.return_value = mock_auth_service
             mock_auth_service.handle_refresh.return_value = {
-                "statusCode": 200,
-                "body": json.dumps({"message": "Token refreshed"}),
+                "message": "Token refreshed"
             }
             result = lambda_handler(
                 {

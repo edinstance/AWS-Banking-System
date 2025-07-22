@@ -52,14 +52,11 @@ class TestLambdaHandler:
         valid_event["headers"]["Idempotency-Key"] = short_idempotency_key
 
         response = lambda_handler(valid_event, mock_context)
-        response_body = json.loads(response["body"])
+
         assert response["statusCode"] == 400
         assert (
-            "Idempotency-Key must be between 10 and 64 characters"
-            in response_body["error"]
+            "Idempotency-Key must be between 10 and 64 characters" in response["body"]
         )
-        assert response_body["suggestion"]
-        assert response_body["example"]
 
     def test_invalid_json_body(self, valid_event, mock_context, mock_table, mock_auth):
         """
@@ -141,29 +138,13 @@ class TestLambdaHandler:
 
         response = lambda_handler(valid_event, mock_context)
 
-        assert response["statusCode"] == 500
         response_body = json.loads(response["body"])
-        assert "error" in response_body
-        assert "Failed to process transaction" in response_body["error"]
 
-    def test_unhandled_exception_handling(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        """
-        Verify that the Lambda handler returns a 500 status code and a generic internal server error message when an unexpected exception, such as a MemoryError during JSON parsing, is raised.
-        """
-        with patch(
-            "functions.request_transaction.request_transaction.app.json.loads"
-        ) as mock_json_loads:
-            mock_json_loads.side_effect = MemoryError("Unexpected memory error")
-
-            response = lambda_handler(valid_event, mock_context)
-
-            assert response["statusCode"] == 500
-            assert (
-                response["body"]
-                == '{"error": "Internal server error. Please contact support."}'
-            )
+        assert response["statusCode"] == 500
+        assert (
+            response_body["message"]
+            == "Failed to process transaction. Please try again."
+        )
 
     def test_client_error_during_save(
         self, valid_event, mock_context, mock_table, mock_auth
@@ -189,24 +170,23 @@ class TestLambdaHandler:
         """
         Test that the Lambda handler returns the authentication error response unchanged when authentication fails.
         """
-        auth_error_response = {"statusCode": 401, "error": "Authentication failed"}
+        from aws_lambda_powertools.event_handler.exceptions import UnauthorizedError
+
+        auth_error = UnauthorizedError("Authentication failed")
 
         with patch(
             "functions.request_transaction.request_transaction.app.authenticate_user"
         ) as mock_auth:
             mock_auth.return_value = (
                 None,
-                {
-                    "status_code": auth_error_response["statusCode"],
-                    "error": auth_error_response["error"],
-                },
+                auth_error,
             )
 
             response = lambda_handler(valid_event, mock_context)
             body = json.loads(response["body"])
 
-            assert response["statusCode"] == auth_error_response["statusCode"]
-            assert body["error"] == auth_error_response["error"]
+            assert response["statusCode"] == 401
+            assert body["message"] == "Authentication failed"
 
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
@@ -226,3 +206,51 @@ class TestLambdaHandler:
                 "Unauthorized: User identity could not be determined"
                 in response["body"]
             )
+
+    def test_idempotency_error_returns_dict(
+        self, valid_event, mock_context, mock_table, mock_auth
+    ):
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
+
+        expected_response = {"message": "Custom error response"}
+
+        with patch(
+            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            return_value=expected_response,
+        ):
+            response = lambda_handler(valid_event, mock_context)
+
+            response_body = json.loads(response["body"])
+
+            assert response_body == expected_response
+
+    def test_idempotency_error_returns_tuple(
+        self, valid_event, mock_context, mock_table, mock_auth
+    ):
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
+
+        expected_response = ({"message": "Transaction already processed."}, 409)
+
+        with patch(
+            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            return_value=expected_response,
+        ):
+            response = lambda_handler(valid_event, mock_context)
+
+            assert response["statusCode"] == 409
+
+            response_body = json.loads(response["body"])
+
+            assert response_body == expected_response[0]

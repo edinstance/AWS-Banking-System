@@ -1,6 +1,7 @@
-import json
 from unittest.mock import patch
 
+import pytest
+from aws_lambda_powertools.event_handler.exceptions import InternalServerError
 from botocore.exceptions import ClientError
 
 from functions.request_transaction.request_transaction.idempotency import (
@@ -18,16 +19,20 @@ class TestIdempotencyErrors:
         """
         mock_error = ClientError({"Error": {"Code": "Generic Error"}}, "PutItem")
 
-        result = handle_idempotency_error(
-            self.TEST_IDEMPOTENCY_KEY,
-            mock_table,
-            mock_logger,
-            self.TEST_TRANSACTION_ID,
-            mock_error,
-        )
+        with pytest.raises(InternalServerError) as exception_info:
+            handle_idempotency_error(
+                self.TEST_IDEMPOTENCY_KEY,
+                mock_table,
+                mock_logger,
+                self.TEST_TRANSACTION_ID,
+                mock_error,
+            )
 
-        assert result["statusCode"] == 500
-        assert "Failed to process transaction" in json.loads(result["body"])["error"]
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Failed to process transaction. Please try again."
+        )
 
     def test_conditional_check_error(self, mock_table, mock_logger):
         """
@@ -40,19 +45,17 @@ class TestIdempotencyErrors:
             "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             side_effect=Exception("New error"),
         ):
-            result = handle_idempotency_error(
-                self.TEST_IDEMPOTENCY_KEY,
-                mock_table,
-                mock_logger,
-                self.TEST_TRANSACTION_ID,
-                mock_error,
-            )
+            with pytest.raises(InternalServerError) as exception_info:
+                handle_idempotency_error(
+                    self.TEST_IDEMPOTENCY_KEY,
+                    mock_table,
+                    mock_logger,
+                    self.TEST_TRANSACTION_ID,
+                    mock_error,
+                )
 
-            assert result["statusCode"] == 500
-            assert (
-                "Error retrieving existing transaction"
-                in json.loads(result["body"])["message"]
-            )
+        assert exception_info.type == InternalServerError
+        assert exception_info.value.msg == "Error retrieving existing transaction."
 
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):
         """
@@ -77,8 +80,6 @@ class TestIdempotencyErrors:
                 mock_error,
             )
 
-            assert result["statusCode"] == 409
-            response_body = json.loads(result["body"])
-            assert "Transaction already processed" in response_body["message"]
-            assert response_body["transactionId"] == "existing-txn-123"
-            assert response_body["idempotent"] is True
+            assert result[1] == 409
+            assert result[0]["message"] == "Transaction already processed."
+            assert result[0]["transactionId"] == "existing-txn-123"

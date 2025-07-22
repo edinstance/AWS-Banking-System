@@ -1,6 +1,7 @@
-import json
 import uuid
 
+import pytest
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError
 
 from functions.request_transaction.request_transaction.transaction_helpers import (
     is_valid_uuid,
@@ -72,38 +73,35 @@ class TestValidateRequestHeaders:
         """
         headers = {}
 
-        response = validate_request_headers(headers)
-        response_body = json.loads(response["body"])
+        with pytest.raises(BadRequestError) as exception_info:
+            validate_request_headers(headers)
 
-        assert response["statusCode"] == 400
-        assert "error" in response_body
+        assert exception_info.type is BadRequestError
         assert (
-            response_body["error"]
+            exception_info.value.msg
             == "Idempotency-Key header is required for transaction creation"
         )
 
     def test_short_idempotency_key(self):
         headers = {"idempotency-key": "key"}
 
-        response = validate_request_headers(headers)
-        response_body = json.loads(response["body"])
+        with pytest.raises(BadRequestError) as exception_info:
+            validate_request_headers(headers)
 
-        assert response["statusCode"] == 400
-        assert "error" in response_body
+        assert exception_info.type is BadRequestError
         assert (
-            response_body["error"]
+            exception_info.value.msg
             == "Idempotency-Key must be between 10 and 64 characters"
         )
 
     def test_incorrect_idempotency_key(self):
         headers = {"idempotency-key": "long-but-invalid-key"}
 
-        response = validate_request_headers(headers)
-        response_body = json.loads(response["body"])
+        with pytest.raises(BadRequestError) as exception_info:
+            validate_request_headers(headers)
 
-        assert response["statusCode"] == 400
-        assert "error" in response_body
-        assert response_body["error"] == "Idempotency-Key must be a valid UUID"
+        assert exception_info.type is BadRequestError
+        assert exception_info.value.msg == "Idempotency-Key must be a valid UUID"
 
     def test_successful_idempotency_key(self):
         headers = {"idempotency-key": str(uuid.uuid4())}

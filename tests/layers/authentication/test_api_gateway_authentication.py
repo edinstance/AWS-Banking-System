@@ -1,6 +1,10 @@
 import uuid
 from unittest.mock import patch
 
+from aws_lambda_powertools.event_handler.exceptions import (
+    UnauthorizedError,
+    InternalServerError,
+)
 from authentication.api_gateway_authentication import authenticate_user
 from authentication.exceptions import (
     MissingSubClaimError,
@@ -54,10 +58,10 @@ def test_authenticate_user_missing_authorization(
     )
 
     assert user_id is None
-    assert response["status_code"] == 401
+    assert isinstance(response, UnauthorizedError)
     assert (
         "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
-        in response["error"]
+        in str(response)
     )
 
 
@@ -83,9 +87,9 @@ def test_authenticate_user_invalid_token(valid_event, headers_with_jwt, mock_log
         )
 
         assert user_id is None
-        assert response["status_code"] == 401
+        assert isinstance(response, UnauthorizedError)
         assert (
-            response["error"]
+            str(response)
             == "Unauthorized: Invalid authentication token (Signature verification failed)"
         )
 
@@ -115,9 +119,9 @@ def test_authenticate_user_missing_sub_claim(
         )
 
         assert user_id is None
-        assert response["status_code"] == 401
+        assert isinstance(response, UnauthorizedError)
         assert (
-            response["error"]
+            str(response)
             == "Unauthorized: Invalid authentication token (Missing sub claim)"
         )
 
@@ -144,8 +148,8 @@ def test_authenticate_user_auth_configuration_error(
             mock_logger,
         )
 
-        assert response["status_code"] == 500
-        assert "Server authentication configuration error" in response["error"]
+        assert isinstance(response, InternalServerError)
+        assert "Server authentication configuration error" in str(response)
 
 
 def test_authenticate_user_verification_error(
@@ -172,8 +176,8 @@ def test_authenticate_user_verification_error(
             mock_logger,
         )
 
-        assert response["status_code"] == 500
-        assert "Internal authentication error" in response["error"]
+        assert isinstance(response, InternalServerError)
+        assert "Internal authentication error" in str(response)
 
 
 def test_authenticate_user_unexpected_error(valid_event, headers_with_jwt, mock_logger):
@@ -195,10 +199,8 @@ def test_authenticate_user_unexpected_error(valid_event, headers_with_jwt, mock_
             mock_logger,
         )
 
-        assert response["status_code"] == 500
-        assert (
-            "An unexpected error occurred during authentication." in response["error"]
-        )
+        assert isinstance(response, InternalServerError)
+        assert "An unexpected error occurred during authentication." in str(response)
 
 
 def test_authenticate_user_no_user_id(valid_event, headers_with_jwt, mock_logger):
@@ -223,8 +225,8 @@ def test_authenticate_user_no_user_id(valid_event, headers_with_jwt, mock_logger
         )
 
         assert user_id is None
-        assert response["status_code"] == 404
+        assert isinstance(response, UnauthorizedError)
         assert (
             "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
-            in response["error"]
+            in str(response)
         )

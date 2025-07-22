@@ -1,6 +1,6 @@
 import uuid
 
-from response_helpers import create_response
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError
 
 
 def is_valid_uuid(val: str) -> bool:
@@ -19,7 +19,7 @@ def is_valid_uuid(val: str) -> bool:
         return False
 
 
-def validate_request_headers(headers: dict) -> dict | None:
+def validate_request_headers(headers: dict):
     """
     Validates the presence and format of the 'Idempotency-Key' header in HTTP request headers.
 
@@ -35,35 +35,14 @@ def validate_request_headers(headers: dict) -> dict | None:
     idempotency_key = normalized_headers.get("idempotency-key")
 
     if not idempotency_key:
-        suggested_key = str(uuid.uuid4())
-        return create_response(
-            400,
-            {
-                "error": "Idempotency-Key header is required for transaction creation",
-                "suggestion": "Please include an Idempotency-Key header with a UUID v4 value",
-                "example": suggested_key,
-            },
-            "OPTIONS,POST",
+        raise BadRequestError(
+            "Idempotency-Key header is required for transaction creation"
         )
 
     idempotency_key = str(idempotency_key)
     if len(idempotency_key) < 10 or len(idempotency_key) > 64:
-        suggested_key = str(uuid.uuid4())
-        return create_response(
-            400,
-            {
-                "error": "Idempotency-Key must be between 10 and 64 characters",
-                "suggestion": "We recommend using a UUID v4 format",
-                "example": suggested_key,
-            },
-            "OPTIONS,POST",
-        )
+        raise BadRequestError("Idempotency-Key must be between 10 and 64 characters")
 
     if not is_valid_uuid(idempotency_key):
-        suggested_key = str(uuid.uuid4())
-        return create_response(
-            400,
-            {"error": "Idempotency-Key must be a valid UUID", "example": suggested_key},
-            "OPTIONS,POST",
-        )
+        raise BadRequestError("Idempotency-Key must be a valid UUID")
     return None

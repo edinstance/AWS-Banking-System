@@ -48,6 +48,8 @@ def valid_event():
     The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
     """
     return {
+        "httpMethod": "POST",
+        "path": "/transactions",
         "headers": {
             "Idempotency-Key": str(uuid.uuid4()),
             "Authorization": "Bearer valid-token",
@@ -55,6 +57,9 @@ def valid_event():
         "body": '{"accountId": "'
         + str(uuid.uuid4())
         + '", "amount": "100.50", "type": "DEPOSIT", "description": "Test deposit"}',
+        "requestContext": {
+            "requestId": str(uuid.uuid4()),
+        },
     }
 
 

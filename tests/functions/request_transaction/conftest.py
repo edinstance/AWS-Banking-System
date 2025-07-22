@@ -1,6 +1,6 @@
 import uuid
 from importlib import reload
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -57,6 +57,8 @@ def valid_event():
     The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
     """
     return {
+        "httpMethod": "POST",
+        "path": "/transactions",
         "headers": {
             "Idempotency-Key": str(uuid.uuid4()),
             "Authorization": "Bearer valid-token",
@@ -64,6 +66,9 @@ def valid_event():
         "body": '{"accountId": "'
         + str(uuid.uuid4())
         + '", "amount": "100.50", "type": "DEPOSIT", "description": "Test deposit"}',
+        "requestContext": {
+            "requestId": str(uuid.uuid4()),
+        },
     }
 
 
