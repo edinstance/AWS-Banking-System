@@ -43,14 +43,12 @@ from aws_lambda_powertools.event_handler import (
 from aws_lambda_powertools.event_handler.exceptions import (
     InternalServerError,
     BadRequestError,
-    UnauthorizedError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 
-from authentication.api_gateway_authentication import authenticate_user
+from authentication.authenticate_request import authenticate_request
 from dynamodb import get_dynamodb_resource
-
 from .idempotency import handle_idempotency_error
 from .transaction_helpers import validate_request_headers
 from .transactions import (
@@ -93,21 +91,14 @@ def request_transaction():
     raw_headers = event.get("headers") or {}
     headers = {k.lower(): v for k, v in raw_headers.items()}
 
-    user_id, auth_error = authenticate_user(
-        event.raw_event,
+    user_id = authenticate_request(
+        event,
         headers,
         COGNITO_USER_POOL_ID,
         COGNITO_CLIENT_ID,
         AWS_REGION.lower(),
         logger,
     )
-
-    if auth_error:
-        raise auth_error
-
-    if not user_id:
-        logger.error("Authentication failed: No user ID returned")
-        raise UnauthorizedError("Unauthorized: User identity could not be determined")
 
     validate_request_headers(headers)
 

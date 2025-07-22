@@ -111,15 +111,15 @@ def mock_table():
 @pytest.fixture
 def mock_auth():
     """
-    Pytest fixture that mocks the extraction of the user ID from an ID token.
+    Pytest fixture that mocks the authentication request function.
 
     Yields:
-        The patched mock object for use in tests that require bypassing actual token decoding.
+        The patched mock object for use in tests that require bypassing actual authentication.
     """
     with patch(
-        "functions.request_transaction.request_transaction.app.authenticate_user"
+        "functions.request_transaction.request_transaction.app.authenticate_request"
     ) as mock:
-        mock.return_value = (str(uuid.uuid4()), None)
+        mock.return_value = str(uuid.uuid4())
         yield mock
 
 

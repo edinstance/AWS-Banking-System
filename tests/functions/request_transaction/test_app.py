@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+from aws_lambda_powertools.event_handler.exceptions import UnauthorizedError
 from botocore.exceptions import ClientError
 
 from functions.request_transaction.request_transaction.app import lambda_handler
@@ -175,12 +176,9 @@ class TestLambdaHandler:
         auth_error = UnauthorizedError("Authentication failed")
 
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
-            mock_auth.return_value = (
-                None,
-                auth_error,
-            )
+            mock_auth.side_effect = auth_error
 
             response = lambda_handler(valid_event, mock_context)
             body = json.loads(response["body"])
@@ -190,14 +188,20 @@ class TestLambdaHandler:
 
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
-        Test that the Lambda handler returns a 401 error when authentication provides neither a user ID nor an authentication error.
+        Test that the Lambda handler returns a 401 error when authentication fails to determine user identity.
 
-        This test ensures that if the authentication function returns `(None, None)`, the handler responds with a 401 status code and an unauthorised message indicating user identity could not be determined.
+        This test ensures that if the authentication function raises an UnauthorizedError with the message
+        "Unauthorized: User identity could not be determined", the handler responds with a 401 status code
+        and the appropriate error message.
         """
+        auth_error = UnauthorizedError(
+            "Unauthorized: User identity could not be determined"
+        )
+
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
-            mock_auth.return_value = (None, None)
+            mock_auth.side_effect = auth_error
 
             response = lambda_handler(valid_event, mock_context)
 
