@@ -18,9 +18,12 @@ class TestAuthenticateRequest:
         with patch(
             "authentication.authenticate_request.authenticate_user"
         ) as mock_authenticate_user:
-            mock_authenticate_user.return_value = (None, UnauthorizedError(
-                "Unauthorized: User identity could not be determined"
-            ))
+            mock_authenticate_user.return_value = (
+                None,
+                UnauthorizedError(
+                    "Unauthorized: User identity could not be determined"
+                ),
+            )
 
             with pytest.raises(UnauthorizedError) as exception_info:
                 event = MagicMock()
