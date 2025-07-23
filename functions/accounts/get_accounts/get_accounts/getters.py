@@ -19,7 +19,6 @@ def get_account_by_id(user_id, account_id, table, logger):
     try:
         response = table.get_item(Key={"accountId": account_id})
         item = response.get("Item")
-        print(item)
 
         if not item:
             raise NotFoundError("Account not found")

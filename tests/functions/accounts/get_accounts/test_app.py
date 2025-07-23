@@ -6,6 +6,7 @@ import pytest
 from aws_lambda_powertools.event_handler.exceptions import (
     UnauthorizedError,
     InternalServerError,
+    NotFoundError,
 )
 from botocore.exceptions import ClientError
 
@@ -59,19 +60,19 @@ class TestGetAccount:
             response_body = json.loads(response["body"])
             assert "Internal server error" in response_body["message"]
 
-    def test_get_account_value_error(
+    def test_get_account_not_found_error(
         self, valid_get_account_event, mock_context, mock_auth
     ):
         with patch(
             "functions.accounts.get_accounts.get_accounts.app.table"
         ) as mock_table:
-            mock_table.get_item.side_effect = ValueError("Invalid account ID")
+            mock_table.get_item.side_effect = NotFoundError("Invalid account Id")
 
             response = lambda_handler(valid_get_account_event, mock_context)
 
-            assert response["statusCode"] == 400
+            assert response["statusCode"] == 404
             response_body = json.loads(response["body"])
-            assert "Invalid account id" in response_body["message"]
+            assert "Invalid account Id" in response_body["message"]
 
 
 class TestGetAccounts:

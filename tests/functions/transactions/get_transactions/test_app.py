@@ -6,6 +6,7 @@ import pytest
 from aws_lambda_powertools.event_handler.exceptions import (
     UnauthorizedError,
     InternalServerError,
+    NotFoundError,
 )
 from botocore.exceptions import ClientError
 
@@ -69,7 +70,7 @@ class TestGetTransaction:
             response_body = json.loads(response["body"])
             assert "Internal server error" in response_body["message"]
 
-    def test_get_transaction_value_error(
+    def test_get_transaction_not_found_error(
         self, valid_get_transaction_event, mock_context, mock_auth
     ):
         """
@@ -80,13 +81,13 @@ class TestGetTransaction:
         with patch(
             "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
-            mock_table.query.side_effect = ValueError("Invalid transaction ID")
+            mock_table.query.side_effect = NotFoundError("Invalid transaction Id")
 
             response = lambda_handler(valid_get_transaction_event, mock_context)
 
-            assert response["statusCode"] == 400
+            assert response["statusCode"] == 404
             response_body = json.loads(response["body"])
-            assert "Invalid transaction id" in response_body["message"]
+            assert "Invalid transaction Id" in response_body["message"]
 
 
 class TestGetTransactions:

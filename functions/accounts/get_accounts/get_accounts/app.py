@@ -7,7 +7,8 @@ from aws_lambda_powertools.event_handler import (
 )
 from aws_lambda_powertools.event_handler.exceptions import (
     InternalServerError,
-    BadRequestError,
+    NotFoundError,
+    ForbiddenError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
@@ -76,9 +77,8 @@ def get_account(account_id):
     except ClientError as e:
         logger.error(f"Error getting account with id {account_id}: {str(e)}")
         raise InternalServerError("Internal server error")
-    except ValueError as e:
-        logger.error(f"Invalid account id: {str(e)}")
-        raise BadRequestError("Invalid account id")
+    except (NotFoundError, ForbiddenError):
+        raise
 
 
 @logger.inject_lambda_context

@@ -259,7 +259,7 @@ Resources:
         ApiGetAccountByIdEvent:
           Type: Api
           Properties:
-            Path: /accounts/{id}
+            Path: /accounts/{account_id}
             Method: GET
             RestApiId: !Ref BankingApiGateway
             Auth:
