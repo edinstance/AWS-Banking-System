@@ -19,7 +19,7 @@ class TestDynamoDBInteractions:
     def test_lambda_handler_with_uninitialized_table(self, app_without_table):
         """
         Test that the Lambda handler returns a 500 error and logs an error message when the DynamoDB table resource is not initialised.
-        
+
         Asserts that the response indicates a server configuration error and verifies that an error log about the missing DynamoDB table resource is generated.
         """
         mock_context = MagicMock()
@@ -49,7 +49,7 @@ class TestDynamoDBInteractions:
     def test_lambda_handler_with_initialized_table(self, app_with_mocked_table):
         """
         Test that the Lambda handler returns a 400 error when the Idempotency-Key header is missing, even if the DynamoDB table is initialised.
-        
+
         Verifies that the response contains an appropriate error message and that the DynamoDB table resource remains available on the application instance.
         """
         mock_context = MagicMock()

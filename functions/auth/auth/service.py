@@ -37,12 +37,12 @@ class AuthService:
     def handle_login(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
         """
         Authenticates a user with AWS Cognito and returns authentication tokens.
-        
+
         Validates that both username and password are present in the request body, then attempts to authenticate the user using Cognito's ADMIN_USER_PASSWORD_AUTH flow. On success, returns a dictionary containing authentication tokens and expiry information. Raises HTTP exceptions for missing credentials, invalid login, unconfirmed users, non-existent users, rate limiting, or unexpected errors.
-        
+
         Parameters:
             request_body (Dict[str, Any]): Dictionary containing 'username' and 'password' keys.
-        
+
         Returns:
             Dict[str, Any]: Dictionary with authentication tokens and a success message.
         """
@@ -99,12 +99,12 @@ class AuthService:
     def handle_refresh(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
         """
         Refreshes authentication tokens using AWS Cognito based on a provided refresh token.
-        
+
         Validates the presence of a refresh token in the request body and initiates the Cognito REFRESH_TOKEN_AUTH flow to obtain new tokens. Raises HTTP exceptions for missing, invalid, or expired tokens, rate limiting, or unexpected errors.
-        
+
         Parameters:
             request_body (Dict[str, Any]): Dictionary containing the "refreshToken" key.
-        
+
         Returns:
             Dict[str, Any]: A dictionary with refreshed authentication tokens and a success message.
         """

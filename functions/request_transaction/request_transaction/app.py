@@ -84,9 +84,9 @@ else:
 def request_transaction():
     """
     Processes a POST request to create a new financial transaction with idempotency enforcement.
-    
+
     Validates authentication, headers, and transaction data, ensuring the request is well-formed and unique per idempotency key. Persists the transaction to DynamoDB, handling duplicate requests by returning the original transaction response. Returns a 201 response with transaction details upon success.
-    
+
     Returns:
         tuple: A response payload containing transaction details and HTTP status code 201.
     """
@@ -173,7 +173,7 @@ def request_transaction():
 def lambda_handler(event, context: LambdaContext):
     """
     AWS Lambda entry point for handling transaction HTTP requests via APIGatewayRestResolver.
-    
+
     Delegates incoming API Gateway events to the resolver, which manages routing, CORS, and response formatting.
     """
     logger.append_keys(request_id=context.aws_request_id)

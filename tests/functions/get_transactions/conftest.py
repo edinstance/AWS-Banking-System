@@ -15,7 +15,7 @@ TEST_USER_ID = str(uuid.uuid4())
 def mock_auth():
     """
     Pytest fixture that replaces the authentication function with a mock returning a fixed test user ID.
-    
+
     Yields:
         The mocked authentication function.
     """
@@ -30,7 +30,7 @@ def mock_auth():
 def valid_get_event():
     """
     Return a dictionary representing a valid HTTP GET event for retrieving all transactions.
-    
+
     The returned event includes the HTTP method, endpoint path, authorisation header, and a unique request ID in the request context.
     """
     return {
@@ -49,7 +49,7 @@ def valid_get_event():
 def valid_get_transaction_event():
     """
     Generate a sample event dictionary representing a valid HTTP GET request for a specific transaction by ID.
-    
+
     Returns:
         dict: An event dictionary suitable for testing transaction retrieval endpoints.
     """
@@ -75,7 +75,7 @@ def get_transactions_app_with_mocked_tables(
 ):
     """
     Pytest fixture that configures the get_transactions app with mocked DynamoDB tables and environment variables for isolated testing.
-    
+
     Yields:
         The app instance with its transactions table and environment fully mocked for test execution.
     """

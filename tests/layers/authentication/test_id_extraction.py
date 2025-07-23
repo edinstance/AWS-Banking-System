@@ -27,7 +27,7 @@ from tests.layers.authentication.conftest import (
 def test_successful_token_verification(mock_jwks_client, mock_jwt):
     """
     Test that get_sub_from_id_token successfully verifies a valid ID token and returns the expected subject claim.
-    
+
     Asserts that the function returns the correct 'sub' value and that JWT decoding is performed with the correct parameters.
     """
     mock_jwt.decode.return_value = {"token_use": "id", "sub": TEST_SUB}
@@ -86,7 +86,7 @@ def test_invalid_token_use(mock_jwks_client, mock_jwt):
 def test_invalid_audience(mock_jwks_client, mock_jwt):
     """
     Test that get_sub_from_id_token raises InvalidTokenError when the JWT audience is invalid.
-    
+
     Simulates jwt.decode raising InvalidAudienceError and verifies that the resulting InvalidTokenError contains the expected error message.
     """
     mock_jwt.decode.side_effect = InvalidAudienceError("Invalid audience")
@@ -106,7 +106,7 @@ def test_invalid_audience(mock_jwks_client, mock_jwt):
 def test_invalid_issuer(mock_jwks_client, mock_jwt):
     """
     Test that get_sub_from_id_token raises InvalidTokenError when the token issuer is invalid.
-    
+
     Simulates a scenario where JWT decoding fails due to an invalid issuer, and verifies that the appropriate exception is raised with the expected error message.
     """
     mock_jwt.decode.side_effect = InvalidIssuerError("Invalid issuer")
@@ -146,7 +146,7 @@ def test_expired_token(mock_jwks_client, mock_jwt):
 def test_jwt_processing_error(mock_jwks_client, mock_jwt):
     """
     Verify that get_sub_from_id_token raises InvalidTokenError when a generic JWT processing error occurs during token decoding.
-    
+
     Simulates a PyJWTError from the JWT library and asserts that the exception message is propagated in the raised InvalidTokenError.
     """
     mock_jwt.decode.side_effect = PyJWTError("JWT processing failed")

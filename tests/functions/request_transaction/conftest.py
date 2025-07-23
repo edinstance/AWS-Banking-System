@@ -53,7 +53,7 @@ def app_without_table(monkeypatch):
 def valid_event():
     """
     Return a dictionary representing a valid HTTP POST event for a transaction request.
-    
+
     The event includes dynamically generated idempotency key, account ID, and request ID, along with headers and a JSON body for a deposit transaction.
     """
     return {
@@ -112,7 +112,7 @@ def mock_table():
 def mock_auth():
     """
     Pytest fixture that patches the app's authentication function to always return a random UUID.
-    
+
     Yields:
         The patched mock object, allowing tests to bypass real authentication and control the returned user identifier.
     """
@@ -127,7 +127,7 @@ def mock_auth():
 def valid_transaction_data():
     """
     Generate a dictionary containing valid transaction data for testing.
-    
+
     Returns:
         dict: A dictionary with dynamically generated account ID, amount, transaction type, and description fields.
     """

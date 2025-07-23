@@ -8,12 +8,12 @@ def authenticate_request(
 ):
     """
     Authenticate an incoming request using AWS Cognito and return the authenticated user's ID.
-    
+
     Attempts to authenticate the request with the provided event, headers, Cognito user pool ID, client ID, and AWS region. Raises an authentication error if authentication fails or if the user identity cannot be determined.
-    
+
     Returns:
         str: The authenticated user's ID.
-    
+
     Raises:
         Exception: If authentication fails or the user identity cannot be determined.
     """

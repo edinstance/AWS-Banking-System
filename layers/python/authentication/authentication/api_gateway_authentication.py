@@ -17,9 +17,9 @@ def authenticate_user(
 ):
     """
     Authenticate a user by extracting and verifying their identity from an AWS Lambda event or HTTP headers.
-    
+
     Attempts to obtain the user ID (`sub` claim) from the event's authoriser claims. If unavailable, checks for an `authorization` header, verifies the JWT ID token using AWS Cognito parameters, and extracts the user ID. Returns a tuple of the user ID and `None` on success, or `None` and an HTTP error response on failure. Handles invalid tokens, configuration errors, verification failures, and unexpected exceptions with appropriate error responses.
-     
+
     Returns:
         tuple: (user_id, None) if authentication succeeds, or (None, error_response) if authentication fails.
     """

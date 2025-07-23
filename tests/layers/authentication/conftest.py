@@ -17,7 +17,7 @@ VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 def mock_jwks_client():
     """
     Pytest fixture that patches the JWKS client to return a mock signing key for JWT verification.
-    
+
     Yields:
         The patched PyJWKClient class, configured so that `get_signing_key_from_jwt` returns a mock object with a dummy key attribute. This allows tests to bypass real JWKS key retrieval.
     """
@@ -34,7 +34,7 @@ def mock_jwks_client():
 def mock_jwt():
     """
     Yields a patched mock of the JWT library for use in authentication-related tests.
-    
+
     This fixture enables tests to substitute the real JWT library with a mock, allowing control and inspection of JWT operations during test execution.
     """
     with patch("authentication.id_extraction.jwt") as mock_jwt:
@@ -45,7 +45,7 @@ def mock_jwt():
 def valid_event():
     """
     Return a dictionary representing a valid HTTP POST event for a deposit transaction.
-    
+
     The event includes headers with an idempotency key and bearer authorisation token, a JSON body specifying transaction details, and a request context with a unique request ID.
     """
     return {
@@ -68,7 +68,7 @@ def valid_event():
 def headers_with_jwt():
     """
     Return a dictionary containing HTTP headers with a bearer JWT token for authentication testing.
-    
+
     Returns:
         dict: A dictionary with an 'authorization' header set to 'Bearer valid-token'.
     """

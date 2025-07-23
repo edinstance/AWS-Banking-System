@@ -17,10 +17,9 @@ class TestGetTransaction:
     def test_get_transaction_success(
         self, valid_get_transaction_event, mock_context, mock_auth
     ):
-
         """
         Test that a single transaction is successfully retrieved and returned with a 200 status code.
-        
+
         Verifies that the Lambda handler returns the correct transaction data when the DynamoDB query returns a matching item.
         """
         transaction_id = valid_get_transaction_event["pathParameters"]["transaction_id"]
@@ -75,7 +74,7 @@ class TestGetTransaction:
     ):
         """
         Test that the Lambda handler returns a 400 status code when a ValueError occurs during transaction retrieval.
-        
+
         Simulates an invalid transaction ID scenario by causing the DynamoDB query to raise a ValueError, and verifies that the response contains the appropriate error message.
         """
         with patch(
@@ -94,7 +93,7 @@ class TestGetTransactions:
     def test_get_transactions_success(self, valid_get_event, mock_context, mock_auth):
         """
         Test that retrieving multiple transactions for a user returns a successful response with the correct data.
-        
+
         Verifies that the Lambda handler returns a 200 status code and the expected user ID in the response body when the DynamoDB query is successful. Also checks that the query is made using the correct index and parameters.
         """
         with patch(
@@ -168,7 +167,7 @@ class TestConfig:
     def test_transactions_table_not_initialized(self, mock_context, valid_get_event):
         """
         Test that the Lambda handler raises an InternalServerError when the transactions table is not initialised.
-        
+
         Asserts that the error message is "Server configuration error".
         """
         with patch("functions.get_transactions.get_transactions.app.table", None):
@@ -182,7 +181,7 @@ class TestConfig:
     ):
         """
         Verifies that the transactions table is correctly initialised using environment variables in the application context.
-        
+
         Asserts that the transactions table resource is not None and that the table name matches the expected test value.
         """
         assert get_transactions_app_with_mocked_tables.transactions_table is not None

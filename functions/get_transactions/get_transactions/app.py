@@ -42,9 +42,9 @@ else:
 def get_transactions():
     """
     Handles GET requests to retrieve all transactions for the authenticated user.
-    
+
     Authenticates the request using Cognito credentials and returns a list of transactions associated with the user from the DynamoDB table. Raises an internal server error if the retrieval fails.
-        
+
     Returns:
         list: A list of transaction records for the authenticated user.
     """
@@ -70,15 +70,15 @@ def get_transactions():
 def get_transaction(transaction_id):
     """
     Retrieve a specific transaction for the authenticated user by transaction ID.
-    
+
     Authenticates the request using Cognito credentials and fetches the transaction with the given ID from DynamoDB. Returns the transaction data if found.
-    
+
     Parameters:
         transaction_id (str): The unique identifier of the transaction to retrieve.
-    
+
     Returns:
         dict: The transaction data corresponding to the provided transaction ID.
-    
+
     Raises:
         InternalServerError: If there is an error accessing DynamoDB.
         BadRequestError: If the transaction ID is invalid.
@@ -108,7 +108,7 @@ def get_transaction(transaction_id):
 def lambda_handler(event, context: LambdaContext):
     """
     AWS Lambda entry point for handling API Gateway REST requests to retrieve transaction data.
-    
+
     Initialises logging context with the AWS request ID, verifies DynamoDB table configuration, and delegates request processing to the APIGatewayRestResolver. Raises an InternalServerError if the DynamoDB table is not configured.
     """
     logger.append_keys(request_id=context.aws_request_id)

@@ -5,13 +5,13 @@ from botocore.exceptions import ClientError
 def get_all_transactions(user_id, table, logger):
     """
     Retrieve all transactions associated with a specific user from the database.
-    
+
     Parameters:
         user_id (str): The unique identifier of the user whose transactions are to be retrieved.
-    
+
     Returns:
         list: A list of transaction items belonging to the specified user.
-    
+
     Raises:
         ClientError: If an error occurs during the database query operation.
     """
@@ -30,11 +30,11 @@ def get_all_transactions(user_id, table, logger):
 def get_transaction_by_id(user_id, transaction_id, table, logger):
     """
     Retrieve a transaction by its ID, ensuring it belongs to the specified user.
-    
+
     Raises:
         NotFoundError: If no transaction with the given ID exists.
         ForbiddenError: If the transaction does not belong to the specified user.
-    
+
     Returns:
         dict: The transaction item if found and authorised.
     """

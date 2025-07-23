@@ -32,7 +32,7 @@ class TestAuthService:
     def test_no_username_or_password(self, auth_service_instance):
         """
         Test that login raises BadRequestError when username or password is missing.
-        
+
         Verifies that the authentication service rejects login attempts without required credentials and returns the expected error message.
         """
         request_body = {}
@@ -47,7 +47,7 @@ class TestAuthService:
     ):
         """
         Test that a user can successfully log in and receive authentication tokens.
-        
+
         Creates a user in a mocked Cognito user pool, sets a permanent password, and submits valid credentials to the authentication service. Asserts that the response includes authentication tokens, a success message, and that a success log entry is recorded.
         """
         test_username = "test_user@example.com"
@@ -86,7 +86,7 @@ class TestAuthService:
     ):
         """
         Verify that attempting to log in with an unconfirmed user raises an `UnauthorizedError` with a 403 status and the correct error message.
-        
+
         Simulates a Cognito exception for an unconfirmed user and asserts that the authentication service raises the expected exception and logs a warning.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client
@@ -116,7 +116,7 @@ class TestAuthService:
     ):
         """
         Verify that attempting to log in with invalid credentials raises an UnauthorizedError with a 401 status and logs a warning.
-        
+
         Simulates a Cognito not authorized exception during login and asserts that the authentication service raises an UnauthorizedError with the expected message and that a warning is logged for the failed authentication attempt.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client
@@ -142,7 +142,7 @@ class TestAuthService:
     ):
         """
         Test that login raises a NotFoundError with a 404 status when the user does not exist.
-        
+
         Simulates a Cognito user not found exception during login and verifies that the correct exception is raised with the expected message, and that a warning is logged.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client
@@ -168,7 +168,7 @@ class TestAuthService:
     ):
         """
         Verify that the login handler raises an InternalServerError with a 429-style message when Cognito rate limits login attempts.
-        
+
         Simulates a Cognito rate limiting exception during login and asserts that the correct error message is raised and a warning is logged.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client
@@ -224,7 +224,7 @@ class TestAuthService:
     ):
         """
         Test that the token refresh handler raises a BadRequestError when the refresh token is missing.
-        
+
         Verifies that the exception message indicates the refresh token is required and that a warning is logged.
         """
         request_body = {}
@@ -247,7 +247,7 @@ class TestAuthService:
     ):
         """
         Test that a valid refresh token results in successful token refresh and correct response data.
-        
+
         Verifies that the authentication service returns new tokens and a success message when provided with a valid refresh token, and that the Cognito client and logger are called as expected.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client
@@ -337,7 +337,7 @@ class TestAuthService:
     ):
         """
         Test that a generic exception during token refresh raises an InternalServerError and logs the exception.
-        
+
         Simulates an unexpected error from the Cognito client when refreshing tokens, verifying that the authentication service raises an InternalServerError with a generic message and logs the exception.
         """
         mock_cognito_client = auth_service_instance_with_mock_cognito.cognito_client

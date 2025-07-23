@@ -59,7 +59,7 @@ class TestApp:
     def test_post_login_route(self, auth_service_instance_with_mock_cognito):
         """
         Test that a POST request to the /auth/login route returns a successful login response.
-        
+
         Simulates a successful login by mocking the authentication service, sends a POST request with valid credentials, and verifies the response status code, response message, and that the login handler is called exactly once.
         """
         context = MagicMock()
@@ -87,7 +87,7 @@ class TestApp:
     def test_post_refresh_route(self, auth_service_instance_with_mock_cognito):
         """
         Test that a POST request to the /auth/refresh route returns a successful token refresh response.
-        
+
         Simulates a successful token refresh by mocking the authentication service, sends a POST request with a refresh token, and verifies that the response status code is 200, the response body contains the expected message, and the refresh handler is called once.
         """
         context = MagicMock()
