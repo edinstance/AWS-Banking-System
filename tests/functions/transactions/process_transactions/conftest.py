@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from functions.process_transactions.process_transactions import app
+from functions.transactions.process_transactions.process_transactions import app
 
 
 @pytest.fixture(scope="function")

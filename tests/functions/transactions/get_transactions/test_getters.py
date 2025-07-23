@@ -4,7 +4,7 @@ import pytest
 from aws_lambda_powertools.event_handler.exceptions import ForbiddenError, NotFoundError
 from botocore.exceptions import ClientError
 
-from functions.get_transactions.get_transactions.getters import (
+from functions.transactions.get_transactions.get_transactions.getters import (
     get_all_transactions,
     get_transaction_by_id,
 )

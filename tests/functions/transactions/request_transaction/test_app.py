@@ -4,8 +4,10 @@ from unittest.mock import patch
 from aws_lambda_powertools.event_handler.exceptions import UnauthorizedError
 from botocore.exceptions import ClientError
 
-from functions.request_transaction.request_transaction.app import lambda_handler
-from tests.functions.request_transaction.conftest import VALID_UUID
+from functions.transactions.request_transaction.request_transaction.app import (
+    lambda_handler,
+)
+from tests.functions.transactions.request_transaction.conftest import VALID_UUID
 
 
 class TestLambdaHandler:
@@ -177,7 +179,7 @@ class TestLambdaHandler:
         auth_error = UnauthorizedError("Authentication failed")
 
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_request"
+            "functions.transactions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
             mock_auth.side_effect = auth_error
 
@@ -198,7 +200,7 @@ class TestLambdaHandler:
         )
 
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_request"
+            "functions.transactions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
             mock_auth.side_effect = auth_error
 
@@ -229,7 +231,7 @@ class TestLambdaHandler:
         expected_response = {"message": "Custom error response"}
 
         with patch(
-            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            "functions.transactions.request_transaction.request_transaction.app.handle_idempotency_error",
             return_value=expected_response,
         ):
             response = lambda_handler(valid_event, mock_context)
@@ -257,7 +259,7 @@ class TestLambdaHandler:
         expected_response = ({"message": "Transaction already processed."}, 409)
 
         with patch(
-            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            "functions.transactions.request_transaction.request_transaction.app.handle_idempotency_error",
             return_value=expected_response,
         ):
             response = lambda_handler(valid_event, mock_context)

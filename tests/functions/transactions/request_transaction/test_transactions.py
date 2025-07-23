@@ -5,13 +5,13 @@ from decimal import Decimal
 import pytest
 from botocore.exceptions import ClientError
 
-from functions.request_transaction.request_transaction.transactions import (
+from functions.transactions.request_transaction.request_transaction.transactions import (
     validate_transaction_data,
     check_existing_transaction,
     save_transaction,
     build_transaction_item,
 )
-from tests.functions.request_transaction.conftest import (
+from tests.functions.transactions.request_transaction.conftest import (
     VALID_TRANSACTION_TYPES,
     VALID_UUID,
 )

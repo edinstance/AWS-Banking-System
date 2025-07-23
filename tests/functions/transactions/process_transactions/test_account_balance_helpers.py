@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 from botocore.exceptions import ClientError
 
-from functions.process_transactions.process_transactions.account_balance_helpers import (
+from functions.transactions.process_transactions.process_transactions.account_balance_helpers import (
     get_account_balance,
     update_account_balance,
 )
-from functions.process_transactions.process_transactions.exceptions import (
+from functions.transactions.process_transactions.process_transactions.exceptions import (
     BusinessLogicError,
 )
 

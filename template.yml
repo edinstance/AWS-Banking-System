@@ -111,7 +111,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: RequestTransactionFunction
-      CodeUri: functions/request_transaction/
+      CodeUri: functions/transactions/request_transaction/
       Handler: request_transaction.app.lambda_handler
       Environment:
         Variables:
@@ -142,7 +142,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: GetTransactionsFunction
-      CodeUri: functions/get_transactions/
+      CodeUri: functions/transactions/get_transactions/
       Handler: get_transactions.app.lambda_handler
       Environment:
         Variables:
@@ -181,7 +181,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: ProcessTransactionsFunction
-      CodeUri: functions/process_transactions/
+      CodeUri: functions/transactions/process_transactions/
       Handler: process_transactions.app.lambda_handler
       Environment:
         Variables:

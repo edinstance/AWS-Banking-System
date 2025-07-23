@@ -3,8 +3,10 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from functions.process_transactions.process_transactions.app import lambda_handler
-from functions.process_transactions.process_transactions.exceptions import (
+from functions.transactions.process_transactions.process_transactions.app import (
+    lambda_handler,
+)
+from functions.transactions.process_transactions.process_transactions.exceptions import (
     BusinessLogicError,
     TransactionSystemError,
 )
@@ -13,10 +15,11 @@ from functions.process_transactions.process_transactions.exceptions import (
 class TestLambdaHandler:
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table", None
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
+        None,
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     def test_accounts_table_not_initialized(self, mock_context, environment_variables):
@@ -31,11 +34,11 @@ class TestLambdaHandler:
         assert str(exc_info.value) == "DynamoDB table not initialized"
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         None,
     )
     def test_transactions_table_not_initialized(
@@ -69,11 +72,11 @@ class TestLambdaHandler:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     def test_no_records(self, mock_context, environment_variables):
@@ -87,11 +90,11 @@ class TestLambdaHandler:
         assert result == {"statusCode": 200, "message": "No records to process"}
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     def test_no_insert_records(self, mock_context, environment_variables):
@@ -118,15 +121,15 @@ class TestLambdaHandler:
         assert result == {"statusCode": 200, "message": "No INSERT records to process"}
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     def test_successful_processing(
         self,
@@ -154,18 +157,18 @@ class TestLambdaHandler:
         mock_process_single_transaction.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     def test_business_logic_error_with_idempotency_key(
         self,
@@ -197,18 +200,18 @@ class TestLambdaHandler:
         mock_update_transaction_status.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_business_logic_error_without_idempotency_key(
         self,
@@ -254,18 +257,18 @@ class TestLambdaHandler:
         mock_send_to_dlq.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq",
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq",
         return_value=False,
     )
     def test_error_without_idempotency_key_and_dlq_fails(
@@ -298,21 +301,21 @@ class TestLambdaHandler:
         mock_send_to_dlq.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_business_logic_error_and_update_status_fails(
         self,
@@ -346,21 +349,21 @@ class TestLambdaHandler:
         mock_send_to_dlq.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_business_logic_error_and_dlq_fails(
         self,
@@ -391,18 +394,18 @@ class TestLambdaHandler:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_transaction_system_error(
         self,
@@ -432,18 +435,18 @@ class TestLambdaHandler:
         mock_send_to_dlq.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_transaction_system_error_and_dlq_fails(
         self,
@@ -472,18 +475,18 @@ class TestLambdaHandler:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_lambda_handler_generic_exception(
         self,
@@ -513,18 +516,18 @@ class TestLambdaHandler:
         mock_send_to_dlq.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_generic_exception_and_dlq_fails(
         self,
@@ -551,21 +554,21 @@ class TestLambdaHandler:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.app.accounts_table",
+        "functions.transactions.process_transactions.process_transactions.app.accounts_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.transactions_table",
+        "functions.transactions.process_transactions.process_transactions.app.transactions_table",
         MagicMock(),
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.process_single_transaction"
+        "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
     )
     def test_lambda_handler_success_and_failure(
         self,
