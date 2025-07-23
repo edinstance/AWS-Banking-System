@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: |
   SAM template for a banking transaction system with intuitive transaction types.
@@ -13,6 +13,17 @@ Parameters:
       - test
       - prod
     Default: dev
+  AwsRegion:
+    Type: String
+    Description: The region to deploy the infrastructure in.
+    Default: eu-west-2
+  SesEnabled:
+    Type: String
+    Description: Whether to enable SES email sending (true/false).
+    AllowedValues:
+      - true
+      - false
+    Default: true
 
 Globals:
   Function:
@@ -23,15 +34,19 @@ Globals:
     Environment:
       Variables:
         POWERTOOLS_LOG_LEVEL: INFO
-        POWERTOOLS_SERVICE_NAME: transactions
+        POWERTOOLS_SERVICE_NAME: !Sub ${AWS::StackName}
         ENVIRONMENT_NAME: !Ref Environment
+        SES_ENABLED: !Ref SesEnabled
+        SES_SENDER_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesSenderEmail}}'
+        SES_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesReplyEmail}}'
+        SES_BOUNCE_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SESBounceEmail}}'
 
 Resources:
   # --- Cognito User Pool ---
   BankingUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub ${AWS::StackName}-user-pool-${Environment}
+      UserPoolName: !Sub ${AWS::StackName}-user-pool
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -52,11 +67,13 @@ Resources:
         RecoveryMechanisms:
           - Name: verified_email
             Priority: 1
+      LambdaConfig:
+        PostConfirmation: !GetAtt CognitoPostSignUpFunction.Arn
 
   BankingUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: !Sub ${AWS::StackName}-user-pool-client-${Environment}
+      ClientName: !Sub ${AWS::StackName}-user-pool-client
       UserPoolId: !Ref BankingUserPool
       ExplicitAuthFlows:
         - ALLOW_ADMIN_USER_PASSWORD_AUTH
@@ -87,26 +104,29 @@ Resources:
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
 
   # --- Lambda Functions ---
-  RecordTransactionFunction:
+  RequestTransactionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-record-transaction
+      FunctionName: !Sub ${AWS::StackName}-request-transaction
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
-        - ResourceName: RecordTransactionFunction
-      CodeUri: functions/record_transactions/
-      Handler: record_transactions.app.lambda_handler
+        - ResourceName: RequestTransactionFunction
+      CodeUri: functions/transactions/request_transaction/
+      Handler: request_transaction.app.lambda_handler
       Environment:
         Variables:
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
-          DYNAMODB_ENDPOINT: ""
+          DYNAMODB_ENDPOINT: ''
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiSaveTransactionEvent:
           Type: Api
           Properties:
-            Path: /save/transaction
+            Path: /transactions
             Method: POST
             RestApiId: !Ref BankingApiGateway
             Auth:
@@ -114,6 +134,139 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionsTable
+
+  GetTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetTransactionsFunction
+      CodeUri: functions/transactions/get_transactions/
+      Handler: get_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+      Events:
+        ApiGetAllTransactionsEvent:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ApiGetTransactionByIdEvent:
+          Type: Api
+          Properties:
+            Path: /transactions/{id}
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+
+  ProcessTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-process-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: ProcessTransactionsFunction
+      CodeUri: functions/transactions/process_transactions/
+      Handler: process_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAccountsLambdaLayer
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt TransactionsTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 10
+            MaximumRetryAttempts: 1
+            DestinationConfig:
+              OnFailure:
+                Type: SQS
+                Destination: !GetAtt TransactionProcessingDLQ.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - DynamoDBStreamReadPolicy:
+            TableName: !Ref TransactionsTable
+            StreamName: !Select
+              - 3
+              - !Split
+                - /
+                - !GetAtt TransactionsTable.StreamArn
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminGetUser
+            Resource: !GetAtt BankingUserPool.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt TransactionProcessingDLQ.Arn
+
+  GetAccountsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-accounts
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetAccountsFunction
+      CodeUri: functions/accounts/get_accounts/
+      Handler: get_accounts.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+      Events:
+        ApiGetAllAccountsEvent:
+          Type: Api
+          Properties:
+            Path: /accounts
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ApiGetAccountByIdEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
 
   AuthFunction:
     Type: AWS::Serverless::Function
@@ -128,6 +281,9 @@ Resources:
         Variables:
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiLoginEvent:
           Type: Api
@@ -155,12 +311,73 @@ Resources:
               - cognito-idp:AdminRespondToAuthChallenge
             Resource: !GetAtt BankingUserPool.Arn
 
-  RecordTransactionFunctionLogGroup:
+  CognitoPostSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-cognito-post-sign-up-function
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: CognitoPostSignUpFunction
+      CodeUri: functions/cognito/post_sign_up/
+      Handler: post_sign_up.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          DYNAMODB_ENDPOINT: ''
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAccountsLambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+
+  # --- Lambda Layers ---
+  PythonHelpersLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-helpers-layer
+      ContentUri: layers/python/helpers
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  PythonAccountsLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-accounts-layer
+      ContentUri: layers/python/accounts
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  PythonAuthenticationLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-authentication-layer
+      ContentUri: layers/python/authentication
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  # --- Log Groups ---
+  RequestTransactionFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      LogGroupName: !Sub /aws/lambda/${RecordTransactionFunction}
+      LogGroupName: !Sub /aws/lambda/${RequestTransactionFunction}
       RetentionInDays: 7
 
   AuthFunctionLogGroup:
@@ -171,24 +388,50 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${AuthFunction}
       RetentionInDays: 7
 
+  ProcessTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProcessTransactionsFunction}
+      RetentionInDays: 7
+
+  GetTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetTransactionsFunction}
+      RetentionInDays: 7
+
+  CognitoPostSignUpFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CognitoPostSignUpFunction}
+      RetentionInDays: 7
+
   # --- DynamoDB Table for Transactions ---
   TransactionsTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub ${AWS::StackName}-transactions-table
+      KeySchema:
+        - AttributeName: idempotencyKey
+          KeyType: HASH
       AttributeDefinitions:
         - AttributeName: idempotencyKey
           AttributeType: S
         - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
-      KeySchema:
-        - AttributeName: idempotencyKey
-          KeyType: HASH
       GlobalSecondaryIndexes:
         - IndexName: TransactionIdIndex
           KeySchema:
@@ -196,9 +439,61 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       TimeToLiveSpecification:
         AttributeName: ttlTimestamp
         Enabled: true
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  # --- DynamoDB Table for Accounts ---
+  AccountsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-accounts-table
+      KeySchema:
+        - AttributeName: accountId
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: accountId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      GlobalSecondaryIndexes:
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttlTimestamp
+        Enabled: true
+
+  # --- SQS Queues ---
+  TransactionProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-transaction-processing-dlq
+
+  # --- Permissions ---
+  CognitoPostSignUpFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CognitoPostSignUpFunction
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt BankingUserPool.Arn
 
   # Domain Configuration
   ApiCertificate:
