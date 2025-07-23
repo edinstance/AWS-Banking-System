@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from aws_lambda_powertools.event_handler.exceptions import ForbiddenError, NotFoundError
 from botocore.exceptions import ClientError
 
 from functions.get_transactions.get_transactions.getters import (
@@ -60,7 +61,7 @@ class TestGetTransactionById:
             == str(exception_info.value)
         )
 
-    def test_value_error(self, magic_mock_transactions_table, mock_logger):
+    def test_access_denied_error(self, magic_mock_transactions_table, mock_logger):
         transaction_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 
@@ -72,13 +73,27 @@ class TestGetTransactionById:
             ]
         }
 
-        with pytest.raises(ValueError) as exception_info:
+        with pytest.raises(ForbiddenError) as exception_info:
             get_transaction_by_id(
                 user_id, transaction_id, magic_mock_transactions_table, mock_logger
             )
 
-        assert exception_info.type is ValueError
-        assert "Invalid transaction ID or user ID" == str(exception_info.value)
+        assert exception_info.type is ForbiddenError
+        assert "Access denied." == str(exception_info.value)
+
+    def test_not_found_error(self, magic_mock_transactions_table, mock_logger):
+        transaction_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
+
+        magic_mock_transactions_table.query.return_value = {"Items": []}
+
+        with pytest.raises(NotFoundError) as exception_info:
+            get_transaction_by_id(
+                user_id, transaction_id, magic_mock_transactions_table, mock_logger
+            )
+
+        assert exception_info.type is NotFoundError
+        assert "Transaction not found" == str(exception_info.value)
 
     def test_success(self, magic_mock_transactions_table, mock_logger):
         transaction_id = str(uuid.uuid4())

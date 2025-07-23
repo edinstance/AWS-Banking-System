@@ -141,7 +141,7 @@ Resources:
       FunctionName: !Sub ${AWS::StackName}-get-transactions
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
-        - ResourceName: GetTransactionFunction
+        - ResourceName: GetTransactionsFunction
       CodeUri: functions/get_transactions/
       Handler: get_transactions.app.lambda_handler
       Environment:

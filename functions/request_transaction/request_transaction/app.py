@@ -138,10 +138,7 @@ def request_transaction():
             error_response = handle_idempotency_error(
                 idempotency_key, table, logger, transaction_id, e
             )
-            if isinstance(error_response, tuple):
-                return error_response
-            else:
-                return error_response
+            return error_response
         except Exception as idempotency_error:
             logger.error(
                 f"Error handling idempotency: {idempotency_error}", exc_info=True

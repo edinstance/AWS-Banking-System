@@ -1,3 +1,4 @@
+from aws_lambda_powertools.event_handler.exceptions import NotFoundError, ForbiddenError
 from botocore.exceptions import ClientError
 
 
@@ -25,8 +26,10 @@ def get_transaction_by_id(user_id, transaction_id, table, logger):
 
         item = items[0] if items else None
 
-        if not item or item.get("userId") != user_id:
-            raise ValueError("Invalid transaction ID or user ID")
+        if not item:
+            raise NotFoundError("Transaction not found")
+        if item.get("userId") != user_id:
+            raise ForbiddenError("Access denied.")
 
         return item
     except ClientError as e:

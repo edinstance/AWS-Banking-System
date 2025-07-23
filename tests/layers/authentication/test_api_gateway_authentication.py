@@ -201,32 +201,3 @@ def test_authenticate_user_unexpected_error(valid_event, headers_with_jwt, mock_
 
         assert isinstance(response, InternalServerError)
         assert "An unexpected error occurred during authentication." in str(response)
-
-
-def test_authenticate_user_no_user_id(valid_event, headers_with_jwt, mock_logger):
-    """
-    Tests that `authenticate_user` returns a 401 response when no user ID is extracted from a valid token.
-
-    Verifies that if the authentication helper returns `None` for the user ID, the function responds with an appropriate error message and status code.
-    """
-    with patch(
-        "authentication.api_gateway_authentication.get_sub_from_id_token"
-    ) as mock_get_sub_from_id_token:
-
-        mock_get_sub_from_id_token.return_value = None
-
-        user_id, response = authenticate_user(
-            valid_event,
-            headers_with_jwt["headers"],
-            TEST_USER_POOL_ID,
-            TEST_CLIENT_ID,
-            TEST_AWS_REGION,
-            mock_logger,
-        )
-
-        assert user_id is None
-        assert isinstance(response, UnauthorizedError)
-        assert (
-            "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
-            in str(response)
-        )

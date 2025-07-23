@@ -46,11 +46,6 @@ def authenticate_user(
                 logger,
             )
 
-            if not user_id:
-                return None, UnauthorizedError(
-                    "Unauthorized: User identity could not be determined. Please ensure a valid token is provided."
-                )
-
             return user_id, None
 
         except (MissingSubClaimError, InvalidTokenError) as e:

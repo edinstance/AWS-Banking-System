@@ -171,8 +171,6 @@ class TestLambdaHandler:
         """
         Test that the Lambda handler returns the authentication error response unchanged when authentication fails.
         """
-        from aws_lambda_powertools.event_handler.exceptions import UnauthorizedError
-
         auth_error = UnauthorizedError("Authentication failed")
 
         with patch(
