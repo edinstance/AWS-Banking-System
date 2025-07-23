@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+from aws_lambda_powertools.event_handler.exceptions import UnauthorizedError
 from botocore.exceptions import ClientError
 
 from functions.request_transaction.request_transaction.app import lambda_handler
@@ -9,8 +10,11 @@ from tests.functions.request_transaction.conftest import VALID_UUID
 
 class TestLambdaHandler:
     def test_successful_transaction(
-        self, valid_event, mock_context, mock_table, mock_auth
+        self, mock_table, valid_event, mock_context, mock_auth
     ):
+        """
+        Test that the Lambda handler returns a 201 status code and success message for a valid transaction request.
+        """
         response = lambda_handler(valid_event, mock_context)
         assert response["statusCode"] == 201
         assert "transactionId" in response["body"]
@@ -46,20 +50,17 @@ class TestLambdaHandler:
         self, valid_event, mock_context, mock_table, mock_auth
     ):
         """
-        Verify that a request with an idempotency key of invalid length returns a 400 response containing error, suggestion, and example fields in the response body.
+        Test that a request with an idempotency key of invalid length returns a 400 status code and an appropriate error message in the response body.
         """
         short_idempotency_key = "short"
         valid_event["headers"]["Idempotency-Key"] = short_idempotency_key
 
         response = lambda_handler(valid_event, mock_context)
-        response_body = json.loads(response["body"])
+
         assert response["statusCode"] == 400
         assert (
-            "Idempotency-Key must be between 10 and 64 characters"
-            in response_body["error"]
+            "Idempotency-Key must be between 10 and 64 characters" in response["body"]
         )
-        assert response_body["suggestion"]
-        assert response_body["example"]
 
     def test_invalid_json_body(self, valid_event, mock_context, mock_table, mock_auth):
         """
@@ -127,7 +128,7 @@ class TestLambdaHandler:
         self, valid_event, mock_context, mock_table, mock_auth
     ):
         """
-        Tests that a database error during transaction saving results in a 500 response with an appropriate error message.
+        Verify that a database error during transaction saving causes the Lambda handler to return a 500 status code and an appropriate failure message.
         """
         transaction_data = {
             "accountId": VALID_UUID,
@@ -141,37 +142,21 @@ class TestLambdaHandler:
 
         response = lambda_handler(valid_event, mock_context)
 
-        assert response["statusCode"] == 500
         response_body = json.loads(response["body"])
-        assert "error" in response_body
-        assert "Failed to process transaction" in response_body["error"]
 
-    def test_unhandled_exception_handling(
-        self, valid_event, mock_context, mock_table, mock_auth
-    ):
-        """
-        Verify that the Lambda handler returns a 500 status code and a generic internal server error message when an unexpected exception, such as a MemoryError during JSON parsing, is raised.
-        """
-        with patch(
-            "functions.request_transaction.request_transaction.app.json.loads"
-        ) as mock_json_loads:
-            mock_json_loads.side_effect = MemoryError("Unexpected memory error")
-
-            response = lambda_handler(valid_event, mock_context)
-
-            assert response["statusCode"] == 500
-            assert (
-                response["body"]
-                == '{"error": "Internal server error. Please contact support."}'
-            )
+        assert response["statusCode"] == 500
+        assert (
+            response_body["message"]
+            == "Failed to process transaction. Please try again."
+        )
 
     def test_client_error_during_save(
         self, valid_event, mock_context, mock_table, mock_auth
     ):
         """
-        Verify that a ClientError during transaction save causes the Lambda handler to return a 500 internal server error response.
+        Test that a ClientError during transaction save results in a 500 internal server error response from the Lambda handler.
 
-        Simulates a conditional check failure when saving a transaction to the database and asserts that the handler responds with a 500 status code.
+        Simulates a conditional check failure when saving a transaction and asserts that the handler returns a 500 status code.
         """
         error_response = {
             "Error": {
@@ -187,32 +172,35 @@ class TestLambdaHandler:
 
     def test_auth_error_returned(self, valid_event, mock_context, mock_table):
         """
-        Test that the Lambda handler returns the authentication error response unchanged when authentication fails.
+        Verify that the Lambda handler returns a 401 response with the correct error message when authentication fails.
         """
-        auth_error_response = {
-            "statusCode": 401,
-            "body": '{"error": "Authentication failed"}',
-        }
+        auth_error = UnauthorizedError("Authentication failed")
 
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
-            mock_auth.return_value = (None, auth_error_response)
+            mock_auth.side_effect = auth_error
 
             response = lambda_handler(valid_event, mock_context)
+            body = json.loads(response["body"])
 
-            assert response == auth_error_response
+            assert response["statusCode"] == 401
+            assert body["message"] == "Authentication failed"
 
     def test_no_user_id_no_auth_error(self, valid_event, mock_context, mock_table):
         """
-        Test that the Lambda handler returns a 401 error when authentication provides neither a user ID nor an authentication error.
+        Test that the Lambda handler returns a 401 status code when authentication fails due to missing user identity.
 
-        This test ensures that if the authentication function returns `(None, None)`, the handler responds with a 401 status code and an unauthorised message indicating user identity could not be determined.
+        Simulates an authentication failure where the authentication function raises an UnauthorizedError with a specific message, and verifies that the handler responds with the correct status code and error message.
         """
+        auth_error = UnauthorizedError(
+            "Unauthorized: User identity could not be determined"
+        )
+
         with patch(
-            "functions.request_transaction.request_transaction.app.authenticate_user"
+            "functions.request_transaction.request_transaction.app.authenticate_request"
         ) as mock_auth:
-            mock_auth.return_value = (None, None)
+            mock_auth.side_effect = auth_error
 
             response = lambda_handler(valid_event, mock_context)
 
@@ -221,3 +209,61 @@ class TestLambdaHandler:
                 "Unauthorized: User identity could not be determined"
                 in response["body"]
             )
+
+    def test_idempotency_error_returns_dict(
+        self, valid_event, mock_context, mock_table, mock_auth
+    ):
+        """
+        Test that the Lambda handler returns a dictionary response when an idempotency error occurs and the error handler returns a dict.
+
+        Simulates a conditional check failure in the database and patches the idempotency error handler to return a custom dictionary. Asserts that the Lambda handler's response body matches the expected dictionary.
+        """
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
+
+        expected_response = {"message": "Custom error response"}
+
+        with patch(
+            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            return_value=expected_response,
+        ):
+            response = lambda_handler(valid_event, mock_context)
+
+            response_body = json.loads(response["body"])
+
+            assert response_body == expected_response
+
+    def test_idempotency_error_returns_tuple(
+        self, valid_event, mock_context, mock_table, mock_auth
+    ):
+        """
+        Test that the Lambda handler returns the correct status code and response body when the idempotency error handler returns a tuple of (response dict, status code).
+
+        Simulates a conditional check failure in the database and verifies that the handler uses the status code and message from the idempotency error handler's tuple response.
+        """
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mock_table.put_item.side_effect = ClientError(error_response, "PutItem")
+
+        expected_response = ({"message": "Transaction already processed."}, 409)
+
+        with patch(
+            "functions.request_transaction.request_transaction.app.handle_idempotency_error",
+            return_value=expected_response,
+        ):
+            response = lambda_handler(valid_event, mock_context)
+
+            assert response["statusCode"] == 409
+
+            response_body = json.loads(response["body"])
+
+            assert response_body == expected_response[0]

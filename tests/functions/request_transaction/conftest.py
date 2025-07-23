@@ -1,18 +1,15 @@
 import uuid
 from importlib import reload
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from functions.request_transaction.request_transaction import app
 
+# Constants needed by other test modules
 VALID_UUID = str(uuid.uuid4())
-TEST_USER_ID = str(uuid.uuid4())
-TEST_ID_TOKEN = "dummy.jwt.token"
-TEST_USER_POOL_ID = "eu-west-2-testpool"
-TEST_CLIENT_ID = "test_client_id"
-TEST_AWS_REGION = "eu-west-2"
 TEST_SUB = str(uuid.uuid4())
+TEST_ID_TOKEN = "dummy.jwt.token"
 VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 
 
@@ -55,18 +52,23 @@ def app_without_table(monkeypatch):
 @pytest.fixture
 def valid_event():
     """
-    Return a sample event dictionary simulating a valid transaction request.
+    Return a dictionary representing a valid HTTP POST event for a transaction request.
 
-    The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
+    The event includes dynamically generated idempotency key, account ID, and request ID, along with headers and a JSON body for a deposit transaction.
     """
     return {
+        "httpMethod": "POST",
+        "path": "/transactions",
         "headers": {
-            "Idempotency-Key": VALID_UUID,
+            "Idempotency-Key": str(uuid.uuid4()),
             "Authorization": "Bearer valid-token",
         },
         "body": '{"accountId": "'
-        + VALID_UUID
+        + str(uuid.uuid4())
         + '", "amount": "100.50", "type": "DEPOSIT", "description": "Test deposit"}',
+        "requestContext": {
+            "requestId": str(uuid.uuid4()),
+        },
     }
 
 
@@ -109,59 +111,28 @@ def mock_table():
 @pytest.fixture
 def mock_auth():
     """
-    Pytest fixture that mocks the extraction of the user ID from an ID token.
+    Pytest fixture that patches the app's authentication function to always return a random UUID.
 
     Yields:
-        The patched mock object for use in tests that require bypassing actual token decoding.
+        The patched mock object, allowing tests to bypass real authentication and control the returned user identifier.
     """
     with patch(
-        "functions.request_transaction.request_transaction.auth.get_sub_from_id_token"
+        "functions.request_transaction.request_transaction.app.authenticate_request"
     ) as mock:
-        mock.return_value = TEST_USER_ID
+        mock.return_value = str(uuid.uuid4())
         yield mock
-
-
-@pytest.fixture
-def mock_jwks_client():
-    """
-    Pytest fixture that mocks the JWKS client for JWT verification.
-
-    Yields a patched PyJWKClient whose `get_signing_key_from_jwt` method returns a mock signing key with a dummy key attribute, enabling tests to bypass actual key retrieval.
-    """
-    with patch(
-        "functions.request_transaction.request_transaction.auth.PyJWKClient"
-    ) as mock_client:
-        mock_instance = MagicMock()
-        mock_signing_key = MagicMock()
-        mock_signing_key.key = "dummy_key"
-        mock_instance.get_signing_key_from_jwt.return_value = mock_signing_key
-        mock_client.return_value = mock_instance
-        yield mock_client
-
-
-@pytest.fixture
-def mock_jwt():
-    """
-    Yields a patched mock of the JWT library used in the authentication module for test cases.
-
-    This fixture allows tests to control or inspect JWT operations by providing a mock object in place of the actual JWT library.
-    """
-    with patch(
-        "functions.request_transaction.request_transaction.auth.jwt"
-    ) as mock_jwt:
-        yield mock_jwt
 
 
 @pytest.fixture
 def valid_transaction_data():
     """
-    Return a dictionary with valid transaction data fields for use in tests.
+    Generate a dictionary containing valid transaction data for testing.
 
     Returns:
-        dict: Contains account ID, amount, transaction type, and description.
+        dict: A dictionary with dynamically generated account ID, amount, transaction type, and description fields.
     """
     return {
-        "accountId": VALID_UUID,
+        "accountId": str(uuid.uuid4()),
         "amount": "100.50",
         "type": "DEPOSIT",
         "description": "Test transaction",

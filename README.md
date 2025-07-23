@@ -229,6 +229,7 @@ aws dynamodb create-table \
     --attribute-definitions \
         AttributeName=idempotencyKey,AttributeType=S \
         AttributeName=id,AttributeType=S \
+        AttributeName=userId,AttributeType=S \
     --key-schema \
         AttributeName=idempotencyKey,KeyType=HASH \
     --global-secondary-indexes '[
@@ -236,6 +237,13 @@ aws dynamodb create-table \
             "IndexName": "TransactionIdIndex",
             "KeySchema": [
                 {"AttributeName": "id", "KeyType": "HASH"}
+            ],
+            "Projection": {"ProjectionType": "ALL"}
+        },
+        {
+            "IndexName": "UserIdIndex",
+            "KeySchema": [
+                {"AttributeName": "userId", "KeyType": "HASH"}
             ],
             "Projection": {"ProjectionType": "ALL"}
         }

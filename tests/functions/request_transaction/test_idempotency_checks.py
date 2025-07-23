@@ -1,6 +1,7 @@
-import json
 from unittest.mock import patch
 
+import pytest
+from aws_lambda_powertools.event_handler.exceptions import InternalServerError
 from botocore.exceptions import ClientError
 
 from functions.request_transaction.request_transaction.idempotency import (
@@ -14,24 +15,30 @@ class TestIdempotencyErrors:
 
     def test_generic_exception(self, mock_table, mock_logger):
         """
-        Tests that a generic ClientError during idempotency handling returns a 500 status code and an appropriate error message.
+        Test that a generic ClientError during idempotency handling raises an InternalServerError with the correct message.
         """
         mock_error = ClientError({"Error": {"Code": "Generic Error"}}, "PutItem")
 
-        result = handle_idempotency_error(
-            self.TEST_IDEMPOTENCY_KEY,
-            mock_table,
-            mock_logger,
-            self.TEST_TRANSACTION_ID,
-            mock_error,
-        )
+        with pytest.raises(InternalServerError) as exception_info:
+            handle_idempotency_error(
+                self.TEST_IDEMPOTENCY_KEY,
+                mock_table,
+                mock_logger,
+                self.TEST_TRANSACTION_ID,
+                mock_error,
+            )
 
-        assert result["statusCode"] == 500
-        assert "Failed to process transaction" in json.loads(result["body"])["error"]
+        assert exception_info.type == InternalServerError
+        assert (
+            exception_info.value.msg
+            == "Failed to process transaction. Please try again."
+        )
 
     def test_conditional_check_error(self, mock_table, mock_logger):
         """
-        Test that a conditional check failure during idempotency error handling returns a 500 status code and an appropriate error message when retrieval of the existing transaction fails.
+        Verify that a conditional check failure during idempotency error handling raises an InternalServerError when retrieval of the existing transaction fails.
+
+        Simulates a DynamoDB ConditionalCheckFailedException and forces the retrieval of the existing transaction to raise an exception, asserting that the resulting error is an InternalServerError with the expected message.
         """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
@@ -40,25 +47,23 @@ class TestIdempotencyErrors:
             "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             side_effect=Exception("New error"),
         ):
-            result = handle_idempotency_error(
-                self.TEST_IDEMPOTENCY_KEY,
-                mock_table,
-                mock_logger,
-                self.TEST_TRANSACTION_ID,
-                mock_error,
-            )
+            with pytest.raises(InternalServerError) as exception_info:
+                handle_idempotency_error(
+                    self.TEST_IDEMPOTENCY_KEY,
+                    mock_table,
+                    mock_logger,
+                    self.TEST_TRANSACTION_ID,
+                    mock_error,
+                )
 
-            assert result["statusCode"] == 500
-            assert (
-                "Error retrieving existing transaction"
-                in json.loads(result["body"])["message"]
-            )
+        assert exception_info.type == InternalServerError
+        assert exception_info.value.msg == "Error retrieving existing transaction."
 
     def test_conditional_check_existing_transaction(self, mock_table, mock_logger):
         """
         Test that a conditional check failure with an existing transaction returns a 409 status and transaction details.
 
-        Simulates a conditional check failure during idempotency error handling where an existing transaction is found, and verifies that the response includes a 409 status code, a message indicating the transaction was already processed, the existing transaction ID, and an idempotency flag set to True.
+        Simulates a conditional check failure during idempotency error handling where an existing transaction is found. Verifies that the response includes a 409 status code, a message indicating the transaction was already processed, and the existing transaction ID.
         """
         mock_error = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
@@ -77,8 +82,6 @@ class TestIdempotencyErrors:
                 mock_error,
             )
 
-            assert result["statusCode"] == 409
-            response_body = json.loads(result["body"])
-            assert "Transaction already processed" in response_body["message"]
-            assert response_body["transactionId"] == "existing-txn-123"
-            assert response_body["idempotent"] is True
+            assert result[1] == 409
+            assert result[0]["message"] == "Transaction already processed."
+            assert result[0]["transactionId"] == "existing-txn-123"

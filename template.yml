@@ -121,12 +121,52 @@ Resources:
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Layers:
         - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiSaveTransactionEvent:
           Type: Api
           Properties:
             Path: /transactions
             Method: POST
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+
+  GetTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetTransactionsFunction
+      CodeUri: functions/get_transactions/
+      Handler: get_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+      Events:
+        ApiGetAllTransactionsEvent:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ApiGetTransactionByIdEvent:
+          Type: Api
+          Properties:
+            Path: /transactions/{id}
+            Method: GET
             RestApiId: !Ref BankingApiGateway
             Auth:
               Authorizer: CognitoAuthorizer
@@ -204,6 +244,7 @@ Resources:
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
       Layers:
         - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
       Events:
         ApiLoginEvent:
           Type: Api
@@ -280,6 +321,17 @@ Resources:
       BuildMethod: python3.12
       BuildArchitecture: x86_64
 
+  PythonAuthenticationLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-authentication-layer
+      ContentUri: layers/python/authentication
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
   # --- Log Groups ---
   RequestTransactionFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -305,6 +357,14 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${ProcessTransactionsFunction}
       RetentionInDays: 7
 
+  GetTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetTransactionsFunction}
+      RetentionInDays: 7
+
   CognitoPostSignUpFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
@@ -326,6 +386,8 @@ Resources:
           AttributeType: S
         - AttributeName: id
           AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
@@ -335,6 +397,12 @@ Resources:
         - IndexName: TransactionIdIndex
           KeySchema:
             - AttributeName: id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
