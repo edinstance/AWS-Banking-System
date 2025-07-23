@@ -15,6 +15,11 @@ from tests.layers.authentication.conftest import (
 class TestAuthenticateRequest:
 
     def test_auth_error(self, mock_logger, valid_event, headers_with_jwt):
+        """
+        Test that `authenticate_request` raises an `UnauthorizedError` when user authentication fails due to an error.
+        
+        Simulates an authentication failure by patching `authenticate_user` to return an error, then asserts that `authenticate_request` raises the expected exception with the correct message.
+        """
         with patch(
             "authentication.authenticate_request.authenticate_user"
         ) as mock_authenticate_user:
@@ -44,6 +49,9 @@ class TestAuthenticateRequest:
             )
 
     def test_no_user_id(self, mock_logger, valid_event, headers_with_jwt):
+        """
+        Test that `authenticate_request` raises an `UnauthorizedError` when no user ID is returned and no error is raised by `authenticate_user`.
+        """
         with patch(
             "authentication.authenticate_request.authenticate_user"
         ) as mock_authenticate_user:
@@ -68,6 +76,11 @@ class TestAuthenticateRequest:
             )
 
     def test_success(self, mock_logger, valid_event, headers_with_jwt):
+        """
+        Test that `authenticate_request` returns the user ID when authentication succeeds.
+        
+        Simulates a successful authentication by mocking `authenticate_user` to return a valid user ID and verifies that `authenticate_request` returns this ID.
+        """
         with patch(
             "authentication.authenticate_request.authenticate_user"
         ) as mock_authenticate_user:

@@ -5,10 +5,10 @@ from aws_lambda_powertools.event_handler.exceptions import BadRequestError
 
 def is_valid_uuid(val: str) -> bool:
     """
-    Determine whether a given string is a valid UUID.
-
+    Check if the provided string is a valid UUID.
+    
     Returns:
-        bool: True if the input is a non-empty string that can be parsed as a UUID, otherwise False.
+        True if the input is a non-empty string that can be parsed as a UUID; otherwise, False.
     """
     if not val or not isinstance(val, str):
         return False
@@ -21,15 +21,9 @@ def is_valid_uuid(val: str) -> bool:
 
 def validate_request_headers(headers: dict):
     """
-    Validates the presence and format of the 'Idempotency-Key' header in HTTP request headers.
-
-    If the header is missing, not within the required length (10–64 characters), or not a valid UUID, returns a 400 response dictionary with an error message and a suggested example. Returns None if the header is valid.
-
-    Args:
-        headers: Dictionary of HTTP request headers.
-
-    Returns:
-        A response dictionary with status 400 and error details if validation fails, or None if the header is valid.
+    Validate the presence and correctness of the 'Idempotency-Key' header in HTTP request headers.
+    
+    Raises a BadRequestError if the header is missing, not between 10 and 64 characters, or not a valid UUID.
     """
     normalized_headers = {k.lower(): v for k, v in headers.items()}
     idempotency_key = normalized_headers.get("idempotency-key")
