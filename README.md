@@ -23,6 +23,8 @@ reliability, and modern cloud practices in mind. Key features and technologies i
 - **Local Development & Testing:** The project is set up for efficient local development and testing using `sam local`
   and a local instance of DynamoDB (via Docker), enabling developers to iterate quickly before deploying to the cloud.
 
+Here is a [Postman collection](https://github.com/edinstance/AWS-Banking-System) for working with the deployed API's.
+
 ## Prerequisites
 
 Before you begin setting up and running this project locally or deploying it, please ensure you have the following
@@ -447,9 +449,6 @@ String idempotencyKey = UUID.randomUUID().toString();
 
 ## TODO
 
-- Move authentication logic in record transactions to a Lambda layer
-- Add accounts to the system
-- Use DynamoDB Streams to update account balances after transactions
 - Once an account is updated, notify the user using SES, SNS, or other channels
 - Create a set of GraphQL APIs using AppSync
 - Experiment with AppSync events
