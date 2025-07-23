@@ -3,7 +3,7 @@ import uuid
 import pytest
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError
 
-from functions.request_transaction.request_transaction.transaction_helpers import (
+from functions.transactions.request_transaction.request_transaction.transaction_helpers import (
     is_valid_uuid,
     validate_request_headers,
 )

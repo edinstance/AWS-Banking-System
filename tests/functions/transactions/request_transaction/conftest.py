@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from functions.request_transaction.request_transaction import app
+from functions.transactions.request_transaction.request_transaction import app
 
 # Constants needed by other test modules
 VALID_UUID = str(uuid.uuid4())
@@ -102,7 +102,9 @@ def mock_table():
 
     Simulates an empty database state by ensuring get_item returns {"Item": None} and query returns {"Items": []}.
     """
-    with patch("functions.request_transaction.request_transaction.app.table") as mock:
+    with patch(
+        "functions.transactions.request_transaction.request_transaction.app.table"
+    ) as mock:
         mock.query.return_value = {"Items": []}
         mock.get_item.return_value = {"Item": None}
         yield mock
@@ -117,7 +119,7 @@ def mock_auth():
         The patched mock object, allowing tests to bypass real authentication and control the returned user identifier.
     """
     with patch(
-        "functions.request_transaction.request_transaction.app.authenticate_request"
+        "functions.transactions.request_transaction.request_transaction.app.authenticate_request"
     ) as mock:
         mock.return_value = str(uuid.uuid4())
         yield mock
@@ -147,6 +149,6 @@ def mock_create_response():
     This fixture enables tests to intercept and control idempotency response creation within the request_transaction app.
     """
     with patch(
-        "functions.request_transaction.request_transaction.idempotency.create_response"
+        "functions.transactions.request_transaction.request_transaction.idempotency.create_response"
     ) as mock:
         yield mock

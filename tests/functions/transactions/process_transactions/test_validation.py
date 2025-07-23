@@ -3,10 +3,10 @@ from decimal import Decimal
 
 import pytest
 
-from functions.process_transactions.process_transactions.exceptions import (
+from functions.transactions.process_transactions.process_transactions.exceptions import (
     TransactionProcessingError,
 )
-from functions.process_transactions.process_transactions.validation import (
+from functions.transactions.process_transactions.process_transactions.validation import (
     validate_transaction_data,
 )
 

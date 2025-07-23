@@ -7,7 +7,8 @@ from aws_lambda_powertools.event_handler import (
 )
 from aws_lambda_powertools.event_handler.exceptions import (
     InternalServerError,
-    BadRequestError,
+    NotFoundError,
+    ForbiddenError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
@@ -99,9 +100,8 @@ def get_transaction(transaction_id):
     except ClientError as e:
         logger.error(f"Error getting transaction with id {transaction_id}: {str(e)}")
         raise InternalServerError("Internal server error")
-    except ValueError as e:
-        logger.error(f"Invalid transaction id: {str(e)}")
-        raise BadRequestError("Invalid transaction id")
+    except (NotFoundError, ForbiddenError):
+        raise
 
 
 @logger.inject_lambda_context

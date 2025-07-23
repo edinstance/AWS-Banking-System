@@ -111,7 +111,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: RequestTransactionFunction
-      CodeUri: functions/request_transaction/
+      CodeUri: functions/transactions/request_transaction/
       Handler: request_transaction.app.lambda_handler
       Environment:
         Variables:
@@ -142,7 +142,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: GetTransactionsFunction
-      CodeUri: functions/get_transactions/
+      CodeUri: functions/transactions/get_transactions/
       Handler: get_transactions.app.lambda_handler
       Environment:
         Variables:
@@ -181,7 +181,7 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: ProcessTransactionsFunction
-      CodeUri: functions/process_transactions/
+      CodeUri: functions/transactions/process_transactions/
       Handler: process_transactions.app.lambda_handler
       Environment:
         Variables:
@@ -228,6 +228,45 @@ Resources:
               - sqs:GetQueueAttributes
               - sqs:GetQueueUrl
             Resource: !GetAtt TransactionProcessingDLQ.Arn
+
+  GetAccountsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-accounts
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetAccountsFunction
+      CodeUri: functions/accounts/get_accounts/
+      Handler: get_accounts.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          DYNAMODB_ENDPOINT: ''
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+      Events:
+        ApiGetAllAccountsEvent:
+          Type: Api
+          Properties:
+            Path: /accounts
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ApiGetAccountByIdEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
 
   AuthFunction:
     Type: AWS::Serverless::Function
@@ -423,11 +462,20 @@ Resources:
       AttributeDefinitions:
         - AttributeName: accountId
           AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
         SSEEnabled: true
+      GlobalSecondaryIndexes:
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       TimeToLiveSpecification:
         AttributeName: ttlTimestamp
         Enabled: true

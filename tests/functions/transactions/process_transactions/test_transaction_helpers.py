@@ -6,11 +6,11 @@ from unittest.mock import patch, MagicMock
 import pytest
 from botocore.exceptions import ClientError
 
-from functions.process_transactions.process_transactions.exceptions import (
+from functions.transactions.process_transactions.process_transactions.exceptions import (
     TransactionSystemError,
     BusinessLogicError,
 )
-from functions.process_transactions.process_transactions.transaction_helpers import (
+from functions.transactions.process_transactions.process_transactions.transaction_helpers import (
     update_transaction_status,
     process_single_transaction,
 )
@@ -161,22 +161,22 @@ class TestUpdateTransactionStatus:
 class TestProcessSingleTransaction:
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_deposit_success(
         self,
@@ -219,22 +219,22 @@ class TestProcessSingleTransaction:
         mock_update_transaction_status.assert_called_once()
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_withdrawal_success(
         self,
@@ -271,7 +271,7 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_validation_error(
         self,
@@ -295,10 +295,10 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_account_not_exists(
         self,
@@ -329,13 +329,13 @@ class TestProcessSingleTransaction:
         assert "Account account123 does not exist" in str(exception_info.value)
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_user_not_owns_account(
         self,
@@ -370,16 +370,16 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_insufficient_funds(
         self,
@@ -418,16 +418,16 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_invalid_transaction_type(
         self,
@@ -464,16 +464,16 @@ class TestProcessSingleTransaction:
         assert "Unsupported transaction type: INVALID" in str(exception_info.value)
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_get_balance_error(
         self,
@@ -512,19 +512,19 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_update_balance_error(
         self,
@@ -563,22 +563,22 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_transaction_status"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.update_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.get_account_balance"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_user_owns_account"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_update_status_error(
         self,
@@ -621,10 +621,10 @@ class TestProcessSingleTransaction:
         )
 
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.check_account_exists_in_database"
     )
     @patch(
-        "functions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
+        "functions.transactions.process_transactions.process_transactions.transaction_helpers.validate_transaction_data"
     )
     def test_process_single_transaction_unexpected_error(
         self,

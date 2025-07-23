@@ -4,9 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from functions.get_transactions.get_transactions import app
+from functions.transactions.get_transactions.get_transactions import app
 
-# Constants needed by other test modules
 VALID_UUID = str(uuid.uuid4())
 TEST_USER_ID = str(uuid.uuid4())
 
@@ -20,7 +19,7 @@ def mock_auth():
         The mocked authentication function.
     """
     with patch(
-        "functions.get_transactions.get_transactions.app.authenticate_request"
+        "functions.transactions.get_transactions.get_transactions.app.authenticate_request"
     ) as mock:
         mock.return_value = TEST_USER_ID
         yield mock

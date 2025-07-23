@@ -6,11 +6,12 @@ import pytest
 from aws_lambda_powertools.event_handler.exceptions import (
     UnauthorizedError,
     InternalServerError,
+    NotFoundError,
 )
 from botocore.exceptions import ClientError
 
-from functions.get_transactions.get_transactions.app import lambda_handler
-from tests.functions.get_transactions.conftest import TEST_USER_ID
+from functions.transactions.get_transactions.get_transactions.app import lambda_handler
+from tests.functions.transactions.get_transactions.conftest import TEST_USER_ID
 
 
 class TestGetTransaction:
@@ -25,7 +26,7 @@ class TestGetTransaction:
         transaction_id = valid_get_transaction_event["pathParameters"]["transaction_id"]
 
         with patch(
-            "functions.get_transactions.get_transactions.app.table"
+            "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
             mock_table.query.return_value = {
                 "Items": [
@@ -59,7 +60,7 @@ class TestGetTransaction:
             "Error": {"Code": "InternalServerError", "Message": "Internal server error"}
         }
         with patch(
-            "functions.get_transactions.get_transactions.app.table"
+            "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
             mock_table.query.side_effect = ClientError(error_response, "Query")
 
@@ -69,7 +70,7 @@ class TestGetTransaction:
             response_body = json.loads(response["body"])
             assert "Internal server error" in response_body["message"]
 
-    def test_get_transaction_value_error(
+    def test_get_transaction_not_found_error(
         self, valid_get_transaction_event, mock_context, mock_auth
     ):
         """
@@ -78,15 +79,15 @@ class TestGetTransaction:
         Simulates an invalid transaction ID scenario by causing the DynamoDB query to raise a ValueError, and verifies that the response contains the appropriate error message.
         """
         with patch(
-            "functions.get_transactions.get_transactions.app.table"
+            "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
-            mock_table.query.side_effect = ValueError("Invalid transaction ID")
+            mock_table.query.side_effect = NotFoundError("Invalid transaction Id")
 
             response = lambda_handler(valid_get_transaction_event, mock_context)
 
-            assert response["statusCode"] == 400
+            assert response["statusCode"] == 404
             response_body = json.loads(response["body"])
-            assert "Invalid transaction id" in response_body["message"]
+            assert "Invalid transaction Id" in response_body["message"]
 
 
 class TestGetTransactions:
@@ -97,7 +98,7 @@ class TestGetTransactions:
         Verifies that the Lambda handler returns a 200 status code and the expected user ID in the response body when the DynamoDB query is successful. Also checks that the query is made using the correct index and parameters.
         """
         with patch(
-            "functions.get_transactions.get_transactions.app.table"
+            "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
             mock_table.query.return_value = {
                 "Items": [
@@ -131,8 +132,10 @@ class TestGetTransactions:
         Test that the Lambda handler returns a 401 status code and appropriate error message when authentication fails.
         """
         auth_error = UnauthorizedError("Authentication failed")
-        with patch("functions.get_transactions.get_transactions.app.table"), patch(
-            "functions.get_transactions.get_transactions.app.authenticate_request"
+        with patch(
+            "functions.transactions.get_transactions.get_transactions.app.table"
+        ), patch(
+            "functions.transactions.get_transactions.get_transactions.app.authenticate_request"
         ) as mock_auth:
             mock_auth.side_effect = auth_error
 
@@ -152,7 +155,7 @@ class TestGetTransactions:
             "Error": {"Code": "InternalServerError", "Message": "Internal server error"}
         }
         with patch(
-            "functions.get_transactions.get_transactions.app.table"
+            "functions.transactions.get_transactions.get_transactions.app.table"
         ) as mock_table:
             mock_table.query.side_effect = ClientError(error_response, "Query")
 
@@ -170,7 +173,9 @@ class TestConfig:
 
         Asserts that the error message is "Server configuration error".
         """
-        with patch("functions.get_transactions.get_transactions.app.table", None):
+        with patch(
+            "functions.transactions.get_transactions.get_transactions.app.table", None
+        ):
             with pytest.raises(InternalServerError) as exc_info:
                 lambda_handler(valid_get_event, mock_context)
 

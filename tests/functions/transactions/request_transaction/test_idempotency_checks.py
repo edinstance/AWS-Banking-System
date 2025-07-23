@@ -4,7 +4,7 @@ import pytest
 from aws_lambda_powertools.event_handler.exceptions import InternalServerError
 from botocore.exceptions import ClientError
 
-from functions.request_transaction.request_transaction.idempotency import (
+from functions.transactions.request_transaction.request_transaction.idempotency import (
     handle_idempotency_error,
 )
 
@@ -44,7 +44,7 @@ class TestIdempotencyErrors:
             {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"
         )
         with patch(
-            "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
+            "functions.transactions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             side_effect=Exception("New error"),
         ):
             with pytest.raises(InternalServerError) as exception_info:
@@ -71,7 +71,7 @@ class TestIdempotencyErrors:
 
         existing_transaction = {"id": "existing-txn-123"}
         with patch(
-            "functions.request_transaction.request_transaction.idempotency.check_existing_transaction",
+            "functions.transactions.request_transaction.request_transaction.idempotency.check_existing_transaction",
             return_value=existing_transaction,
         ):
             result = handle_idempotency_error(
