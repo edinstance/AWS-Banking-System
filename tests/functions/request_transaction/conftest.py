@@ -52,9 +52,9 @@ def app_without_table(monkeypatch):
 @pytest.fixture
 def valid_event():
     """
-    Return a sample event dictionary simulating a valid transaction request.
+    Return a dictionary representing a valid HTTP POST event for a transaction request.
 
-    The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
+    The event includes dynamically generated idempotency key, account ID, and request ID, along with headers and a JSON body for a deposit transaction.
     """
     return {
         "httpMethod": "POST",
@@ -111,10 +111,10 @@ def mock_table():
 @pytest.fixture
 def mock_auth():
     """
-    Pytest fixture that mocks the authentication request function.
+    Pytest fixture that patches the app's authentication function to always return a random UUID.
 
     Yields:
-        The patched mock object for use in tests that require bypassing actual authentication.
+        The patched mock object, allowing tests to bypass real authentication and control the returned user identifier.
     """
     with patch(
         "functions.request_transaction.request_transaction.app.authenticate_request"
@@ -126,10 +126,10 @@ def mock_auth():
 @pytest.fixture
 def valid_transaction_data():
     """
-    Return a dictionary with valid transaction data fields for use in tests.
+    Generate a dictionary containing valid transaction data for testing.
 
     Returns:
-        dict: Contains account ID, amount, transaction type, and description.
+        dict: A dictionary with dynamically generated account ID, amount, transaction type, and description fields.
     """
     return {
         "accountId": str(uuid.uuid4()),

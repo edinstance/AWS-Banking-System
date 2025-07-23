@@ -16,9 +16,10 @@ VALID_TRANSACTION_TYPES = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "ADJUSTMENT"]
 @pytest.fixture
 def mock_jwks_client():
     """
-    Pytest fixture that mocks the JWKS client for JWT verification.
+    Pytest fixture that patches the JWKS client to return a mock signing key for JWT verification.
 
-    Yields a patched PyJWKClient whose `get_signing_key_from_jwt` method returns a mock signing key with a dummy key attribute, enabling tests to bypass actual key retrieval.
+    Yields:
+        The patched PyJWKClient class, configured so that `get_signing_key_from_jwt` returns a mock object with a dummy key attribute. This allows tests to bypass real JWKS key retrieval.
     """
     with patch("authentication.id_extraction.PyJWKClient") as mock_client:
         mock_instance = MagicMock()
@@ -32,9 +33,9 @@ def mock_jwks_client():
 @pytest.fixture
 def mock_jwt():
     """
-    Yields a patched mock of the JWT library used in the authentication module for test cases.
+    Yields a patched mock of the JWT library for use in authentication-related tests.
 
-    This fixture allows tests to control or inspect JWT operations by providing a mock object in place of the actual JWT library.
+    This fixture enables tests to substitute the real JWT library with a mock, allowing control and inspection of JWT operations during test execution.
     """
     with patch("authentication.id_extraction.jwt") as mock_jwt:
         yield mock_jwt
@@ -43,9 +44,9 @@ def mock_jwt():
 @pytest.fixture
 def valid_event():
     """
-    Return a sample event dictionary simulating a valid transaction request.
+    Return a dictionary representing a valid HTTP POST event for a deposit transaction.
 
-    The event includes headers with an idempotency key and bearer authorisation token, and a JSON body for a deposit transaction.
+    The event includes headers with an idempotency key and bearer authorisation token, a JSON body specifying transaction details, and a request context with a unique request ID.
     """
     return {
         "httpMethod": "POST",
@@ -66,10 +67,10 @@ def valid_event():
 @pytest.fixture
 def headers_with_jwt():
     """
-    Provides headers containing a bearer JWT token for use in authentication tests.
+    Return a dictionary containing HTTP headers with a bearer JWT token for authentication testing.
 
     Returns:
-        A dictionary with an 'authorization' header set to a bearer token.
+        dict: A dictionary with an 'authorization' header set to 'Bearer valid-token'.
     """
     return {
         "headers": {
@@ -81,6 +82,6 @@ def headers_with_jwt():
 @pytest.fixture
 def empty_headers():
     """
-    Provides a dictionary with empty headers for use in tests.
+    Return a dictionary containing empty HTTP headers for use in tests.
     """
     return {"headers": {}}

@@ -36,9 +36,15 @@ class AuthService:
 
     def handle_login(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Processes a user login request using AWS Cognito and returns authentication tokens.
+        Authenticates a user with AWS Cognito and returns authentication tokens.
 
-        Validates the presence of username and password in the request body, then attempts authentication via Cognito's ADMIN_USER_PASSWORD_AUTH flow. Returns a structured response with tokens on success, or raises appropriate HTTP exceptions for invalid credentials, unconfirmed users, non-existent users, rate limiting, or unexpected errors.
+        Validates that both username and password are present in the request body, then attempts to authenticate the user using Cognito's ADMIN_USER_PASSWORD_AUTH flow. On success, returns a dictionary containing authentication tokens and expiry information. Raises HTTP exceptions for missing credentials, invalid login, unconfirmed users, non-existent users, rate limiting, or unexpected errors.
+
+        Parameters:
+            request_body (Dict[str, Any]): Dictionary containing 'username' and 'password' keys.
+
+        Returns:
+            Dict[str, Any]: Dictionary with authentication tokens and a success message.
         """
         username = request_body.get("username")
         password = request_body.get("password")
@@ -92,15 +98,15 @@ class AuthService:
 
     def handle_refresh(self, request_body: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Processes a token refresh request using AWS Cognito and returns new authentication tokens.
+        Refreshes authentication tokens using AWS Cognito based on a provided refresh token.
 
-        Validates the presence of a refresh token in the request body, then attempts to refresh authentication tokens via Cognito's REFRESH_TOKEN_AUTH flow. Raises appropriate HTTP exceptions for missing token, invalid or expired token, rate limiting, or unexpected errors.
+        Validates the presence of a refresh token in the request body and initiates the Cognito REFRESH_TOKEN_AUTH flow to obtain new tokens. Raises HTTP exceptions for missing, invalid, or expired tokens, rate limiting, or unexpected errors.
 
-        Args:
-            request_body: Dictionary containing the refresh token under the key "refreshToken".
+        Parameters:
+            request_body (Dict[str, Any]): Dictionary containing the "refreshToken" key.
 
         Returns:
-            A dictionary with the refreshed tokens if successful.
+            Dict[str, Any]: A dictionary with refreshed authentication tokens and a success message.
         """
         refresh_token = request_body.get("refreshToken")
 

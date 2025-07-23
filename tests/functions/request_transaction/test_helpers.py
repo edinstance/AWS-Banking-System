@@ -95,6 +95,9 @@ class TestValidateRequestHeaders:
         )
 
     def test_incorrect_idempotency_key(self):
+        """
+        Test that an invalid 'idempotency-key' header value raises a BadRequestError indicating the key must be a valid UUID.
+        """
         headers = {"idempotency-key": "long-but-invalid-key"}
 
         with pytest.raises(BadRequestError) as exception_info:
@@ -104,6 +107,9 @@ class TestValidateRequestHeaders:
         assert exception_info.value.msg == "Idempotency-Key must be a valid UUID"
 
     def test_successful_idempotency_key(self):
+        """
+        Test that a valid 'idempotency-key' header passes validation without raising an error.
+        """
         headers = {"idempotency-key": str(uuid.uuid4())}
 
         response = validate_request_headers(headers)

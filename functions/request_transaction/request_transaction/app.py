@@ -82,7 +82,14 @@ else:
 
 @app.post("/transactions")
 def request_transaction():
-    """Handle transaction request."""
+    """
+    Processes a POST request to create a new financial transaction with idempotency enforcement.
+
+    Validates authentication, headers, and transaction data, ensuring the request is well-formed and unique per idempotency key. Persists the transaction to DynamoDB, handling duplicate requests by returning the original transaction response. Returns a 201 response with transaction details upon success.
+
+    Returns:
+        tuple: A response payload containing transaction details and HTTP status code 201.
+    """
     if not table:
         logger.error("DynamoDB table resource is not initialized")
         raise InternalServerError("Server configuration error")
@@ -165,17 +172,9 @@ def request_transaction():
 @logger.inject_lambda_context
 def lambda_handler(event, context: LambdaContext):
     """
-    AWS Lambda handler for processing transaction-related HTTP requests.
+    AWS Lambda entry point for handling transaction HTTP requests via APIGatewayRestResolver.
 
-    Uses AWS Lambda Powertools APIGatewayRestResolver for streamlined HTTP handling.
-    Automatically handles CORS, JSON parsing, and routing.
-
-    Args:
-        event: The Lambda event payload containing HTTP request details.
-        context: The Lambda context object providing runtime information.
-
-    Returns:
-        A dictionary representing the HTTP response, including status code, headers, and body.
+    Delegates incoming API Gateway events to the resolver, which manages routing, CORS, and response formatting.
     """
     logger.append_keys(request_id=context.aws_request_id)
     logger.info(

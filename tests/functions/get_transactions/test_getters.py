@@ -13,6 +13,9 @@ from functions.get_transactions.get_transactions.getters import (
 class TestGetAllTransactions:
 
     def test_client_error(self, magic_mock_transactions_table, mock_logger):
+        """
+        Test that get_all_transactions raises a ClientError when the transactions table query fails.
+        """
         magic_mock_transactions_table.query.side_effect = ClientError(
             {"Error": {"Code": "Error", "Message": "Test query"}}, "query"
         )
@@ -28,6 +31,9 @@ class TestGetAllTransactions:
         )
 
     def test_success(self, magic_mock_transactions_table, mock_logger):
+        """
+        Tests that `get_all_transactions` returns the expected transaction data when the query is successful.
+        """
         test_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 
@@ -43,6 +49,9 @@ class TestGetAllTransactions:
 class TestGetTransactionById:
 
     def test_client_error(self, magic_mock_transactions_table, mock_logger):
+        """
+        Test that get_transaction_by_id propagates a ClientError raised by the transactions table query.
+        """
         magic_mock_transactions_table.query.side_effect = ClientError(
             {"Error": {"Code": "Error", "Message": "Test query"}}, "query"
         )
@@ -62,6 +71,9 @@ class TestGetTransactionById:
         )
 
     def test_access_denied_error(self, magic_mock_transactions_table, mock_logger):
+        """
+        Test that `get_transaction_by_id` raises a `ForbiddenError` when the transaction exists but the user is not authorised to access it.
+        """
         transaction_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 
@@ -82,6 +94,9 @@ class TestGetTransactionById:
         assert "Access denied." == str(exception_info.value)
 
     def test_not_found_error(self, magic_mock_transactions_table, mock_logger):
+        """
+        Test that `get_transaction_by_id` raises a `NotFoundError` when no transaction is found for the given transaction ID and user ID.
+        """
         transaction_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 
@@ -96,6 +111,9 @@ class TestGetTransactionById:
         assert "Transaction not found" == str(exception_info.value)
 
     def test_success(self, magic_mock_transactions_table, mock_logger):
+        """
+        Tests that `get_transaction_by_id` returns the correct transaction when the user ID and transaction ID match an existing item.
+        """
         transaction_id = str(uuid.uuid4())
         user_id = str(uuid.uuid4())
 

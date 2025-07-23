@@ -24,18 +24,18 @@ def get_sub_from_id_token(
     id_token: str, user_pool_id: str, client_id: str, aws_region: str, logger: Logger
 ) -> str:
     """
-    Verifies an AWS Cognito JWT ID token and returns the user's unique identifier.
+    Verifies an AWS Cognito JWT ID token and returns the user's unique identifier (`sub` claim).
 
-    Validates the token's signature, audience, issuer, and ensures it is an ID token. Extracts and returns the 'sub' claim, which uniquely identifies the user.
+    Validates the token's signature, audience, issuer, and ensures it is an ID token. Raises specific exceptions for configuration errors, invalid or expired tokens, missing claims, or unexpected authentication issues.
+
+    Returns:
+        str: The value of the `sub` claim from the verified token.
 
     Raises:
         AuthConfigurationError: If the Cognito User Pool ID or Client ID is invalid, or if JWKS retrieval fails.
         InvalidTokenError: If the token is expired, has an invalid audience or issuer, is not an ID token, or fails verification.
-        MissingSubClaimError: If the 'sub' claim is not present in the token.
+        MissingSubClaimError: If the `sub` claim is not present in the token.
         AuthVerificationError: For unexpected authentication errors.
-
-    Returns:
-        The value of the 'sub' claim from the verified token.
     """
     if not user_pool_id or not isinstance(user_pool_id, str):
         raise AuthConfigurationError("Invalid or missing Cognito User Pool ID")
