@@ -1,3 +1,4 @@
+import uuid
 from importlib import reload
 from unittest.mock import patch
 
@@ -33,3 +34,31 @@ def process_app_with_mocked_tables(
         app.accounts_table = dynamo_resource.Table(accounts_table_name)
 
         yield app
+
+
+@pytest.fixture
+def sample_event_with_records():
+    """
+    Return a sample DynamoDB stream event containing a single INSERT record with transaction details.
+
+    Returns:
+        dict: A dictionary representing a DynamoDB event with one INSERT record, including fields for id, accountId, userId, idempotencyKey, amount, and type.
+    """
+    return {
+        "Records": [
+            {
+                "eventName": "INSERT",
+                "dynamodb": {
+                    "SequenceNumber": "12345",
+                    "NewImage": {
+                        "id": {"S": str(uuid.uuid4())},
+                        "accountId": {"S": str(uuid.uuid4())},
+                        "userId": {"S": str(uuid.uuid4())},
+                        "idempotencyKey": {"S": str(uuid.uuid4())},
+                        "amount": {"N": "100.50"},
+                        "type": {"S": "DEPOSIT"},
+                    },
+                },
+            }
+        ]
+    }
