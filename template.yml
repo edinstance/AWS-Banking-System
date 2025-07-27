@@ -337,6 +337,28 @@ Resources:
                 - ses:SendRawEmail
               Resource: '*'
 
+  MonthlyAccountReportsTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-monthly-account-reports-trigger-function
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: MonthlyAccountReportsTriggerFunction
+      CodeUri: functions/reports/monthly_account_reports_trigger/
+      Handler: monthly_account_reports_trigger.app.lambda_handler
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          STATE_MACHINE_ARN: !Ref StateMachine
+          DYNAMODB_ENDPOINT: ''
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt StateMachine.Name
+
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
     Type: AWS::Serverless::LayerVersion
@@ -504,3 +526,13 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
+
+  StateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: Success
+        States:
+          Success:
+            Type: Succeed
+      Type: STANDARD
