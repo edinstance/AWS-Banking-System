@@ -3,9 +3,8 @@ from unittest.mock import patch
 
 import pytest
 from botocore.exceptions import ClientError
-from moto.stepfunctions.exceptions import ExecutionAlreadyExists
 
-from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.start_execution import (
+from functions.monthly_reports.accounts.trigger.trigger.start_execution import (
     start_sfn_execution_with_retry,
 )
 
@@ -29,8 +28,8 @@ class TestStartExecution:
 
     def test_execution_already_exists(self, mock_logger, magic_mock_sfn_client):
 
-        magic_mock_sfn_client.start_execution.side_effect = ExecutionAlreadyExists(
-            "Execution already exists"
+        magic_mock_sfn_client.start_execution.side_effect = ClientError(
+            {"Error": {"Code": "ExecutionAlreadyExistsException"}}, "StartExecution"
         )
 
         input_id = str(uuid.uuid4())

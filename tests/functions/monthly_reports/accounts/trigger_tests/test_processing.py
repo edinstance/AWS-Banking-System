@@ -1,7 +1,7 @@
 import uuid
 from unittest.mock import patch
 
-from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.processing import (
+from functions.monthly_reports.accounts.trigger.trigger.processing import (
     process_account_batch,
     chunk_accounts,
 )
@@ -52,7 +52,7 @@ class TestProcessAccountBatch:
         ]
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.processing.start_sfn_execution_with_retry"
+            "functions.monthly_reports.accounts.trigger.trigger.processing.start_sfn_execution_with_retry"
         ) as mock_start_sfn_execution_with_retry:
             mock_start_sfn_execution_with_retry.return_value = "already_exists"
 
@@ -69,7 +69,7 @@ class TestProcessAccountBatch:
         ]
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.processing.start_sfn_execution_with_retry"
+            "functions.monthly_reports.accounts.trigger.trigger.processing.start_sfn_execution_with_retry"
         ) as mock_start_sfn_execution_with_retry:
             mock_start_sfn_execution_with_retry.return_value = "failed"
 
@@ -86,7 +86,7 @@ class TestProcessAccountBatch:
         ]
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.processing.start_sfn_execution_with_retry"
+            "functions.monthly_reports.accounts.trigger.trigger.processing.start_sfn_execution_with_retry"
         ) as mock_start_sfn_execution_with_retry:
             mock_start_sfn_execution_with_retry.side_effect = Exception(
                 "Test exception"

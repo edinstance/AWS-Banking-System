@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app import (
+from functions.monthly_reports.accounts.trigger.trigger.app import (
     lambda_handler,
 )
 
@@ -16,9 +16,9 @@ class TestLambdaHandler:
         mock_context.get_remaining_time_in_millis.return_value = 300000
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.get_all_table_data"
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_all_table_data"
         ) as mock_get_data, patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.process_account_batch"
+            "functions.monthly_reports.accounts.trigger.trigger.app.process_account_batch"
         ) as mock_process_batch:
             mock_get_data.return_value = [
                 {"accountId": "acc1", "userId": "user1"},
@@ -37,7 +37,9 @@ class TestLambdaHandler:
 
             assert response["statusCode"] == 200
             body = json.loads(response["body"])
-            assert body["message"] == "Monthly Account reports initiation complete"
+            assert (
+                body["message"] == "Monthly Account monthly_reports initiation complete"
+            )
             assert body["totalAccountsProcessed"] == 3
             assert body["processed_count"] == 3
             assert body["batches_processed"] == 1
@@ -50,11 +52,11 @@ class TestLambdaHandler:
         mock_context.get_remaining_time_in_millis.return_value = 10
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.logger"
+            "functions.monthly_reports.accounts.trigger.trigger.app.logger"
         ) as mock_logger_instance, patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.get_all_table_data"
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_all_table_data"
         ) as mock_get_data, patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.process_account_batch"
+            "functions.monthly_reports.accounts.trigger.trigger.app.process_account_batch"
         ) as mock_process_batch:
 
             mock_get_data.return_value = [
@@ -72,7 +74,9 @@ class TestLambdaHandler:
 
             assert response["statusCode"] == 200
             body = json.loads(response["body"])
-            assert body["message"] == "Monthly Account reports initiation complete"
+            assert (
+                body["message"] == "Monthly Account monthly_reports initiation complete"
+            )
             assert body["totalAccountsProcessed"] == 0
             assert body["processed_count"] == 0
             assert body["batches_processed"] == 0
@@ -89,7 +93,7 @@ class TestLambdaHandler:
         mock_context.get_remaining_time_in_millis.return_value = 300000
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.get_all_table_data"
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_all_table_data"
         ) as mock_get_data:
             mock_get_data.side_effect = Exception("Database connection failed")
 
@@ -104,11 +108,11 @@ class TestLambdaHandler:
         mock_context.get_remaining_time_in_millis.return_value = 300000
 
         with patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.get_all_table_data"
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_all_table_data"
         ) as mock_get_data, patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.process_account_batch"
+            "functions.monthly_reports.accounts.trigger.trigger.app.process_account_batch"
         ) as mock_process_batch, patch(
-            "functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger.app.logger"
+            "functions.monthly_reports.accounts.trigger.trigger.app.logger"
         ) as mock_logger:
             mock_get_data.return_value = [
                 {"accountId": "acc1", "userId": "user1"},

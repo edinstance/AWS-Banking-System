@@ -327,7 +327,7 @@ class TestLambdaHandler:
         environment_variables,
     ):
         """
-        Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler reports a business logic failure.
+        Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler monthly_reports a business logic failure.
 
         Simulates `process_single_transaction` raising a `BusinessLogicError`, `update_transaction_status` raising an exception, and `send_dynamodb_record_to_dlq` succeeding. Verifies the handler returns a 200 response with one business logic failure and that the DLQ function is called once.
         """

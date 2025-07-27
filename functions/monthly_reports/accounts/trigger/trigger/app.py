@@ -33,7 +33,7 @@ sfn_client = get_sfn_client(AWS_REGION, logger)
 
 @logger.inject_lambda_context
 def lambda_handler(_event, context: LambdaContext):
-    logger.info("Starting monthly account reports.")
+    logger.info("Starting monthly account monthly_reports.")
 
     today = datetime.datetime.now(datetime.UTC)
     first_day_of_current_month = today.replace(
@@ -127,7 +127,7 @@ def lambda_handler(_event, context: LambdaContext):
         "statusCode": 200,
         "body": json.dumps(
             {
-                "message": "Monthly Account reports initiation complete",
+                "message": "Monthly Account monthly_reports initiation complete",
                 "totalAccountsProcessed": total_accounts_processed,
                 **metrics,
             }

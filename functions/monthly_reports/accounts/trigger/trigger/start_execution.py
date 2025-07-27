@@ -2,7 +2,6 @@ import json
 import random
 import time
 from botocore.exceptions import ClientError
-from moto.stepfunctions.exceptions import ExecutionAlreadyExists
 
 
 def start_sfn_execution_with_retry(
@@ -16,11 +15,12 @@ def start_sfn_execution_with_retry(
                 input=json.dumps(sf_input),
             )
             return "processed"
-        except ExecutionAlreadyExists:
-            logger.info(f"SF execution {execution_name} already exists. Skipping.")
-            return "already_exists"
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
+
+            if e.response["Error"]["Code"] == "ExecutionAlreadyExistsException":
+                logger.info(f"SF execution {execution_name} already exists. Skipping.")
+                return "already_exists"
 
             if error_code in [
                 "ThrottlingException",

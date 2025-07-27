@@ -1,7 +1,5 @@
 from importlib import reload
-from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger import (
-    app,
-)
+from functions.monthly_reports.accounts.trigger.trigger import app
 from unittest.mock import MagicMock, patch
 
 import pytest

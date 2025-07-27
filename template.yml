@@ -344,8 +344,8 @@ Resources:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
         - ResourceName: MonthlyAccountReportsTriggerFunction
-      CodeUri: functions/reports/monthly_account_reports_trigger/
-      Handler: monthly_account_reports_trigger.app.lambda_handler
+      CodeUri: functions/monthly_reports/accounts/trigger/
+      Handler: trigger.app.lambda_handler
       Environment:
         Variables:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
