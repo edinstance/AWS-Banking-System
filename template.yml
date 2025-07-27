@@ -351,6 +351,13 @@ Resources:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           STATE_MACHINE_ARN: !Ref StateMachine
           DYNAMODB_ENDPOINT: ''
+      Events:
+        MonthlySchedule:
+          Type: Schedule
+          Properties:
+            Name: !Sub ${AWS::StackName}-monthly-reports-trigger
+            Schedule: "cron(0 0 1 * ? *)"
+            Description: !Sub "Monthly reports trigger for ${Environment}"
       Layers:
         - !Ref PythonHelpersLambdaLayer
       Policies:
