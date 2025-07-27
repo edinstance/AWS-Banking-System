@@ -1,8 +1,8 @@
-import os
 from importlib import reload
-from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger import app
+from functions.reports.monthly_account_reports_trigger.monthly_account_reports_trigger import (
+    app,
+)
 from unittest.mock import MagicMock, patch
-import sys
 
 import pytest
 
@@ -11,11 +11,10 @@ import pytest
 def magic_mock_sfn_client():
     return MagicMock()
 
+
 @pytest.fixture(scope="function")
 def monthly_accounts_reports_app_with_mocks(
-    monkeypatch,
-    dynamo_resource,
-    mock_accounts_dynamo_table
+    monkeypatch, dynamo_resource, mock_accounts_dynamo_table
 ):
     accounts_table_name = mock_accounts_dynamo_table
 
