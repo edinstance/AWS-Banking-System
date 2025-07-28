@@ -187,7 +187,9 @@ Resources:
         Variables:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          TRANSACTION_PROCESSING_DLQ_URL: !Ref TransactionProcessingDLQ
           DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
       Layers:
         - !Ref PythonHelpersLambdaLayer
