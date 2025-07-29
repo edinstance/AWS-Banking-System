@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from sqs import get_sqs_client, send_dynamodb_record_to_dlq
+from sqs import get_sqs_client, send_message_to_sqs
 
 
 class TestGetSqsClient:
@@ -57,29 +57,34 @@ class TestGetSqsClient:
             )
 
 
-class TestSendDynamoDbRecordToDLQ:
-    def test_no_dlq_url(self, mock_sqs_client):
-        """
-        Test that send_dynamodb_record_to_dlq returns False when the DLQ URL is empty.
-        """
+class TestSendDynamoDbRecordToSQS:
+    def test_no_sqs_url(self, mock_sqs_client):
         mock_logger = MagicMock()
-        result = send_dynamodb_record_to_dlq(
-            record={},
+        result = send_message_to_sqs(
+            message={},
+            message_attributes={},
             sqs_endpoint="",
-            dlq_url="",
+            sqs_url="",
             aws_region="",
-            error_message="",
+            logger=mock_logger,
+        )
+
+        assert result is False
+
+    def test_no_sqs_message(self, mock_sqs_client):
+        mock_logger = MagicMock()
+        result = send_message_to_sqs(
+            message={},
+            message_attributes={},
+            sqs_endpoint="",
+            sqs_url="http://localhost:4566/queue/test-queue",
+            aws_region="",
             logger=mock_logger,
         )
 
         assert result is False
 
     def test_send_message_success(self):
-        """
-        Tests that a DynamoDB record is successfully sent to the DLQ and logs the operation.
-
-        Verifies that the SQS client is initialised with the correct parameters, the message is sent, and a success log entry is created.
-        """
         mock_logger = MagicMock()
         mock_sqs_client = MagicMock()
 
@@ -89,20 +94,28 @@ class TestSendDynamoDbRecordToDLQ:
                 "SequenceNumber": "123456789012345678901",
             }
         }
-        sqs_endpoint = "http://localhost:4566"
-        dlq_url = "http://localhost:4566/queue/dlq"
-        aws_region = "eu-west-2"
         error_message = "Test error message"
+
+        message = {
+            "originalRecord": record,
+            "errorMessage": error_message,
+            "timestamp": record.get("dynamodb", {}).get("ApproximateCreationDateTime"),
+            "sequenceNumber": record.get("dynamodb", {}).get("SequenceNumber"),
+        }
+
+        sqs_endpoint = "http://localhost:4566"
+        sqs_url = "http://localhost:4566/queue/dlq"
+        aws_region = "eu-west-2"
 
         with patch(
             "sqs.get_sqs_client", return_value=mock_sqs_client
         ) as mock_get_client:
-            result = send_dynamodb_record_to_dlq(
-                record=record,
+            result = send_message_to_sqs(
+                message=message,
+                message_attributes={},
                 sqs_endpoint=sqs_endpoint,
-                dlq_url=dlq_url,
+                sqs_url=sqs_url,
                 aws_region=aws_region,
-                error_message=error_message,
                 logger=mock_logger,
             )
 
@@ -113,7 +126,7 @@ class TestSendDynamoDbRecordToDLQ:
 
         mock_sqs_client.send_message.assert_called_once()
         mock_logger.info.assert_called_once_with(
-            f"Successfully sent record to DLQ: {record.get('dynamodb', {}).get('SequenceNumber')}"
+            "Successfully sent message to SQS queue."
         )
 
     def test_send_message_failure(self):
@@ -129,23 +142,31 @@ class TestSendDynamoDbRecordToDLQ:
                 "SequenceNumber": "123456789012345678901",
             }
         }
-        sqs_endpoint = "http://localhost:4566"
-        dlq_url = "http://localhost:4566/queue/dlq"
-        aws_region = "eu-west-2"
         error_message = "Test error message"
+
+        message = {
+            "originalRecord": record,
+            "errorMessage": error_message,
+            "timestamp": record.get("dynamodb", {}).get("ApproximateCreationDateTime"),
+            "sequenceNumber": record.get("dynamodb", {}).get("SequenceNumber"),
+        }
+
+        sqs_endpoint = "http://localhost:4566"
+        sqs_url = "http://localhost:4566/queue/dlq"
+        aws_region = "eu-west-2"
 
         mock_sqs_client.send_message.side_effect = Exception("Connection error")
         with patch("sqs.get_sqs_client", return_value=mock_sqs_client):
-            result = send_dynamodb_record_to_dlq(
-                record=record,
+            result = send_message_to_sqs(
+                message=message,
+                message_attributes={},
                 sqs_endpoint=sqs_endpoint,
-                dlq_url=dlq_url,
+                sqs_url=sqs_url,
                 aws_region=aws_region,
-                error_message=error_message,
                 logger=mock_logger,
             )
 
         assert result is False
         mock_logger.error.assert_called_once_with(
-            "Failed to send message to DLQ: Connection error"
+            "Failed to send message to SQS: Connection error"
         )
