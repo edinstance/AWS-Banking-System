@@ -352,7 +352,9 @@ Resources:
         Variables:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           STATE_MACHINE_ARN: !Ref StateMachine
+          CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
           DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
       Events:
         MonthlySchedule:
           Type: Schedule
@@ -367,6 +369,13 @@ Resources:
             TableName: !Ref AccountsTable
         - StepFunctionsExecutionPolicy:
             StateMachineName: !GetAtt StateMachine.Name
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
 
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
@@ -512,6 +521,11 @@ Resources:
         Enabled: true
 
   # --- SQS Queues ---
+  MonthlyAccountReportsContinuationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-continuation-queue
+
   TransactionProcessingDLQ:
     Type: AWS::SQS::Queue
     Properties:

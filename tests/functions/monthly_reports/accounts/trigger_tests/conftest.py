@@ -17,6 +17,10 @@ def monthly_accounts_reports_app_with_mocks(
     accounts_table_name = mock_accounts_dynamo_table
 
     monkeypatch.setenv("ACCOUNTS_TABLE_NAME", accounts_table_name)
+    monkeypatch.setenv(
+        "CONTINUATION_QUEUE_URL",
+        "https://sqs.eu-west-2.amazonaws.com/123456789012/continuation-queue",
+    )
     monkeypatch.setenv("STATE_MACHINE_ARN", "mock_arn")
     monkeypatch.setenv("ENVIRONMENT_NAME", "test")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "INFO")
