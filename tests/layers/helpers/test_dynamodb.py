@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from botocore.exceptions import ClientError
 
-from dynamodb import get_dynamodb_resource, get_all_table_data
+from dynamodb import get_dynamodb_resource, get_paginated_table_data
 
 
 class TestGetDynamoDBResource:
@@ -70,21 +70,23 @@ class TestGetDynamoDBResource:
             )
 
 
-class TestGetAllTableData:
+class TestGetPaginatedTableData:
 
     def test_success(self, magic_mock_accounts_table, mock_logger):
         item_id = str(uuid.uuid4())
         magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
 
-        result = get_all_table_data(None, None, magic_mock_accounts_table, mock_logger)
+        result = get_paginated_table_data(
+            None, None, magic_mock_accounts_table, mock_logger
+        )
 
-        assert result == [{"id": item_id}]
+        assert result[0] == [{"id": item_id}]
 
     def test_success_with_scan_params(self, magic_mock_accounts_table, mock_logger):
         item_id = str(uuid.uuid4())
         magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
 
-        result = get_all_table_data(
+        result = get_paginated_table_data(
             {
                 "ProjectionExpression": "accountId, userId",
             },
@@ -93,42 +95,25 @@ class TestGetAllTableData:
             mock_logger,
         )
 
-        assert result == [{"id": item_id}]
+        assert result[0] == [{"id": item_id}]
         assert magic_mock_accounts_table.scan.call_args[1] == {
             "ProjectionExpression": "accountId, userId",
+            "Limit": 10,
         }
 
     def test_success_with_index(self, magic_mock_accounts_table, mock_logger):
         item_id = str(uuid.uuid4())
         magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
 
-        result = get_all_table_data(None, "id", magic_mock_accounts_table, mock_logger)
+        result = get_paginated_table_data(
+            None, "id", magic_mock_accounts_table, mock_logger
+        )
 
-        assert result == [{"id": item_id}]
+        assert result[0] == [{"id": item_id}]
         assert magic_mock_accounts_table.scan.call_args[1] == {
             "IndexName": "id",
+            "Limit": 10,
         }
-
-    def test_success_with_last_evaluated_key(
-        self, magic_mock_accounts_table, mock_logger
-    ):
-        item_id = str(uuid.uuid4())
-        item_id_2 = str(uuid.uuid4())
-        magic_mock_accounts_table.scan.side_effect = [
-            {"Items": [{"id": item_id}], "LastEvaluatedKey": {"id": item_id}},
-            {"Items": [{"id": item_id_2}]},
-        ]
-
-        result = get_all_table_data({}, None, magic_mock_accounts_table, mock_logger)
-
-        assert result == [{"id": item_id}, {"id": item_id_2}]
-        assert magic_mock_accounts_table.scan.call_count == 2
-
-        first_call_kwargs = magic_mock_accounts_table.scan.call_args_list[0][1]
-        assert first_call_kwargs == {}
-
-        second_call_kwargs = magic_mock_accounts_table.scan.call_args_list[1][1]
-        assert second_call_kwargs == {"ExclusiveStartKey": {"id": item_id}}
 
     def test_error(self, magic_mock_accounts_table, mock_logger):
         magic_mock_accounts_table.scan.side_effect = ClientError(
@@ -142,7 +127,7 @@ class TestGetAllTableData:
         )
 
         with pytest.raises(Exception) as exception_info:
-            get_all_table_data(
+            get_paginated_table_data(
                 {
                     "ProjectionExpression": "accountId, userId",
                 },

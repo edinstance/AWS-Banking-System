@@ -29,39 +29,27 @@ def get_dynamodb_resource(dynamodb_endpoint: str, aws_region: str, logger: Logge
         raise
 
 
-def get_all_table_data(scan_params, index_name, table, logger: Logger):
+def get_paginated_table_data(
+    scan_params, index_name, table, logger: Logger, page_size: int = 10
+):
     if scan_params is None:
         scan_params = {}
 
     scan_params = scan_params.copy()
-
-    all_data = []
-    response = None
+    scan_params["Limit"] = page_size
 
     if index_name:
         scan_params["IndexName"] = index_name
 
-    while True:
-        try:
-            if response and "LastEvaluatedKey" in response:
-                scan_params["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-                logger.debug(
-                    f"Scanning Table with ExclusiveStartKey: {scan_params.get('ExclusiveStartKey')}"
-                )
+    try:
+        response = table.scan(**scan_params)
+        items = response.get("Items", [])
+        last_evaluated_key = response.get("LastEvaluatedKey")
 
-            response = table.scan(**scan_params)
+        logger.info(f"Fetched {len(items)} items from DynamoDB")
 
-            items = response.get("Items", [])
-            all_data.extend(items)
-            logger.info(
-                f"Fetched {len(items)} items in this batch. Total items: {len(all_data)}"
-            )
+        return items, last_evaluated_key
 
-            if "LastEvaluatedKey" not in response:
-                break
-
-        except ClientError as exception:
-            logger.error(f"Error during DynamoDB scan: {exception}", exc_info=True)
-            raise exception
-
-    return all_data
+    except ClientError as exception:
+        logger.error(f"Error during DynamoDB scan: {exception}", exc_info=True)
+        raise exception
