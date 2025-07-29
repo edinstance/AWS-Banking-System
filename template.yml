@@ -348,6 +348,7 @@ Resources:
         - ResourceName: MonthlyAccountReportsTriggerFunction
       CodeUri: functions/monthly_reports/accounts/trigger/
       Handler: trigger.app.lambda_handler
+      Timeout: 300
       Environment:
         Variables:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
