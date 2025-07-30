@@ -402,7 +402,7 @@ class TestLambdaHandler:
         mock_context = MagicMock()
 
         with patch(
-                "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
         ) as mock_logger:
 
             lambda_handler(mock_event, mock_context)

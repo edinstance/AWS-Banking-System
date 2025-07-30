@@ -21,7 +21,9 @@ class TestGetSfnClient:
                 "stepfunctions", region_name=region
             )
             assert result == mock_client
-            mock_logger.info.assert_called_once_with("Initialized SFN client with default endpoint")
+            mock_logger.info.assert_called_once_with(
+                "Initialized SFN client with default endpoint"
+            )
 
     def test_get_sfn_client_exception(self):
         mock_logger = MagicMock()
