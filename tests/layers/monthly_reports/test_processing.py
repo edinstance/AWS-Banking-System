@@ -53,7 +53,7 @@ class TestProcessAccountBatch:
         self, mock_send_dlq, magic_mock_sfn_client, mock_logger
     ):
         accounts_batch = [
-            {"accountId": "", "userId": ""},  # Invalid account with empty fields
+            {"accountId": "", "userId": ""},
         ]
 
         result = process_account_batch(

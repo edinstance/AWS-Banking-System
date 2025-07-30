@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, Dict, Any, List
 
 from aws_lambda_powertools import Logger
@@ -66,7 +67,7 @@ def send_bad_account_to_dlq(
         "account": account,
         "statement_period": statement_period,
         "error_reason": error_reason,
-        "timestamp": statement_period,
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
     }
 
     message_attributes = {
