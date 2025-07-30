@@ -401,8 +401,16 @@ class TestLambdaHandler:
         }
         mock_context = MagicMock()
 
-        with pytest.raises(json.JSONDecodeError):
+        with patch(
+                "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger:
+
             lambda_handler(mock_event, mock_context)
+
+            mock_logger.error.assert_called_once()
+
+            error_call_args = mock_logger.error.call_args[0][0]
+            assert "Failed to parse message body as JSON" in error_call_args
 
     def test_missing_accounts_table_name(self, monkeypatch):
         monkeypatch.delenv("ACCOUNTS_TABLE_NAME", raising=False)

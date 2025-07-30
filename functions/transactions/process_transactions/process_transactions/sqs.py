@@ -1,7 +1,9 @@
 import datetime
 
 
-def format_sqs_message(record, error_message: str = ""):
+def format_sqs_message(record: dict, error_message: str = ""):
+    if not isinstance(record, dict):
+        raise ValueError("Record must be a dictionary")
     return {
         "originalRecord": record,
         "errorMessage": error_message,

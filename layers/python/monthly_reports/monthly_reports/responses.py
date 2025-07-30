@@ -15,14 +15,14 @@ def create_response(metrics, status, logger: Logger):
         f"Metrics: {metrics}"
     )
 
-    if status in ["ERROR_NO_CONTINUATION_QUEUE", "CRITICAL_ERROR"]:
-        status_code = 500
-    elif status in ["TIMEOUT_CONTINUATION"]:
-        status_code = 202
-    elif status == "COMPLETED":
-        status_code = 200
-    else:
-        status_code = 500
+    status_code_map = {
+        "ERROR_NO_CONTINUATION_QUEUE": 500,
+        "CRITICAL_ERROR": 500,
+        "TIMEOUT_CONTINUATION": 202,
+        "COMPLETED": 200,
+    }
+
+    status_code = status_code_map.get(status, 500)
 
     return {
         "statusCode": status_code,

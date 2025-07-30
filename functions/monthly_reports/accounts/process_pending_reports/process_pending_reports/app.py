@@ -51,7 +51,12 @@ def lambda_handler(event, context: LambdaContext):
     try:
         # Process each SQS record
         for record in event.get("Records", []):
-            message_body = json.loads(record["body"])
+            try:
+                message_body = json.loads(record["body"])
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse message body as JSON: {e}")
+                continue
+
             message_attributes = record.get("messageAttributes", {})
 
             continuation_type = message_attributes.get("continuation_type", {}).get(

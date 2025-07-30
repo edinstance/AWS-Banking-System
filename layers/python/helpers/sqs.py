@@ -37,7 +37,7 @@ def send_message_to_sqs(
     logger: Logger,
 ):
     if not sqs_url:
-        logger.error("DLQ URL not configured, cannot send message to DLQ")
+        logger.error("SQS URL not configured, cannot send message to DLQ")
         return False
 
     if not message:

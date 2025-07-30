@@ -43,8 +43,11 @@ def process_account_batch(
         "batchSize": len(valid_accounts),
     }
 
-    account_ids = [acc["accountId"][:5] for acc in valid_accounts[:3]]
-    execution_name = f"StmtBatch-{statement_period}-{'-'.join(account_ids)}"
+    account_ids = [
+        acc["accountId"][:5] if len(acc["accountId"]) >= 5 else acc["accountId"]
+        for acc in valid_accounts[:3]
+    ]
+    execution_name = f"StmtBatch-{statement_period}-{'-'.join(account_ids)}"[:80]
 
     try:
         result = start_sfn_execution_with_retry(
@@ -195,7 +198,7 @@ def process_accounts_scan_continuation(
                 scan_params,
                 statement_period,
                 None,
-                None,
+                scan_params.get("ExclusiveStartKey"),
                 "accounts_scan",
                 sqs_endpoint,
                 continuation_queue_url,

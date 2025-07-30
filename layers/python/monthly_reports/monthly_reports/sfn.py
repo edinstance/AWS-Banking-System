@@ -19,7 +19,7 @@ def start_sfn_execution_with_retry(
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
 
-            if e.response["Error"]["Code"] == "ExecutionAlreadyExistsException":
+            if error_code == "ExecutionAlreadyExistsException":
                 logger.info(f"SF execution {execution_name} already exists. Skipping.")
                 return "already_exists"
 
