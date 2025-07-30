@@ -9,6 +9,7 @@ from monthly_reports.metrics import initialize_metrics, merge_metrics
 from monthly_reports.processing import process_accounts_page
 from monthly_reports.responses import create_response
 from monthly_reports.sqs import send_continuation_message
+from monthly_reports.sqs import send_bad_account_to_dlq
 
 from sqs import get_sqs_client
 from sfn import get_sfn_client
@@ -20,6 +21,7 @@ STATE_MACHINE_ARN = os.environ.get("STATE_MACHINE_ARN")
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 SQS_ENDPOINT = os.environ.get("SQS_ENDPOINT")
 CONTINUATION_QUEUE_URL = os.environ.get("CONTINUATION_QUEUE_URL")
+DLQ_URL = os.environ.get("DLQ_URL")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 
 PAGE_SIZE = 50
@@ -105,7 +107,9 @@ def lambda_handler(_event, context: LambdaContext):
                 AWS_REGION,
                 BATCH_SIZE,
                 SAFETY_BUFFER,
+                DLQ_URL,
             )
+
             merge_metrics(metrics, page_metrics)
 
             if last_evaluated_key:
@@ -117,6 +121,24 @@ def lambda_handler(_event, context: LambdaContext):
 
     except Exception as e:
         logger.error(f"Critical error during processing: {e}", exc_info=True)
+        if DLQ_URL and AWS_REGION:
+            try:
+                error_account = {
+                    "lambda_function": "monthly-reports-trigger",
+                    "error_type": "critical_lambda_error",
+                    "error_details": str(e),
+                }
+                send_bad_account_to_dlq(
+                    error_account,
+                    statement_period,
+                    f"Critical lambda error: {str(e)}",
+                    SQS_ENDPOINT,
+                    DLQ_URL,
+                    AWS_REGION,
+                    logger,
+                )
+            except Exception as dlq_error:
+                logger.error(f"Failed to send critical error to DLQ: {dlq_error}")
         raise
 
     return create_response(metrics, "COMPLETED", logger)

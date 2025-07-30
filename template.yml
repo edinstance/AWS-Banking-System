@@ -354,6 +354,7 @@ Resources:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           STATE_MACHINE_ARN: !Ref StateMachine
           CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
+          DLQ_URL: !Ref MonthlyAccountReportsContinuationDLQ
           DYNAMODB_ENDPOINT: ''
           SQS_ENDPOINT: ''
       Events:
@@ -379,6 +380,13 @@ Resources:
               - sqs:GetQueueAttributes
               - sqs:GetQueueUrl
             Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
 
   MonthlyAccountReportsProcessPendingReportsFunction:
     Type: AWS::Serverless::Function
@@ -395,6 +403,7 @@ Resources:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           STATE_MACHINE_ARN: !Ref StateMachine
           CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
+          DLQ_URL: !Ref MonthlyAccountReportsContinuationDLQ
           DYNAMODB_ENDPOINT: ''
           SQS_ENDPOINT: ''
       Events:
@@ -420,6 +429,13 @@ Resources:
               - sqs:GetQueueAttributes
               - sqs:GetQueueUrl
             Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
 
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
@@ -583,6 +599,14 @@ Resources:
       VisibilityTimeout: 200
       MessageRetentionPeriod: 1209600 # 14 days
       ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
+        maxReceiveCount: 3
+
+  MonthlyAccountReportsContinuationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-dlq
 
   TransactionProcessingDLQ:
     Type: AWS::SQS::Queue

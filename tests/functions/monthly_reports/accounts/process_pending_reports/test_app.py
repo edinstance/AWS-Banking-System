@@ -75,6 +75,7 @@ class TestLambdaHandler:
                 app.PAGE_SIZE,
                 app.BATCH_SIZE,
                 app.SAFETY_BUFFER,
+                app.DLQ_URL,
             )
 
     def test_batch_continuation_success(
@@ -147,6 +148,7 @@ class TestLambdaHandler:
                 app.PAGE_SIZE,
                 app.BATCH_SIZE,
                 app.SAFETY_BUFFER,
+                app.DLQ_URL,
             )
 
     def test_batch_continuation_without_last_evaluated_key(
@@ -403,14 +405,24 @@ class TestLambdaHandler:
 
         with patch(
             "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
-        ) as mock_logger:
-
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
             lambda_handler(mock_event, mock_context)
 
-            mock_logger.error.assert_called_once()
+            # Verify the JSON parsing error was logged
+            mock_logger.error.assert_any_call(
+                "Failed to parse message body as JSON: Expecting value: line 1 column 1 (char 0)"
+            )
 
-            error_call_args = mock_logger.error.call_args[0][0]
-            assert "Failed to parse message body as JSON" in error_call_args
+            # Verify DLQ function was called
+            mock_send_dlq.assert_called_once()
+
+            # Check the DLQ call arguments
+            call_args = mock_send_dlq.call_args
+            error_data = call_args[0][0]
+            assert error_data["error_type"] == "json_parse_error"
+            assert error_data["raw_message"] == "invalid json"
 
     def test_missing_accounts_table_name(self, monkeypatch):
         monkeypatch.delenv("ACCOUNTS_TABLE_NAME", raising=False)
@@ -471,3 +483,221 @@ class TestLambdaHandler:
 
             mock_logger.info.assert_any_call("Processing SQS continuation messages")
             assert response["statusCode"] == 200
+
+    def test_invalid_json_with_dlq_send_success(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": "invalid json",
+                    "messageId": "test-message-id",
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "accounts_scan"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+
+            response = lambda_handler(mock_event, mock_context)
+
+            assert response["statusCode"] == 200
+            mock_logger.error.assert_called_once()
+            mock_send_dlq.assert_called_once()
+
+    def test_invalid_json_with_dlq_send_failure(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": "invalid json",
+                    "messageId": "test-message-id",
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "accounts_scan"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_send_dlq.side_effect = Exception("DLQ send failed")
+
+            response = lambda_handler(mock_event, mock_context)
+
+            assert response["statusCode"] == 200
+            mock_logger.error.assert_any_call(
+                "Failed to parse message body as JSON: Expecting value: line 1 column 1 (char 0)"
+            )
+            mock_logger.error.assert_any_call(
+                "Failed to send parse error to DLQ: DLQ send failed"
+            )
+
+    def test_unknown_continuation_type_with_dlq_send_success(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": json.dumps(
+                        {
+                            "scan_params": {
+                                "ProjectionExpression": "accountId, userId"
+                            },
+                            "statement_period": "2024-01",
+                        }
+                    ),
+                    "messageId": "test-message-id",
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "unknown_type"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+
+            response = lambda_handler(mock_event, mock_context)
+
+            assert response["statusCode"] == 200
+            mock_logger.warning.assert_called_once_with(
+                "Unknown continuation type: unknown_type"
+            )
+            mock_send_dlq.assert_called_once()
+
+    def test_unknown_continuation_type_with_dlq_send_failure(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": json.dumps(
+                        {
+                            "scan_params": {
+                                "ProjectionExpression": "accountId, userId"
+                            },
+                            "statement_period": "2024-01",
+                        }
+                    ),
+                    "messageId": "test-message-id",
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "unknown_type"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_send_dlq.side_effect = Exception("DLQ send failed")
+
+            response = lambda_handler(mock_event, mock_context)
+
+            assert response["statusCode"] == 200
+            mock_logger.warning.assert_called_once_with(
+                "Unknown continuation type: unknown_type"
+            )
+            mock_logger.error.assert_called_once_with(
+                "Failed to send unknown continuation type to DLQ: DLQ send failed"
+            )
+
+    def test_critical_error_with_dlq_send_success(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": json.dumps(
+                        {
+                            "scan_params": {
+                                "ProjectionExpression": "accountId, userId"
+                            },
+                            "statement_period": "2024-01",
+                        }
+                    ),
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "accounts_scan"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.process_accounts_scan_continuation"
+        ) as mock_process_scan, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_process_scan.side_effect = Exception("Processing failed")
+
+            with pytest.raises(Exception, match="Processing failed"):
+                lambda_handler(mock_event, mock_context)
+
+            mock_logger.error.assert_called_once()
+            mock_send_dlq.assert_called_once()
+
+    def test_critical_error_with_dlq_send_failure(
+        self, monthly_reports_continuation_app_with_mocks
+    ):
+        mock_event = {
+            "Records": [
+                {
+                    "body": json.dumps(
+                        {
+                            "scan_params": {
+                                "ProjectionExpression": "accountId, userId"
+                            },
+                            "statement_period": "2024-01",
+                        }
+                    ),
+                    "messageAttributes": {
+                        "continuation_type": {"stringValue": "accounts_scan"}
+                    },
+                }
+            ]
+        }
+        mock_context = MagicMock()
+
+        with patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.process_accounts_scan_continuation"
+        ) as mock_process_scan, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.process_pending_reports.process_pending_reports.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_process_scan.side_effect = Exception("Processing failed")
+            mock_send_dlq.side_effect = Exception("DLQ send failed")
+
+            with pytest.raises(Exception, match="Processing failed"):
+                lambda_handler(mock_event, mock_context)
+
+            mock_logger.error.assert_any_call(
+                "Critical error during continuation processing: Processing failed",
+                exc_info=True,
+            )
+            mock_logger.error.assert_any_call(
+                "Failed to send critical error to DLQ: DLQ send failed"
+            )

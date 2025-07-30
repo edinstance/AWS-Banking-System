@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from monthly_reports.sqs import send_continuation_message
+from monthly_reports.sqs import send_continuation_message, send_bad_account_to_dlq
 
 
 class TestSqsHelpers:
@@ -54,3 +54,39 @@ class TestSqsHelpers:
             }
         }
         assert call_args[1]["message_attributes"] == expected_attributes
+
+    def test_send_bad_account_to_dlq_no_dlq_url(self, mock_logger):
+        """Test warning when DLQ URL is not set"""
+        result = send_bad_account_to_dlq(
+            account={"accountId": "acc1"},
+            statement_period="2024-01",
+            error_reason="Test error",
+            sqs_endpoint="https://sqs.us-east-1.amazonaws.com",
+            dlq_url="",  # Empty DLQ URL
+            aws_region="us-east-1",
+            logger=mock_logger,
+        )
+
+        assert result is None
+        mock_logger.warning.assert_called_once_with(
+            "Cannot send bad account to DLQ: DLQ_URL not set"
+        )
+
+    @patch("monthly_reports.sqs.send_message_to_sqs")
+    def test_send_bad_account_to_dlq_exception(self, mock_send_sqs, mock_logger):
+        """Test exception handling when sending to DLQ fails"""
+        mock_send_sqs.side_effect = Exception("SQS send failed")
+
+        send_bad_account_to_dlq(
+            account={"accountId": "acc1"},
+            statement_period="2024-01",
+            error_reason="Test error",
+            sqs_endpoint="https://sqs.us-east-1.amazonaws.com",
+            dlq_url="https://queue-url",
+            aws_region="us-east-1",
+            logger=mock_logger,
+        )
+
+        mock_logger.error.assert_called_once_with(
+            "Failed to send bad account to DLQ: SQS send failed"
+        )

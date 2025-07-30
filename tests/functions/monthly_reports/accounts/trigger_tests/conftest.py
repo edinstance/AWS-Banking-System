@@ -20,6 +20,10 @@ def monthly_accounts_reports_app_with_mocks(
     monkeypatch.setenv("ENVIRONMENT_NAME", "test")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "INFO")
     monkeypatch.setenv("AWS_REGION", "eu-west-2")
+    monkeypatch.setenv(
+        "DLQ_URL", "https://sqs.eu-west-2.amazonaws.com/123456789012/dlq"
+    )
+    monkeypatch.setenv("SQS_ENDPOINT", "https://sqs.eu-west-2.amazonaws.com")
 
     with patch("boto3.resource", return_value=dynamo_resource):
         reload(app)

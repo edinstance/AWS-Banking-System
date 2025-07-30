@@ -261,3 +261,53 @@ class TestLambdaHandler:
             body["message"]
             == "Monthly Account reports processing error_no_continuation_queue"
         )
+
+    def test_critical_error_with_dlq_send_success(
+        self, monthly_accounts_reports_app_with_mocks
+    ):
+        mock_event = {}
+        mock_context = MagicMock()
+        mock_context.get_remaining_time_in_millis.return_value = 300000
+
+        with patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_paginated_table_data"
+        ) as mock_get_data, patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_get_data.side_effect = Exception("Database connection failed")
+
+            with pytest.raises(Exception, match="Database connection failed"):
+                lambda_handler(mock_event, mock_context)
+
+            mock_logger.error.assert_called_once()
+            mock_send_dlq.assert_called_once()
+
+    def test_critical_error_with_dlq_send_failure(
+        self, monthly_accounts_reports_app_with_mocks
+    ):
+        mock_event = {}
+        mock_context = MagicMock()
+        mock_context.get_remaining_time_in_millis.return_value = 300000
+
+        with patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.get_paginated_table_data"
+        ) as mock_get_data, patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.logger"
+        ) as mock_logger, patch(
+            "functions.monthly_reports.accounts.trigger.trigger.app.send_bad_account_to_dlq"
+        ) as mock_send_dlq:
+            mock_get_data.side_effect = Exception("Database connection failed")
+            mock_send_dlq.side_effect = Exception("DLQ send failed")
+
+            with pytest.raises(Exception, match="Database connection failed"):
+                lambda_handler(mock_event, mock_context)
+
+            mock_logger.error.assert_any_call(
+                "Critical error during processing: Database connection failed",
+                exc_info=True,
+            )
+            mock_logger.error.assert_any_call(
+                "Failed to send critical error to DLQ: DLQ send failed"
+            )

@@ -11,6 +11,7 @@ from monthly_reports.processing import (
     process_batch_continuation,
 )
 from monthly_reports.responses import create_response
+from monthly_reports.sqs import send_bad_account_to_dlq
 
 from sqs import get_sqs_client
 from sfn import get_sfn_client
@@ -22,6 +23,7 @@ STATE_MACHINE_ARN = os.environ.get("STATE_MACHINE_ARN")
 DYNAMODB_ENDPOINT = os.environ.get("DYNAMODB_ENDPOINT")
 SQS_ENDPOINT = os.environ.get("SQS_ENDPOINT")
 CONTINUATION_QUEUE_URL = os.environ.get("CONTINUATION_QUEUE_URL")
+DLQ_URL = os.environ.get("DLQ_URL")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-2")
 
 PAGE_SIZE = 50
@@ -55,6 +57,25 @@ def lambda_handler(event, context: LambdaContext):
                 message_body = json.loads(record["body"])
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse message body as JSON: {e}")
+                if DLQ_URL and AWS_REGION:
+                    try:
+                        error_data = {
+                            "lambda_function": "process-pending-reports",
+                            "error_type": "json_parse_error",
+                            "raw_message": record.get("body"),
+                            "message_id": record.get("messageId"),
+                        }
+                        send_bad_account_to_dlq(
+                            error_data,
+                            "unknown",
+                            f"JSON parse error: {str(e)}",
+                            SQS_ENDPOINT,
+                            DLQ_URL,
+                            AWS_REGION,
+                            logger,
+                        )
+                    except Exception as dlq_error:
+                        logger.error(f"Failed to send parse error to DLQ: {dlq_error}")
                 continue
 
             message_attributes = record.get("messageAttributes", {})
@@ -79,6 +100,7 @@ def lambda_handler(event, context: LambdaContext):
                     PAGE_SIZE,
                     BATCH_SIZE,
                     SAFETY_BUFFER,
+                    DLQ_URL,
                 )
                 merge_metrics(metrics, scan_metrics)
 
@@ -100,16 +122,62 @@ def lambda_handler(event, context: LambdaContext):
                     PAGE_SIZE,
                     BATCH_SIZE,
                     SAFETY_BUFFER,
+                    DLQ_URL,
                 )
                 merge_metrics(metrics, batch_metrics)
 
             else:
                 logger.warning(f"Unknown continuation type: {continuation_type}")
+                if DLQ_URL and AWS_REGION:
+                    try:
+                        error_data = {
+                            "lambda_function": "process-pending-reports",
+                            "error_type": "unknown_continuation_type",
+                            "continuation_type": continuation_type,
+                            "message_body": message_body,
+                            "message_id": record.get("messageId"),
+                        }
+                        statement_period = message_body.get(
+                            "statement_period", "unknown"
+                        )
+                        send_bad_account_to_dlq(
+                            error_data,
+                            statement_period,
+                            f"Unknown continuation type: {continuation_type}",
+                            SQS_ENDPOINT,
+                            DLQ_URL,
+                            AWS_REGION,
+                            logger,
+                        )
+                    except Exception as dlq_error:
+                        logger.error(
+                            f"Failed to send unknown continuation type to DLQ: {dlq_error}"
+                        )
 
     except Exception as e:
         logger.error(
             f"Critical error during continuation processing: {e}", exc_info=True
         )
+        if DLQ_URL and AWS_REGION:
+            try:
+
+                error_account = {
+                    "lambda_function": "process-pending-reports",
+                    "error_type": "critical_lambda_error",
+                    "error_details": str(e),
+                    "event": event,
+                }
+                send_bad_account_to_dlq(
+                    error_account,
+                    "unknown",
+                    f"Critical lambda error: {str(e)}",
+                    SQS_ENDPOINT,
+                    DLQ_URL,
+                    AWS_REGION,
+                    logger,
+                )
+            except Exception as dlq_error:
+                logger.error(f"Failed to send critical error to DLQ: {dlq_error}")
         raise
 
     return create_response(metrics, "COMPLETED", logger)

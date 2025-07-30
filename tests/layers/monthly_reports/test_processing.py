@@ -44,11 +44,31 @@ class TestProcessAccountBatch:
             {},
         ]
 
-        result = process_account_batch(
+        process_account_batch(
             accounts_batch, "2024-1", magic_mock_sfn_client, mock_logger, ""
         )
 
+    @patch("monthly_reports.processing.send_bad_account_to_dlq")
+    def test_invalid_account_with_dlq_parameters(
+        self, mock_send_dlq, magic_mock_sfn_client, mock_logger
+    ):
+        accounts_batch = [
+            {"accountId": "", "userId": ""},  # Invalid account with empty fields
+        ]
+
+        result = process_account_batch(
+            accounts_batch,
+            "2024-1",
+            magic_mock_sfn_client,
+            mock_logger,
+            "",
+            sqs_endpoint="https://sqs.amazonaws.com",
+            dlq_url="https://sqs.amazonaws.com/queue/dlq",
+            aws_region="us-east-1",
+        )
+
         assert result["skipped"] == 1
+        mock_send_dlq.assert_called_once()
 
     def test_execution_already_exists(self, magic_mock_sfn_client, mock_logger):
         accounts_batch = [
@@ -102,6 +122,64 @@ class TestProcessAccountBatch:
 
             assert result["failed_starts"] == 1
             assert result["skipped"] == 0
+
+    @patch("monthly_reports.processing.send_bad_account_to_dlq")
+    def test_failed_executions_with_dlq(
+        self, mock_send_dlq, magic_mock_sfn_client, mock_logger
+    ):
+        accounts_batch = [
+            {"accountId": str(uuid.uuid4()), "userId": str(uuid.uuid4())},
+        ]
+
+        with patch(
+            "monthly_reports.processing.start_sfn_execution_with_retry"
+        ) as mock_start_sfn_execution_with_retry:
+            mock_start_sfn_execution_with_retry.return_value = "failed"
+
+            result = process_account_batch(
+                accounts_batch,
+                "2024-1",
+                magic_mock_sfn_client,
+                mock_logger,
+                "",
+                sqs_endpoint="https://sqs.amazonaws.com",
+                dlq_url="https://sqs.amazonaws.com/queue/dlq",
+                aws_region="us-east-1",
+            )
+
+            assert result["failed_starts"] == 1
+            assert result["skipped"] == 0
+            mock_send_dlq.assert_called_once()
+
+    @patch("monthly_reports.processing.send_bad_account_to_dlq")
+    def test_exception_raised_with_dlq(
+        self, mock_send_dlq, magic_mock_sfn_client, mock_logger
+    ):
+        accounts_batch = [
+            {"accountId": str(uuid.uuid4()), "userId": str(uuid.uuid4())},
+        ]
+
+        with patch(
+            "monthly_reports.processing.start_sfn_execution_with_retry"
+        ) as mock_start_sfn_execution_with_retry:
+            mock_start_sfn_execution_with_retry.side_effect = Exception(
+                "Test exception"
+            )
+
+            result = process_account_batch(
+                accounts_batch,
+                "2024-1",
+                magic_mock_sfn_client,
+                mock_logger,
+                "",
+                sqs_endpoint="https://sqs.amazonaws.com",
+                dlq_url="https://sqs.amazonaws.com/queue/dlq",
+                aws_region="us-east-1",
+            )
+
+            assert result["failed_starts"] == 1
+            assert result["skipped"] == 0
+            mock_send_dlq.assert_called_once()
 
 
 class TestChunkAccounts:
@@ -280,22 +358,32 @@ class TestProcessAccountBatches:
                     "failed_starts_count": 0,
                 }
 
-                result = process_account_batches(
-                    account_batches=account_batches,
-                    statement_period="2024-1",
-                    context=mock_context,
-                    logger=mock_logger,
-                    sfn_client=MagicMock(),
-                    state_machine_arn="arn:aws:states:us-east-1:123456789012:stateMachine:test",
-                    scan_params={},
-                    last_evaluated_key=None,
-                    sqs_endpoint="https://sqs.us-east-1.amazonaws.com",
-                    continuation_queue_url="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-                    aws_region="us-east-1",
-                )
+                with patch(
+                    "monthly_reports.processing.send_bad_account_to_dlq"
+                ) as mock_send_to_dlq:
+                    result = process_account_batches(
+                        account_batches=account_batches,
+                        statement_period="2024-1",
+                        context=mock_context,
+                        logger=mock_logger,
+                        sfn_client=MagicMock(),
+                        state_machine_arn="arn:aws:states:us-east-1:123456789012:stateMachine:test",
+                        scan_params={},
+                        last_evaluated_key=None,
+                        sqs_endpoint="https://sqs.us-east-1.amazonaws.com",
+                        continuation_queue_url="https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+                        aws_region="us-east-1",
+                        dlq_url="https://sqs.us-east-1.amazonaws.com/123456789012/dlq-queue",
+                    )
 
-                assert result["failed_starts_count"] == 1
-                assert result["batches_processed"] == 0
+                    assert result["failed_starts_count"] == 1
+                    assert result["batches_processed"] == 0
+
+                    mock_send_to_dlq.assert_called_once()
+                    call_args = mock_send_to_dlq.call_args[0]
+                    assert call_args[0] == account_batches[0][0]
+                    assert call_args[1] == "2024-1"
+                    assert "Batch processing exception: Test exception" in call_args[2]
 
 
 class TestProcessAccountsScanContinuation:

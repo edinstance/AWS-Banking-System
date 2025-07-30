@@ -2,7 +2,7 @@ from dynamodb import get_paginated_table_data
 
 from .metrics import merge_metrics, initialize_metrics
 from .sfn import start_sfn_execution_with_retry
-from .sqs import send_continuation_message
+from .sqs import send_continuation_message, send_bad_account_to_dlq
 
 
 def chunk_accounts(accounts, chunk_size=10):
@@ -11,7 +11,14 @@ def chunk_accounts(accounts, chunk_size=10):
 
 
 def process_account_batch(
-    accounts_batch, statement_period, sfn_client, logger, state_machine_arn
+    accounts_batch,
+    statement_period,
+    sfn_client,
+    logger,
+    state_machine_arn,
+    sqs_endpoint=None,
+    dlq_url=None,
+    aws_region=None,
 ):
     valid_accounts = []
     skipped_count = 0
@@ -21,7 +28,20 @@ def process_account_batch(
         user_id = account.get("userId")
 
         if not all([account_id, user_id]):
+            error_reason = f"Missing required fields - accountId: {bool(account_id)}, userId: {bool(user_id)}"
             logger.warning(f"Skipping account with missing data: {account}")
+
+            if dlq_url and aws_region:
+                send_bad_account_to_dlq(
+                    account,
+                    statement_period,
+                    error_reason,
+                    sqs_endpoint,
+                    dlq_url,
+                    aws_region,
+                    logger,
+                )
+
             skipped_count += 1
             continue
 
@@ -59,10 +79,32 @@ def process_account_batch(
         elif result == "already_exists":
             return {"already_exists": len(valid_accounts), "skipped": skipped_count}
         else:
+            if dlq_url and aws_region:
+                for account in valid_accounts:
+                    send_bad_account_to_dlq(
+                        account,
+                        statement_period,
+                        f"Step Function execution failed: {result}",
+                        sqs_endpoint,
+                        dlq_url,
+                        aws_region,
+                        logger,
+                    )
             return {"failed_starts": len(valid_accounts), "skipped": skipped_count}
 
     except Exception as e:
         logger.error(f"Failed to start SF execution for batch: {e}")
+        if dlq_url and aws_region:
+            for account in valid_accounts:
+                send_bad_account_to_dlq(
+                    account,
+                    statement_period,
+                    f"Step Function execution exception: {str(e)}",
+                    sqs_endpoint,
+                    dlq_url,
+                    aws_region,
+                    logger,
+                )
         return {"failed_starts": len(valid_accounts), "skipped": skipped_count}
 
 
@@ -80,6 +122,7 @@ def process_accounts_page(
     aws_region,
     batch_size=10,
     safety_buffer=30,
+    dlq_url=None,
 ):
     metrics = initialize_metrics()
 
@@ -101,6 +144,7 @@ def process_accounts_page(
         continuation_queue_url,
         aws_region,
         safety_buffer,
+        dlq_url,
     )
     merge_metrics(metrics, batch_metrics)
 
@@ -120,6 +164,7 @@ def process_account_batches(
     continuation_queue_url,
     aws_region,
     safety_buffer=30,
+    dlq_url=None,
 ):
     """Process multiple batches of accounts"""
     metrics = initialize_metrics()
@@ -154,7 +199,14 @@ def process_account_batches(
             )
 
             batch_result = process_account_batch(
-                batch, statement_period, sfn_client, logger, state_machine_arn
+                batch,
+                statement_period,
+                sfn_client,
+                logger,
+                state_machine_arn,
+                sqs_endpoint,
+                dlq_url,
+                aws_region,
             )
 
             for key, value in batch_result.items():
@@ -166,6 +218,17 @@ def process_account_batches(
 
         except Exception as e:
             logger.error(f"Error processing batch {i + 1}: {e}")
+            if dlq_url and aws_region:
+                for account in batch:
+                    send_bad_account_to_dlq(
+                        account,
+                        statement_period,
+                        f"Batch processing exception: {str(e)}",
+                        sqs_endpoint,
+                        dlq_url,
+                        aws_region,
+                        logger,
+                    )
             metrics["failed_starts_count"] += len(batch)
 
     return metrics
@@ -185,6 +248,7 @@ def process_accounts_scan_continuation(
     page_size=50,
     batch_size=10,
     safety_buffer=30,
+    dlq_url=None,
 ):
     metrics = initialize_metrics()
 
@@ -235,6 +299,7 @@ def process_accounts_scan_continuation(
             aws_region,
             batch_size,
             safety_buffer,
+            dlq_url,
         )
         merge_metrics(metrics, page_metrics)
 
@@ -263,6 +328,7 @@ def process_batch_continuation(
     page_size=50,
     batch_size=10,
     safety_buffer=30,
+    dlq_url=None,
 ):
     metrics = initialize_metrics()
 
@@ -285,6 +351,7 @@ def process_batch_continuation(
             continuation_queue_url,
             aws_region,
             safety_buffer,
+            dlq_url,
         )
         merge_metrics(metrics, batch_metrics)
 
@@ -304,6 +371,7 @@ def process_batch_continuation(
             page_size,
             batch_size,
             safety_buffer,
+            dlq_url,
         )
         merge_metrics(metrics, scan_metrics)
 
