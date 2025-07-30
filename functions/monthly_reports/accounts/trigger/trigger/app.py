@@ -1,14 +1,17 @@
-import datetime
 import os
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from dynamodb import get_dynamodb_resource, get_paginated_table_data
-from sqs import get_sqs_client, send_message_to_sqs
+from monthly_reports.helpers import get_statement_period
+from monthly_reports.metrics import initialize_metrics, merge_metrics
+from monthly_reports.processing import process_accounts_page
+from monthly_reports.responses import create_response
+from monthly_reports.sqs import send_continuation_message
+
+from sqs import get_sqs_client
 from sfn import get_sfn_client
-from .processing import chunk_accounts, process_account_batch
-from .responses import create_response
 
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL", "INFO").upper()
@@ -41,23 +44,10 @@ else:
 def lambda_handler(_event, context: LambdaContext):
     logger.info("Starting monthly account reports processing from EventBridge trigger")
 
-    today = datetime.datetime.now(datetime.UTC)
-    first_day_of_current_month = today.replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
-    last_day_of_previous_month = first_day_of_current_month - datetime.timedelta(days=1)
-    statement_period = last_day_of_previous_month.strftime("%Y-%m")
-
+    statement_period = get_statement_period()
     logger.info(f"Starting new processing for period: {statement_period}")
 
-    metrics = {
-        "processed_count": 0,
-        "failed_starts_count": 0,
-        "skipped_count": 0,
-        "already_exists_count": 0,
-        "batches_processed": 0,
-        "pages_processed": 0,
-    }
+    metrics = initialize_metrics()
 
     if not CONTINUATION_QUEUE_URL:
         logger.critical("CONTINUATION_QUEUE_URL is not set. Cannot test SQS sending.")
@@ -74,23 +64,16 @@ def lambda_handler(_event, context: LambdaContext):
                 logger.warning(
                     f"Approaching Lambda timeout. Processed {metrics['pages_processed']} pages."
                 )
-                message_body = {
-                    "scan_params": scan_params,
-                    "statement_period": statement_period,
-                }
-                message_attributes = {
-                    "continuation_type": {
-                        "DataType": "String",
-                        "StringValue": "accounts_scan",
-                    }
-                }
-                send_message_to_sqs(
-                    message=message_body,
-                    message_attributes=message_attributes,
-                    sqs_endpoint=SQS_ENDPOINT,
-                    sqs_url=CONTINUATION_QUEUE_URL,
-                    aws_region=AWS_REGION,
-                    logger=logger,
+                send_continuation_message(
+                    scan_params,
+                    statement_period,
+                    None,
+                    None,
+                    "accounts_scan",
+                    SQS_ENDPOINT,
+                    CONTINUATION_QUEUE_URL,
+                    AWS_REGION,
+                    logger,
                 )
                 return create_response(metrics, "TIMEOUT_CONTINUATION", logger)
 
@@ -108,68 +91,22 @@ def lambda_handler(_event, context: LambdaContext):
                 logger.info("No more accounts to process")
                 break
 
-            account_batches = list(chunk_accounts(accounts_page, chunk_size=BATCH_SIZE))
-            logger.info(
-                f"Processing {len(accounts_page)} accounts in {len(account_batches)} batches"
+            page_metrics = process_accounts_page(
+                accounts_page,
+                statement_period,
+                context,
+                logger,
+                sfn_client,
+                STATE_MACHINE_ARN,
+                scan_params,
+                last_evaluated_key,
+                SQS_ENDPOINT,
+                CONTINUATION_QUEUE_URL,
+                AWS_REGION,
+                BATCH_SIZE,
+                SAFETY_BUFFER,
             )
-
-            for i, batch in enumerate(account_batches):
-                remaining_time = context.get_remaining_time_in_millis() / 1000.0
-
-                if remaining_time < SAFETY_BUFFER:
-                    logger.warning(
-                        f"Timeout approaching during batch processing. "
-                        f"Processed {i}/{len(account_batches)} batches from current page."
-                    )
-
-                    if CONTINUATION_QUEUE_URL:
-                        remaining_batches = account_batches[i:]
-                        remaining_accounts = []
-                        for remaining_batch in remaining_batches:
-                            remaining_accounts.extend(remaining_batch)
-
-                        message_body = {
-                            "scan_params": scan_params,
-                            "statement_period": statement_period,
-                            "remaining_accounts": remaining_accounts,
-                            "last_evaluated_key": last_evaluated_key,
-                        }
-                        message_attributes = {
-                            "continuation_type": {
-                                "DataType": "String",
-                                "StringValue": "batch_continuation",
-                            }
-                        }
-                        send_message_to_sqs(
-                            message=message_body,
-                            message_attributes=message_attributes,
-                            sqs_endpoint=SQS_ENDPOINT,
-                            sqs_url=CONTINUATION_QUEUE_URL,
-                            aws_region=AWS_REGION,
-                            logger=logger,
-                        )
-                    return create_response(metrics, "TIMEOUT_CONTINUATION", logger)
-
-                try:
-                    logger.info(
-                        f"Processing batch {i + 1}/{len(account_batches)} "
-                        f"with {len(batch)} accounts"
-                    )
-
-                    batch_result = process_account_batch(
-                        batch, statement_period, sfn_client, logger, STATE_MACHINE_ARN
-                    )
-
-                    for key, value in batch_result.items():
-                        metrics_key = f"{key}_count"
-                        if metrics_key in metrics:
-                            metrics[metrics_key] += value
-
-                    metrics["batches_processed"] += 1
-
-                except Exception as e:
-                    logger.error(f"Error processing batch {i + 1}: {e}")
-                    metrics["failed_starts_count"] += len(batch)
+            merge_metrics(metrics, page_metrics)
 
             if last_evaluated_key:
                 scan_params["ExclusiveStartKey"] = last_evaluated_key

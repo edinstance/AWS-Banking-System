@@ -262,6 +262,11 @@ def mock_sfn_client():
         yield client
 
 
+@pytest.fixture(scope="function")
+def magic_mock_sfn_client():
+    return MagicMock()
+
+
 @pytest.fixture
 def mock_context():
     """

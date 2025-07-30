@@ -4,9 +4,7 @@ from unittest.mock import patch
 import pytest
 from botocore.exceptions import ClientError
 
-from functions.monthly_reports.accounts.trigger.trigger.start_execution import (
-    start_sfn_execution_with_retry,
-)
+from monthly_reports.sfn import start_sfn_execution_with_retry
 
 
 class TestStartExecution:

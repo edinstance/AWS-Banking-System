@@ -1,5 +1,3 @@
-import json
-
 from aws_lambda_powertools import Logger
 
 
@@ -28,12 +26,10 @@ def create_response(metrics, status, logger: Logger):
 
     return {
         "statusCode": status_code,
-        "body": json.dumps(
-            {
-                "message": f"Monthly Account reports processing {status.lower()}",
-                "status": status,
-                "totalAccountsProcessed": total_accounts_processed,
-                **metrics,
-            }
-        ),
+        "body": {
+            "message": f"Monthly Account reports processing {status.lower()}",
+            "status": status,
+            "totalAccountsProcessed": total_accounts_processed,
+            **metrics,
+        },
     }

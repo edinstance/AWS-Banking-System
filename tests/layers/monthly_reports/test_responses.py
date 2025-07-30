@@ -1,5 +1,6 @@
 import pytest
-from functions.monthly_reports.accounts.trigger.trigger.responses import create_response
+
+from monthly_reports.responses import create_response
 
 
 class TestResponses:

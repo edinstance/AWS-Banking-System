@@ -360,11 +360,13 @@ Resources:
         MonthlySchedule:
           Type: Schedule
           Properties:
-            Name: !Sub ${AWS::StackName}-monthly-reports-trigger
-            Schedule: "cron(0 0 1 * ? *)"
-            Description: !Sub "Monthly reports trigger for ${Environment}"
+            Name: !Sub ${AWS::StackName}-monthly-accounts-reports-trigger
+            Schedule: cron(0 0 1 * ? *)
+            Description: !Sub Monthly accounts reports trigger for ${Environment}
       Layers:
         - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonMonthlyReportsLambdaLayer
+      ReservedConcurrentExecutions: 1
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref AccountsTable
@@ -374,6 +376,47 @@ Resources:
             Effect: Allow
             Action:
               - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+
+  MonthlyAccountReportsProcessPendingReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-monthly-accounts-reports-continuation
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: MonthlyAccountReportsProcessPendingReportsFunction
+      CodeUri: functions/monthly_reports/accounts/process_pending_reports/
+      Handler: process_pending_reports.app.lambda_handler
+      Timeout: 150
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          STATE_MACHINE_ARN: !Ref StateMachine
+          CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
+          DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+            BatchSize: 1
+            Enabled: true
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonMonthlyReportsLambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt StateMachine.Name
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
               - sqs:GetQueueAttributes
               - sqs:GetQueueUrl
             Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
@@ -406,6 +449,17 @@ Resources:
     Properties:
       LayerName: !Sub ${AWS::StackName}-banking-python-authentication-layer
       ContentUri: layers/python/authentication
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  PythonMonthlyReportsLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-monthly-reports-layer
+      ContentUri: layers/python/monthly_reports
       CompatibleRuntimes:
         - python3.12
     Metadata:
@@ -526,6 +580,9 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub ${AWS::StackName}-monthly-account-reports-continuation-queue
+      VisibilityTimeout: 200
+      MessageRetentionPeriod: 1209600 # 14 days
+      ReceiveMessageWaitTimeSeconds: 20
 
   TransactionProcessingDLQ:
     Type: AWS::SQS::Queue

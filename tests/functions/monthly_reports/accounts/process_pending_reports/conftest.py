@@ -1,12 +1,14 @@
 from importlib import reload
-from functions.monthly_reports.accounts.trigger.trigger import app
+from functions.monthly_reports.accounts.process_pending_reports.process_pending_reports import (
+    app,
+)
 from unittest.mock import patch
 
 import pytest
 
 
 @pytest.fixture(scope="function")
-def monthly_accounts_reports_app_with_mocks(
+def monthly_reports_continuation_app_with_mocks(
     monkeypatch, dynamo_resource, mock_accounts_dynamo_table
 ):
     accounts_table_name = mock_accounts_dynamo_table
