@@ -523,6 +523,30 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${CognitoPostSignUpFunction}
       RetentionInDays: 7
 
+  GetAccountsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetAccountsFunction}
+      RetentionInDays: 7
+
+  MonthlyAccountReportsTriggerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${MonthlyAccountReportsTriggerFunction}
+      RetentionInDays: 7
+
+  MonthlyAccountReportsProcessPendingReportsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${MonthlyAccountReportsProcessPendingReportsFunction}
+      RetentionInDays: 7
+
   # --- DynamoDB Table for Transactions ---
   TransactionsTable:
     Type: AWS::DynamoDB::Table
