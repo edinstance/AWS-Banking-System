@@ -270,6 +270,34 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref AccountsTable
 
+  GetAccountTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-account-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetAccountTransactionsFunction
+      CodeUri: functions/accounts/get_account_transactions
+      Handler: get_account_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+      Events:
+        ApiGetAccountTransactionsEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}/transactions
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TransactionsTable
+
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -547,6 +575,14 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${MonthlyAccountReportsProcessPendingReportsFunction}
       RetentionInDays: 7
 
+  GetAccountTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetAccountTransactionsFunction}
+      RetentionInDays: 7
+
   # --- DynamoDB Table for Transactions ---
   TransactionsTable:
     Type: AWS::DynamoDB::Table
@@ -561,6 +597,10 @@ Resources:
         - AttributeName: id
           AttributeType: S
         - AttributeName: userId
+          AttributeType: S
+        - AttributeName: accountId
+          AttributeType: S
+        - AttributeName: createdAt
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
@@ -578,6 +618,14 @@ Resources:
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: AccountDateIndex
+          KeySchema:
+            - AttributeName: accountId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       TimeToLiveSpecification:
@@ -659,9 +707,14 @@ Resources:
   StateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      Definition:
-        StartAt: Success
-        States:
-          Success:
-            Type: Succeed
       Type: STANDARD
+      Definition:
+        StartAt: GetAccountTransactions
+        States:
+          GetAccountTransactions:
+            Type: Task
+            Resource: !GetAtt GetAccountTransactionsFunction.Arn
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetAccountTransactionsFunction
