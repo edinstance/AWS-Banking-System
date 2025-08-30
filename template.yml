@@ -489,6 +489,40 @@ Resources:
               - s3:GetObject
             Resource: !Sub ${MonthlyReportsBucket.Arn}/*
 
+  AccountsReportsNotifyClientFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-account-reports-notify-client
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: AccountsReportsNotifyClientFunction
+      CodeUri: functions/monthly_reports/accounts/notify_client
+      Handler: notify_client.app.lambda_handler
+      Environment:
+        Variables:
+          REPORTS_BUCKET_NAME: !Ref MonthlyReportsBucket
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: !Sub ${MonthlyReportsBucket.Arn}/*
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminGetUser
+            Resource: !GetAtt BankingUserPool.Arn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
     Type: AWS::Serverless::LayerVersion
@@ -613,6 +647,14 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       LogGroupName: !Sub /aws/lambda/${CreateAccountsReportFunction}
+      RetentionInDays: 7
+
+  AccountsReportsNotifyClientLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AccountsReportsNotifyClientFunction}
       RetentionInDays: 7
 
 
@@ -773,9 +815,15 @@ Resources:
           CreateAccountsReport:
             Type: Task
             Resource: !GetAtt CreateAccountsReportFunction.Arn
+            Next: NotifyClient
+          NotifyClient:
+            Type: Task
+            Resource: !GetAtt AccountsReportsNotifyClientFunction.Arn
             End: true
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref GetAccountTransactionsFunction
         - LambdaInvokePolicy:
             FunctionName: !Ref CreateAccountsReportFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AccountsReportsNotifyClientFunction
