@@ -53,6 +53,7 @@ def process_account_batch(
         sf_input = {
             "accountId": account_id,
             "userId": user_id,
+            "accountBalance": float(account.get("balance", 0)),
             "statementPeriod": statement_period,
         }
 

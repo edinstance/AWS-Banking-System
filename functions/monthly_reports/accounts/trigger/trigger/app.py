@@ -56,7 +56,7 @@ def lambda_handler(_event, context: LambdaContext):
         return create_response(metrics, "ERROR_NO_CONTINUATION_QUEUE", logger)
 
     scan_params = {
-        "ProjectionExpression": "accountId, userId",
+        "ProjectionExpression": "accountId, userId, balance",
     }
 
     try:
