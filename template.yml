@@ -694,6 +694,28 @@ Resources:
       Principal: cognito-idp.amazonaws.com
       SourceArn: !GetAtt BankingUserPool.Arn
 
+  # S3 Buckets
+  MonthlyReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-monthly-reports-bucket
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 365
+                StorageClass: GLACIER
+
   # Domain Configuration
   ApiCertificate:
     Type: AWS::CertificateManager::Certificate
