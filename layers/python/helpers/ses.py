@@ -87,6 +87,7 @@ def send_user_email(
         logger.error(f"Failed to send email: {e}", exc_info=True)
         raise e
 
+
 def send_user_email_with_attachment(
     aws_region: str,
     logger: Logger,

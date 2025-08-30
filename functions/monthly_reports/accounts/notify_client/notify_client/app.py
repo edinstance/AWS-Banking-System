@@ -64,7 +64,9 @@ def lambda_handler(event, _context: LambdaContext):
         raise
 
 
-def send_report_as_attachment(recipient: str, user_name: str, subject: str, s3_key: str):
+def send_report_as_attachment(
+    recipient: str, user_name: str, subject: str, s3_key: str
+):
     # Download PDF from S3
     pdf_obj = s3.get_object(Bucket=REPORTS_BUCKET, Key=s3_key)
     pdf_bytes = pdf_obj["Body"].read()
