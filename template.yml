@@ -755,6 +755,11 @@ Resources:
     Properties:
       QueueName: !Sub ${AWS::StackName}-monthly-account-reports-dlq
 
+  MonthlyAccountReportsCreationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-creation-dlq
+
   TransactionProcessingDLQ:
     Type: AWS::SQS::Queue
     Properties:
@@ -801,9 +806,11 @@ Resources:
         - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
 
+  # State machines
   StateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
+      Name: !Sub ${AWS::StackName}-monthly-reports-creation-state-machine
       Type: STANDARD
       Definition:
         StartAt: GetAccountTransactions
@@ -812,13 +819,50 @@ Resources:
             Type: Task
             Resource: !GetAtt GetAccountTransactionsFunction.Arn
             Next: CreateAccountsReport
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
           CreateAccountsReport:
             Type: Task
             Resource: !GetAtt CreateAccountsReportFunction.Arn
             Next: NotifyClient
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
           NotifyClient:
             Type: Task
             Resource: !GetAtt AccountsReportsNotifyClientFunction.Arn
+            End: true
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 10
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
+          SendToDLQ:
+            Type: Task
+            Resource: arn:aws:states:::sqs:sendMessage
+            Parameters:
+              QueueUrl: !Ref MonthlyAccountReportsCreationDLQ
+              MessageBody.$: $
             End: true
       Policies:
         - LambdaInvokePolicy:
@@ -827,3 +871,5 @@ Resources:
             FunctionName: !Ref CreateAccountsReportFunction
         - LambdaInvokePolicy:
             FunctionName: !Ref AccountsReportsNotifyClientFunction
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt MonthlyAccountReportsCreationDLQ.QueueName
