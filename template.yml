@@ -465,6 +465,29 @@ Resources:
               - sqs:GetQueueUrl
             Resource: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
 
+  CreateAccountsReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-create-accounts-report
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: CreateAccountsReportFunction
+      CodeUri: functions/monthly_reports/accounts/create_report
+      Handler: create_report.app.lambda_handler
+      Environment:
+        Variables:
+          REPORTS_BUCKET_NAME: !Ref MonthlyReportsBucket
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref MonthlyReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: !Sub ${MonthlyReportsBucket.Arn}/*
+
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
     Type: AWS::Serverless::LayerVersion
@@ -582,6 +605,15 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${GetAccountTransactionsFunction}
       RetentionInDays: 7
+
+  CreateAccountsReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CreateAccountsReportFunction}
+      RetentionInDays: 7
+
 
   # --- DynamoDB Table for Transactions ---
   TransactionsTable:
@@ -736,7 +768,13 @@ Resources:
           GetAccountTransactions:
             Type: Task
             Resource: !GetAtt GetAccountTransactionsFunction.Arn
+            Next: CreateAccountsReport
+          CreateAccountsReport:
+            Type: Task
+            Resource: !GetAtt CreateAccountsReportFunction.Arn
             End: true
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref GetAccountTransactionsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CreateAccountsReportFunction
