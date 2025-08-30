@@ -38,6 +38,7 @@ Globals:
         ENVIRONMENT_NAME: !Ref Environment
         SES_ENABLED: !Ref SesEnabled
         SES_SENDER_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesSenderEmail}}'
+        SES_NO_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesNoReplyEmail}}'
         SES_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesReplyEmail}}'
         SES_BOUNCE_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SESBounceEmail}}'
 
