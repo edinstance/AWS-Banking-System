@@ -21,6 +21,19 @@ def lambda_handler(event, _context: LambdaContext):
     logger.info(f"Received event: {event}")
 
     try:
+        required = [
+            "accountId",
+            "userId",
+            "statementPeriod",
+            "transactions",
+            "accountBalance",
+        ]
+        missing = [k for k in required if k not in event]
+
+        if missing:
+            logger.error(f"Missing required fields: {missing}")
+            raise ReportGenerationError(f"Invalid event: missing {missing}")
+
         # Generate PDF
         pdf_bytes = generate_transactions_pdf(event=event, logger=logger)
 

@@ -179,15 +179,8 @@ class TestCreateReportLambdaHandler:
             # Missing userId, statementPeriod, transactions, accountBalance
         }
 
-        # Mock PDF generation to raise an error due to missing fields
-        with patch(
-            "functions.monthly_reports.accounts.create_report.create_report.app.generate_transactions_pdf"
-        ) as mock_generate_pdf:
-            mock_generate_pdf.side_effect = KeyError("statementPeriod")
-
-            # Call the handler and expect the error to be re-raised
-            with pytest.raises(KeyError, match="statementPeriod"):
-                app.lambda_handler(incomplete_event, mock_context)
+        with pytest.raises(ReportGenerationError):
+            app.lambda_handler(incomplete_event, mock_context)
 
     def test_empty_transactions_list(
         self, create_report_app_with_mocks, mock_presigned_url, mock_context
