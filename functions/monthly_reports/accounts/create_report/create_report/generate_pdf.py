@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import tempfile
 
 from aws_lambda_powertools import Logger
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
 from xhtml2pdf import pisa
 
 from .exceptions import ReportGenerationError, ReportTemplateError
@@ -12,7 +12,10 @@ from .exceptions import ReportGenerationError, ReportTemplateError
 
 def generate_transactions_pdf(event: dict, logger: Logger) -> bytes:
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    env = Environment(loader=FileSystemLoader(current_dir))
+    env = Environment(
+        loader=FileSystemLoader(current_dir),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
 
     try:
         template = env.get_template("template.html")
