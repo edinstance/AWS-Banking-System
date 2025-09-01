@@ -118,16 +118,6 @@ class TestGenerateTransactionsPDF:
                         # Verify PDF generation was called
                         mock_pisa.assert_called_once()
 
-                        # Verify tempfile was used
-                        mock_tempfile.assert_called_once_with(
-                            mode="wb", suffix=".pdf", delete=False
-                        )
-
-                        # Verify logger was called
-                        mock_logger.info.assert_called_with(
-                            "PDF saved to: /tmp/test.pdf"
-                        )
-
                         # Verify result is bytes
                         assert isinstance(result, bytes)
 
@@ -344,42 +334,3 @@ class TestGenerateTransactionsPDF:
 
                         pattern = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$"
                         assert re.match(pattern, generation_date) is not None
-
-    def test_tempfile_cleanup(self, sample_event, mock_logger, mock_template_content):
-        """Test that temporary file is properly cleaned up."""
-        with patch("os.path.dirname") as mock_dirname:
-            mock_dirname.return_value = "/mock/path"
-
-            # Mock the Jinja2 Environment and template
-            with patch(
-                "functions.monthly_reports.accounts.create_report.create_report.generate_pdf.Environment"
-            ) as mock_env:
-                mock_template = MagicMock()
-                mock_template.render.return_value = "<html><body>Test PDF</body></html>"
-                mock_env_instance = MagicMock()
-                mock_env_instance.get_template.return_value = mock_template
-                mock_env.return_value = mock_env_instance
-
-                # Mock xhtml2pdf
-                with patch("xhtml2pdf.pisa.CreatePDF") as mock_pisa:
-                    mock_pisa.return_value.err = False
-
-                    # Mock tempfile
-                    with patch("tempfile.NamedTemporaryFile") as mock_tempfile:
-                        mock_tempfile_instance = MagicMock()
-                        mock_tempfile_instance.name = "/tmp/test.pdf"
-                        mock_tempfile.return_value.__enter__.return_value = (
-                            mock_tempfile_instance
-                        )
-                        mock_tempfile.return_value.__exit__.return_value = None
-
-                        # Call the function
-                        generate_transactions_pdf(sample_event, mock_logger)
-
-                        # Verify tempfile was created with correct parameters
-                        mock_tempfile.assert_called_once_with(
-                            mode="wb", suffix=".pdf", delete=False
-                        )
-
-                        # Verify the file was written to
-                        mock_tempfile_instance.write.assert_called_once()

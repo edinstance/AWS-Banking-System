@@ -1,7 +1,6 @@
 import io
 import os
 from datetime import datetime, timezone
-import tempfile
 
 from aws_lambda_powertools import Logger
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
