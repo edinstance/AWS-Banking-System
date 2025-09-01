@@ -41,11 +41,5 @@ def generate_transactions_pdf(event: dict, logger: Logger) -> bytes:
     pdf_buffer.seek(0)
     pdf_bytes = pdf_buffer.getvalue()
 
-    with tempfile.NamedTemporaryFile(
-        mode="wb", suffix=".pdf", delete=False
-    ) as pdf_file:
-        pdf_file.write(pdf_bytes)
-        pdf_file_path = pdf_file.name
-        logger.info(f"PDF saved to: {pdf_file_path}")
-
+    logger.debug("PDF generated (%d bytes).", len(pdf_bytes))
     return pdf_bytes
