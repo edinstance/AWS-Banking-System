@@ -502,9 +502,22 @@ Resources:
         Variables:
           REPORTS_BUCKET_NAME: !Ref MonthlyReportsBucket
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          DYNAMODB_ENDPOINT: ''
+      Events:
+        ApiRequestNewMonthlyAccountReportEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}/reports/{statement_period}
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
       Layers:
         - !Ref PythonHelpersLambdaLayer
         - !Ref PythonAuthenticationLambdaLayer
+        - !Ref PythonAccountsLambdaLayer
       Policies:
         - Statement:
             Effect: Allow
@@ -516,6 +529,8 @@ Resources:
             Action:
               - cognito-idp:AdminGetUser
             Resource: !GetAtt BankingUserPool.Arn
+        - DynamoDBReadPolicy:
+            TableName: !Ref AccountsTable
         - Statement:
             - Effect: Allow
               Action:

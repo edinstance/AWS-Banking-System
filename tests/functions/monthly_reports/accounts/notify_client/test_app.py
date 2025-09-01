@@ -1,4 +1,4 @@
-import pytest
+import json
 from unittest.mock import patch
 from botocore.exceptions import ClientError
 
@@ -136,11 +136,12 @@ class TestNotifyClientLambdaHandler:
         ) as mock_get_user:
             mock_get_user.return_value = {"name": "John Doe"}
 
-            with pytest.raises(
-                ValueError,
-                match=f"User {sample_event['userId']} has no email attribute in Cognito",
-            ):
-                app.lambda_handler(sample_event, mock_context)
+            result = app.lambda_handler(sample_event, mock_context)
+
+            assert result["statusCode"] == 500
+            assert (
+                "User test-user-456 has no email attribute in Cognito" in result["body"]
+            )
 
             app.s3.head_object.assert_not_called()
             app.s3.get_object.assert_not_called()
@@ -169,8 +170,10 @@ class TestNotifyClientLambdaHandler:
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
-            with pytest.raises(ClientError):
-                app.lambda_handler(sample_event, mock_context)
+            result = app.lambda_handler(sample_event, mock_context)
+
+            assert result["statusCode"] == 500
+            assert "NoSuchKey" in result["body"]
 
     def test_email_sending_failure(
         self,
@@ -219,8 +222,10 @@ class TestNotifyClientLambdaHandler:
             ) as mock_send_email:
                 mock_send_email.side_effect = Exception("SES service unavailable")
 
-                with pytest.raises(Exception, match="SES service unavailable"):
-                    app.lambda_handler(sample_event, mock_context)
+                result = app.lambda_handler(sample_event, mock_context)
+
+                assert result["statusCode"] == 500
+                assert "SES service unavailable" in result["body"]
 
     def test_user_attributes_retrieval_failure(
         self, notify_client_app_with_mocks, sample_event, mock_context
@@ -232,8 +237,10 @@ class TestNotifyClientLambdaHandler:
         ) as mock_get_user:
             mock_get_user.side_effect = Exception("Cognito service unavailable")
 
-            with pytest.raises(Exception, match="Cognito service unavailable"):
-                app.lambda_handler(sample_event, mock_context)
+            result = app.lambda_handler(sample_event, mock_context)
+
+            assert result["statusCode"] == 500
+            assert "Cognito service unavailable" in result["body"]
 
     def test_user_without_name_attribute(
         self, notify_client_app_with_mocks, sample_event, mock_context, mock_pdf_bytes
@@ -297,3 +304,186 @@ class TestNotifyClientLambdaHandler:
 
                 mock_send_email.assert_called_once()
                 assert result["mode"] == "attachment"
+
+    def test_missing_required_fields_direct_invocation(
+        self, notify_client_app_with_mocks, mock_context
+    ):
+        """Test lambda handler with missing required fields for direct invocation."""
+        app = notify_client_app_with_mocks
+
+        # Test missing accountId
+        event_missing_account = {
+            "userId": "test-user-456",
+            "statementPeriod": "2024-01",
+        }
+        result = app.lambda_handler(event_missing_account, mock_context)
+
+        assert result["statusCode"] == 400
+        assert "Missing accountId, userId, or statementPeriod" in result["body"]
+
+        # Test missing userId
+        event_missing_user = {
+            "accountId": "test-account-123",
+            "statementPeriod": "2024-01",
+        }
+        result = app.lambda_handler(event_missing_user, mock_context)
+
+        assert result["statusCode"] == 400
+        assert "Missing accountId, userId, or statementPeriod" in result["body"]
+
+        # Test missing statementPeriod
+        event_missing_period = {
+            "accountId": "test-account-123",
+            "userId": "test-user-456",
+        }
+        result = app.lambda_handler(event_missing_period, mock_context)
+
+        assert result["statusCode"] == 400
+        assert "Missing accountId, userId, or statementPeriod" in result["body"]
+
+    def test_direct_invocation_exception_handling(
+        self, notify_client_app_with_mocks, sample_event, mock_context
+    ):
+        """Test lambda handler exception handling for direct invocation."""
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.process_report"
+        ) as mock_process_report:
+            mock_process_report.side_effect = Exception("Test exception")
+
+            result = app.lambda_handler(sample_event, mock_context)
+
+            assert result["statusCode"] == 500
+            assert "Test exception" in result["body"]
+
+
+class TestNotifyClientAPIGateway:
+
+    def test_successful_api_gateway_request(
+        self,
+        notify_client_app_with_mocks,
+        api_gateway_event,
+        mock_context,
+        mock_user_attributes,
+        mock_pdf_bytes,
+    ):
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.authenticate_request"
+        ) as mock_auth:
+            mock_auth.return_value = "test-user-456"
+
+            with patch(
+                "functions.monthly_reports.accounts.notify_client.notify_client.app.check_user_owns_account"
+            ) as mock_check_ownership:
+                mock_check_ownership.return_value = True
+
+                with patch(
+                    "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+                ) as mock_get_user:
+                    mock_get_user.return_value = mock_user_attributes
+
+                    with patch(
+                        "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                    ) as mock_send_email:
+                        mock_send_email.return_value = {
+                            "MessageId": "test-message-id-123"
+                        }
+
+                        result = app.lambda_handler(api_gateway_event, mock_context)
+
+                        assert "statusCode" in result
+                        assert result["statusCode"] == 200
+                        assert "body" in result
+
+                        response_body = json.loads(result["body"])
+
+                        assert response_body["status"] == "success"
+                        assert response_body["messageId"] == "test-message-id-123"
+                        assert response_body["mode"] == "attachment"
+
+    def test_api_gateway_no_user_id(
+        self,
+        notify_client_app_with_mocks,
+        api_gateway_event,
+        mock_context,
+    ):
+        """Test API Gateway request with authorization failure."""
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.authenticate_request"
+        ) as mock_auth:
+            mock_auth.return_value = ""
+
+            result = app.lambda_handler(api_gateway_event, mock_context)
+
+            assert "statusCode" in result
+            assert result["statusCode"] == 401
+            assert "body" in result
+
+            response_body = json.loads(result["body"])
+            assert "Unauthorized" in response_body.get("message", "")
+
+    def test_api_gateway_authorization_failure(
+        self,
+        notify_client_app_with_mocks,
+        api_gateway_event,
+        mock_context,
+    ):
+        """Test API Gateway request with authorization failure."""
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.authenticate_request"
+        ) as mock_auth:
+            mock_auth.return_value = "test-user-456"
+
+            with patch(
+                "functions.monthly_reports.accounts.notify_client.notify_client.app.check_user_owns_account"
+            ) as mock_check_ownership:
+                mock_check_ownership.return_value = False
+
+                result = app.lambda_handler(api_gateway_event, mock_context)
+
+                assert "statusCode" in result
+                assert result["statusCode"] == 401
+                assert "body" in result
+
+                response_body = json.loads(result["body"])
+                assert "Unauthorized" in response_body.get("message", "")
+
+    def test_api_gateway_internal_server_error(
+        self,
+        notify_client_app_with_mocks,
+        api_gateway_event,
+        mock_context,
+    ):
+        """Test API Gateway request with internal server error."""
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.authenticate_request"
+        ) as mock_auth:
+            mock_auth.return_value = "test-user-456"
+
+            with patch(
+                "functions.monthly_reports.accounts.notify_client.notify_client.app.check_user_owns_account"
+            ) as mock_check_ownership:
+                mock_check_ownership.return_value = True
+
+                with patch(
+                    "functions.monthly_reports.accounts.notify_client.notify_client.app.process_report"
+                ) as mock_process_report:
+                    mock_process_report.side_effect = Exception("Internal error")
+
+                    result = app.lambda_handler(api_gateway_event, mock_context)
+
+                    assert "statusCode" in result
+                    assert result["statusCode"] == 500
+                    assert "body" in result
+
+                    response_body = json.loads(result["body"])
+                    assert "Internal server error" in response_body.get("message", "")
