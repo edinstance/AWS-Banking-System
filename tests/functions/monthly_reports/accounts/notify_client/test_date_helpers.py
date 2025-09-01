@@ -1,5 +1,4 @@
 import datetime
-from unittest.mock import patch
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -23,19 +22,25 @@ class TestPeriodIsInFuture:
 
     def test_period_is_in_the_past(self):
         today = datetime.datetime.now(datetime.timezone.utc)
-        one_year_before= today - relativedelta(years=1)
+        one_year_before = today - relativedelta(years=1)
         result = period_is_in_future(one_year_before.strftime("%Y-%m"))
         assert result is False
 
     def test_invalid_format(self):
-        with pytest.raises(ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."):
+        with pytest.raises(
+            ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."
+        ):
             today = datetime.datetime.now(datetime.UTC)
             period_is_in_future(today.strftime("%Y/%m"))
 
     def test_invalid_month(self):
-        with pytest.raises(ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."):
+        with pytest.raises(
+            ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."
+        ):
             period_is_in_future("2025-13")
 
     def test_empty_string(self):
-        with pytest.raises(ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."):
+        with pytest.raises(
+            ValueError, match="Invalid statement_period format. Use 'YYYY-MM'."
+        ):
             period_is_in_future("")
