@@ -18,12 +18,12 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
             ) as mock_send_email:
                 mock_send_email.return_value = {"MessageId": "test-message-id-123"}
 
@@ -72,12 +72,12 @@ class TestNotifyClientLambdaHandler:
         app.s3.head_object.return_value = {"ContentLength": 8 * 1024 * 1024}  # 8MB
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email"
             ) as mock_send_email:
                 mock_send_email.return_value = {"MessageId": "test-message-id-456"}
 
@@ -132,7 +132,7 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = {"name": "John Doe"}
 
@@ -166,7 +166,7 @@ class TestNotifyClientLambdaHandler:
         )
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
@@ -185,12 +185,12 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
             ) as mock_send_email:
                 mock_send_email.return_value = None
 
@@ -213,12 +213,12 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
             ) as mock_send_email:
                 mock_send_email.side_effect = Exception("SES service unavailable")
 
@@ -233,7 +233,7 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.side_effect = Exception("Cognito service unavailable")
 
@@ -248,12 +248,12 @@ class TestNotifyClientLambdaHandler:
         app = notify_client_app_with_mocks
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = {"email": "test@example.com"}
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
             ) as mock_send_email:
                 mock_send_email.return_value = {"MessageId": "test-message-id-123"}
 
@@ -291,12 +291,12 @@ class TestNotifyClientLambdaHandler:
         }  # Exactly 7MB
 
         with patch(
-            "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+            "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
         ) as mock_get_user:
             mock_get_user.return_value = mock_user_attributes
 
             with patch(
-                "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
             ) as mock_send_email:
                 mock_send_email.return_value = {"MessageId": "test-message-id-123"}
 
@@ -381,12 +381,12 @@ class TestNotifyClientAPIGateway:
                 mock_check_ownership.return_value = True
 
                 with patch(
-                    "functions.monthly_reports.accounts.notify_client.notify_client.app.get_user_attributes"
+                    "functions.monthly_reports.accounts.notify_client.notify_client.processing.get_user_attributes"
                 ) as mock_get_user:
                     mock_get_user.return_value = mock_user_attributes
 
                     with patch(
-                        "functions.monthly_reports.accounts.notify_client.notify_client.app.send_user_email_with_attachment"
+                        "functions.monthly_reports.accounts.notify_client.notify_client.send_report.send_user_email_with_attachment"
                     ) as mock_send_email:
                         mock_send_email.return_value = {
                             "MessageId": "test-message-id-123"
@@ -478,6 +478,39 @@ class TestNotifyClientAPIGateway:
                     "functions.monthly_reports.accounts.notify_client.notify_client.app.process_report"
                 ) as mock_process_report:
                     mock_process_report.side_effect = Exception("Internal error")
+
+                    result = app.lambda_handler(api_gateway_event, mock_context)
+
+                    assert "statusCode" in result
+                    assert result["statusCode"] == 500
+                    assert "body" in result
+
+                    response_body = json.loads(result["body"])
+                    assert "Internal server error" in response_body.get("message", "")
+
+    def test_api_gateway_period_in_future(
+        self,
+        notify_client_app_with_mocks,
+        api_gateway_event,
+        mock_context,
+    ):
+        """Test API Gateway request with statement period in the future."""
+        app = notify_client_app_with_mocks
+
+        with patch(
+            "functions.monthly_reports.accounts.notify_client.notify_client.app.authenticate_request"
+        ) as mock_auth:
+            mock_auth.return_value = "test-user-456"
+
+            with patch(
+                "functions.monthly_reports.accounts.notify_client.notify_client.app.check_user_owns_account"
+            ) as mock_check_ownership:
+                mock_check_ownership.return_value = True
+
+                with patch(
+                    "functions.monthly_reports.accounts.notify_client.notify_client.app.period_is_in_future"
+                ) as mock_period_check:
+                    mock_period_check.return_value = True
 
                     result = app.lambda_handler(api_gateway_event, mock_context)
 
