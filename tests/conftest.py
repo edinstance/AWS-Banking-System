@@ -243,10 +243,9 @@ def mock_get_ses_client(monkeypatch):
 @pytest.fixture
 def mock_sqs_client():
     """
-    Provides a mocked AWS SQS client using moto for use in tests.
-
-    Yields:
-        A boto3 SQS client configured to interact with the moto mock environment.
+    Provide a boto3 SQS client backed by moto for use in tests.
+    
+    This fixture yields a boto3 SQS client created inside a moto mock AWS context so all SQS operations are handled by the in-memory moto service. The client is configured to use the module's AWS_REGION.
     """
     with mock_aws():
         client = boto3.client("sqs", region_name=AWS_REGION)
@@ -256,6 +255,11 @@ def mock_sqs_client():
 
 @pytest.fixture
 def mock_sfn_client():
+    """
+    Provide a boto3 Step Functions client inside a moto mock AWS context for use in tests.
+    
+    This fixture yields a Step Functions client created with boto3 and configured to use the module-level AWS_REGION. The client is created inside a moto mock_aws context, so all Step Functions API calls are intercepted by moto and operate against an in-memory mocked service for the duration of the fixture.
+    """
     with mock_aws():
         client = boto3.client("stepfunctions", region_name=AWS_REGION)
 
@@ -264,13 +268,22 @@ def mock_sfn_client():
 
 @pytest.fixture
 def magic_mock_ses_client():
+    """
+    Return a plain MagicMock that represents an AWS SES client for use in tests.
+    
+    This fixture-style helper supplies a MagicMock configured to stand in for boto3 SES client calls; it does not make any network calls or interact with AWS. Use it to assert call behaviour and to stub SES responses in unit tests.
+    """
     mock_client = MagicMock()
     return mock_client
 
 
 @pytest.fixture
 def mock_s3_client():
-    """Mock S3 client for testing."""
+    """
+    Return a MagicMock that behaves like a boto3 S3 client for use in tests.
+    
+    The returned mock can be configured (attributes, return_value, side_effect) to simulate S3 operations.
+    """
     mock_client = MagicMock()
     return mock_client
 
@@ -284,6 +297,14 @@ def mock_cognito_client():
 
 @pytest.fixture(scope="function")
 def magic_mock_sfn_client():
+    """
+    Provide a MagicMock that stands in for an AWS Step Functions (SFN) client in tests.
+    
+    Useful when tests need a lightweight, configurable mock of the SFN client API rather than a moto-backed or real boto3 client.
+    
+    Returns:
+        MagicMock: a new MagicMock instance representing the SFN client.
+    """
     return MagicMock()
 
 

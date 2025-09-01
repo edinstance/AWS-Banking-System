@@ -50,10 +50,9 @@ def get_account_transactions_app_with_mocked_tables(
     mock_transactions_dynamo_table,
 ):
     """
-    Pytest fixture that configures the get_account_transactions app with mocked DynamoDB tables and environment variables for isolated testing.
-
-    Yields:
-        The app instance with its transactions table and environment fully mocked for test execution.
+    Fixture that prepares the get_account_transactions application for isolated tests.
+    
+    Sets environment variables required by the application, patches boto3.resource to use the provided mocked DynamoDB resource, reloads the application module so it picks up the patched resource, assigns the mocked transactions table to app.table and yields the configured app instance for test use.
     """
     transactions_table_name = mock_transactions_dynamo_table
 

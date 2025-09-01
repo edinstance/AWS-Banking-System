@@ -461,7 +461,11 @@ class TestNotifyClientAPIGateway:
         api_gateway_event,
         mock_context,
     ):
-        """Test API Gateway request with internal server error."""
+        """
+        Verify the API Gateway wrapper returns HTTP 500 with an "Internal server error" message when report processing raises an exception.
+        
+        Patches authentication to return a valid user and authorisation to allow account access, then forces app.process_report to raise Exception("Internal error"). Expects the Lambda handler to respond with statusCode 500 and a JSON body whose "message" contains "Internal server error".
+        """
         app = notify_client_app_with_mocks
 
         with patch(

@@ -6,7 +6,11 @@ from functions.monthly_reports.accounts.create_report.create_report import app
 
 @pytest.fixture(scope="function")
 def create_report_app_with_mocks(monkeypatch, mock_s3_client):
-    """Fixture that sets up the create_report app with mocked dependencies."""
+    """
+    Pytest fixture that configures and yields the create_report app module with mocked AWS interactions.
+    
+    Sets test environment variables (REPORTS_BUCKET, POWERTOOLS_LOG_LEVEL, AWS_REGION), configures the provided mock S3 client to return a successful put_object response and a fixed presigned URL, reloads the app module, and injects the mock S3 client as app.s3. Yields the prepared app module for use in tests.
+    """
 
     # Set environment variables
     monkeypatch.setenv("REPORTS_BUCKET", "test-reports-bucket")
@@ -30,7 +34,13 @@ def create_report_app_with_mocks(monkeypatch, mock_s3_client):
 
 @pytest.fixture
 def mock_s3_client():
-    """Mock S3 client for testing."""
+    """
+    Create and return a fresh MagicMock configured to stand in for an AWS S3 client in tests.
+    
+    The mock is unconfigured by default; tests can set expected return values or assertions on calls (e.g. `put_object`, `generate_presigned_url`).
+    Returns:
+        MagicMock: A new mock object representing the S3 client.
+    """
     mock_client = MagicMock()
     return mock_client
 
@@ -62,11 +72,25 @@ def sample_event():
 
 @pytest.fixture
 def mock_pdf_bytes():
-    """Mock PDF bytes for testing."""
+    """
+    Return minimal mock PDF bytes for use in tests.
+    
+    Provides a small, deterministic PDF binary (bytes) that can be used as placeholder content for upload, storage or processing tests.
+    Returns:
+        bytes: Minimal PDF binary suitable for unit tests (starts with `%PDF-1.4` and ends with `%%EOF`).
+    """
     return b"%PDF-1.4\n%Test PDF content\n%%EOF"
 
 
 @pytest.fixture
 def mock_presigned_url():
-    """Mock presigned URL for testing."""
+    """
+    Return a fixed S3 presigned URL used by tests.
+    
+    This deterministic URL simulates a presigned S3 object URL (including query parameters)
+    so tests can assert URL handling and downstream behaviour without calling AWS.
+    
+    Returns:
+        str: A mock presigned URL.
+    """
     return "https://test-reports-bucket.s3.eu-west-2.amazonaws.com/test-account-123/2024-01.pdf?AWSAccessKeyId=test&Signature=test&Expires=1234567890"

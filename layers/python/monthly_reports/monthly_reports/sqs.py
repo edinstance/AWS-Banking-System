@@ -17,7 +17,21 @@ def send_continuation_message(
     aws_region: str,
     logger: Logger,
 ):
-    """Send continuation message to SQS"""
+    """
+    Send a continuation message to an SQS queue for resuming a paginated scan.
+    
+    The function constructs a JSON message containing the provided scan parameters and statement period and conditionally includes remaining_accounts and last_evaluated_key when present. The message is sent to the queue identified by continuation_queue_url with a message attribute named `continuation_type`.
+    
+    Parameters:
+        scan_params (Dict[str, Any]): Scan configuration/state required to continue processing.
+        statement_period (str): Identifier for the statement period this message relates to.
+        remaining_accounts (Optional[List[Dict[str, Any]]]): Optional list of accounts yet to be processed; included in the message only if truthy.
+        last_evaluated_key (Optional[Dict[str, Any]]): Optional DynamoDB pagination key to resume a scan; included only if truthy.
+        continuation_type (str): Short string describing the reason or category of the continuation (set as the message attribute `continuation_type`).
+    
+    Notes:
+        If continuation_queue_url is not provided the function logs an error and returns without sending.
+    """
     if not continuation_queue_url:
         logger.error("Cannot send continuation message: CONTINUATION_QUEUE_URL not set")
         return
@@ -58,7 +72,21 @@ def send_bad_account_to_dlq(
     aws_region: str,
     logger: Logger,
 ):
-    """Send bad account to DLQ"""
+    """
+    Send information about a failing account to the configured dead‑letter SQS queue.
+    
+    Builds a message containing the provided account data, statement period, error reason and a UTC ISO timestamp, and sends it to the DLQ URL. If dlq_url is falsy the function returns without sending. Any exception raised while sending is caught and logged; the function does not re-raise.
+    
+    Parameters:
+        account (Dict[str, Any]): Account payload to include in the message (may contain an 'accountId' key).
+        statement_period (str): Identifier for the statement period this error relates to.
+        error_reason (str): Short description of why the account is considered bad.
+        dlq_url (str): Full SQS queue URL for the dead‑letter queue.
+        aws_region (str): AWS region to use when sending the message.
+    
+    Note:
+        The `sqs_endpoint` and `logger` parameters are service utilities and are not documented here.
+    """
     if not dlq_url:
         logger.warning("Cannot send bad account to DLQ: DLQ_URL not set")
         return
