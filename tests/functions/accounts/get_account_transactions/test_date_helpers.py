@@ -71,13 +71,13 @@ class TestGetDateRange:
             def now(cls, tz=None):
                 """
                 Return a fixed current datetime for testing.
-                
+
                 This classmethod always returns the preconfigured `fake_now` value, ignoring the `tz`
                 argument. Use when you need a deterministic "now" in tests.
-                
+
                 Parameters:
                     tz (datetime.tzinfo | None): Ignored; kept for API compatibility with `datetime.now`.
-                    
+
                 Returns:
                     datetime: The frozen current datetime stored in `fake_now`.
                 """

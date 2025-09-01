@@ -46,17 +46,17 @@ else:
 def lambda_handler(_event, context: LambdaContext):
     """
     Trigger the monthly account reports processing flow in response to an EventBridge event.
-    
+
     Scans the accounts DynamoDB table in pages, processes each page (which may start Step Functions executions and send SQS messages), aggregates metrics and handles continuation if the Lambda is close to timeout. On critical failures, attempts to send an error record to the configured DLQ before re-raising the exception.
-    
+
     Parameters:
         _event: The EventBridge event payload (unused by this handler).
         context (LambdaContext): Lambda invocation context — used to check remaining execution time.
-    
+
     Returns:
         dict: A response object containing aggregated `metrics` and a `code` indicating the outcome
         (e.g. "COMPLETED", "TIMEOUT_CONTINUATION", "ERROR_NO_CONTINUATION_QUEUE").
-    
+
     Side effects:
         - Reads from the accounts DynamoDB table and processes accounts via helper functions.
         - May send continuation messages to SQS to resume processing later.

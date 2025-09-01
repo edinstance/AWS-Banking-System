@@ -12,9 +12,9 @@ from .exceptions import ReportGenerationError, ReportTemplateError
 def generate_transactions_pdf(event: dict, logger: Logger) -> bytes:
     """
     Generate a PDF transaction statement from a Jinja2 HTML template and return it as bytes.
-    
+
     Renders "template.html" from the function's directory using values from the `event` mapping, converts the rendered HTML to PDF in-memory via xhtml2pdf, and returns the PDF content.
-    
+
     Parameters:
         event (dict): Input data required to fill the template. Must contain the keys:
             - "accountId": account identifier used in the report
@@ -22,10 +22,10 @@ def generate_transactions_pdf(event: dict, logger: Logger) -> bytes:
             - "transactions": iterable of transaction records to include
             - "accountBalance": closing balance to display
         (The `logger` argument is used for logging and is not documented here as a service parameter.)
-    
+
     Returns:
         bytes: The generated PDF file content.
-    
+
     Raises:
         ReportTemplateError: If "template.html" cannot be found.
         ReportGenerationError: If xhtml2pdf fails to produce a valid PDF.

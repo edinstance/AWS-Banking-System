@@ -8,17 +8,17 @@ def get_date_range(period: str = None, start: str = None, end: str = None):
     # --- Validation rules ---
     """
     Return a tuple (statement_period, start_iso, end_iso) defining an inclusive UTC date range.
-    
+
     If both start and end are provided (YYYY-MM-DD), they define a custom inclusive range where end is set to 23:59:59 UTC; `statement_period` is formatted as "YYYY-MM-DD_to_YYYY-MM-DD". If `period` is provided (YYYY-MM), the range covers that calendar month; `statement_period` is "YYYY-MM". If neither is provided, the range defaults to the previous calendar month. Returned ISO datetimes are in UTC with the format "YYYY-MM-DDTHH:MM:SSZ".
-    
+
     Parameters:
         period (str | None): Month period as "YYYY-MM". Mutually exclusive with `start`/`end`.
         start (str | None): Start date as "YYYY-MM-DD" (required together with `end` for a custom range).
         end (str | None): End date as "YYYY-MM-DD" (required together with `start` for a custom range).
-    
+
     Returns:
         tuple: (statement_period: str, start_iso: str, end_iso: str)
-    
+
     Raises:
         ValidationError: If inputs are invalid, including:
             - combining `period` with `start`/`end`;

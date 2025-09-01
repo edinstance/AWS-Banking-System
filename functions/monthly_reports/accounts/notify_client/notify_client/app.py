@@ -53,18 +53,18 @@ app = APIGatewayRestResolver(
 def get_account_report(account_id: str, statement_period: str):
     """
     Generate and return a monthly report for a given account and statement period.
-    
+
     Authenticates the current API request, verifies the caller owns the specified account,
     validates the statement period is not in the future, and delegates report generation
     to the shared report processor.
-    
+
     Parameters:
         account_id (str): ID of the account to generate the report for.
         statement_period (str): Statement period identifier (e.g. "2025-08").
-    
+
     Returns:
         dict: Result returned by the report processor (contains report metadata and status).
-    
+
     Raises:
         UnauthorizedError: If the request is not authenticated or the user does not own the account.
         BadRequestError: If the provided statement period is in the future.
@@ -122,13 +122,13 @@ def get_account_report(account_id: str, statement_period: str):
 def lambda_handler(event, context: LambdaContext):
     """
     Lambda entrypoint that routes API Gateway HTTP requests to the APIGatewayRestResolver or handles direct (non-HTTP) invocations to generate an account report.
-    
+
     For HTTP events (identified by presence of "httpMethod" or "requestContext") this delegates to app.resolve to handle authentication, authorisation and response formatting. For non-HTTP events it expects a JSON-like dict with keys "accountId", "userId" and "statementPeriod"; these are validated and passed to process_report. On validation failure a 400 response is returned. Any exception from report processing is caught and returned as a 500 response.
-    
+
     Parameters:
         event (dict): The Lambda event. Either an API Gateway proxy event or a dict containing "accountId", "userId" and "statementPeriod".
         context (LambdaContext): Lambda runtime context (used to enrich logs with the request id).
-    
+
     Returns:
         dict: An API Gateway-compatible response object (contains "statusCode" and JSON "body") or whatever app.resolve returns for HTTP requests.
     """

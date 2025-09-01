@@ -17,15 +17,15 @@ def send_report_as_attachment(
     # Download PDF from S3
     """
     Send a PDF report downloaded from S3 to a recipient as an email attachment.
-    
+
     Downloads the object at `s3_key` from `reports_bucket`, sends it as a file named "statement.pdf" using the configured SES sender, and returns a summary of the send attempt. Exceptions from S3 or SES calls are propagated.
-    
+
     Parameters:
         s3_key (str): S3 object key of the PDF to attach.
         aws_region (str): AWS region used for the SES call.
         reports_bucket (str): Name of the S3 bucket containing the report.
         ses_no_reply_email (str): Sender email address to use for SES.
-    
+
     Returns:
         dict: {
             "status": "success" | "failed",
@@ -69,9 +69,9 @@ def send_report_as_link(
 ):
     """
     Send an email to a recipient containing a 1‑hour presigned S3 link to a report.
-    
+
     Generates a presigned URL for the S3 object identified by `s3_key` in `reports_bucket` (valid for 3600 seconds), composes a short personalised message to `user_name` that includes the link, and sends it to `recipient` using the provided SES sender address. Returns a dictionary summarising the send result.
-    
+
     Parameters:
         recipient (str): Recipient email address.
         user_name (str): Recipient's display name used in the message greeting.
@@ -80,7 +80,7 @@ def send_report_as_link(
         aws_region (str): AWS region to use when sending the email.
         reports_bucket (str): Name of the S3 bucket containing the report.
         ses_no_reply_email (str): SES sender email address.
-    
+
     Returns:
         dict: {
             "status": "success" if sending returned a truthy response otherwise "failed",

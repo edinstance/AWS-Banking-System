@@ -51,7 +51,7 @@ def get_account_transactions_app_with_mocked_tables(
 ):
     """
     Fixture that prepares the get_account_transactions application for isolated tests.
-    
+
     Sets environment variables required by the application, patches boto3.resource to use the provided mocked DynamoDB resource, reloads the application module so it picks up the patched resource, assigns the mocked transactions table to app.table and yields the configured app instance for test use.
     """
     transactions_table_name = mock_transactions_dynamo_table

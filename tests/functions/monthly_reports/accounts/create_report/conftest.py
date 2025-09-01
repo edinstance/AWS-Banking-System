@@ -8,7 +8,7 @@ from functions.monthly_reports.accounts.create_report.create_report import app
 def create_report_app_with_mocks(monkeypatch, mock_s3_client):
     """
     Pytest fixture that configures and yields the create_report app module with mocked AWS interactions.
-    
+
     Sets test environment variables (REPORTS_BUCKET, POWERTOOLS_LOG_LEVEL, AWS_REGION), configures the provided mock S3 client to return a successful put_object response and a fixed presigned URL, reloads the app module, and injects the mock S3 client as app.s3. Yields the prepared app module for use in tests.
     """
 
@@ -36,7 +36,7 @@ def create_report_app_with_mocks(monkeypatch, mock_s3_client):
 def mock_s3_client():
     """
     Create and return a fresh MagicMock configured to stand in for an AWS S3 client in tests.
-    
+
     The mock is unconfigured by default; tests can set expected return values or assertions on calls (e.g. `put_object`, `generate_presigned_url`).
     Returns:
         MagicMock: A new mock object representing the S3 client.
@@ -74,7 +74,7 @@ def sample_event():
 def mock_pdf_bytes():
     """
     Return minimal mock PDF bytes for use in tests.
-    
+
     Provides a small, deterministic PDF binary (bytes) that can be used as placeholder content for upload, storage or processing tests.
     Returns:
         bytes: Minimal PDF binary suitable for unit tests (starts with `%PDF-1.4` and ends with `%%EOF`).
@@ -86,10 +86,10 @@ def mock_pdf_bytes():
 def mock_presigned_url():
     """
     Return a fixed S3 presigned URL used by tests.
-    
+
     This deterministic URL simulates a presigned S3 object URL (including query parameters)
     so tests can assert URL handling and downstream behaviour without calling AWS.
-    
+
     Returns:
         str: A mock presigned URL.
     """

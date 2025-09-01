@@ -7,18 +7,18 @@ def get_user_attributes(
 ) -> dict:
     """
     Fetch Cognito user attributes for a given username in a specified user pool.
-    
+
     Calls Cognito Identity Provider's AdminGetUser for the provided user pool and username,
     and returns a dict mapping attribute names to their values.
-    
+
     Parameters:
         aws_region (str): AWS region where the Cognito user pool resides.
         username (str): Username (or sub) of the Cognito user to retrieve.
         user_pool_id (str): ID of the Cognito user pool.
-    
+
     Returns:
         dict: Mapping of attribute names to attribute values (e.g. {"email": "user@example.com"}).
-    
+
     Raises:
         Exception: Propagates any exception raised by the Cognito client (e.g. client errors when the user or pool is not found).
     """

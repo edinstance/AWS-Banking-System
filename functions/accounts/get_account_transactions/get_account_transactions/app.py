@@ -41,15 +41,15 @@ else:
 def get_account_transactions(account_id: str):
     """
     Handle GET /accounts/<account_id>/transactions: fetch transactions for the given account.
-    
+
     Reads optional query parameters `period`, `start`, and `end` from the current API request and delegates to `query_transactions` to retrieve transactions from the configured DynamoDB table.
-    
+
     Parameters:
         account_id (str): Account identifier from the path parameter.
-    
+
     Returns:
         The value returned by `query_transactions` (transactions payload as provided by that helper).
-    
+
     Raises:
         BadRequestError: If input validation fails (ValidationError from the helper).
         InternalServerError: For any other error while fetching transactions.
@@ -81,19 +81,19 @@ def get_account_transactions(account_id: str):
 def lambda_handler(event, context: LambdaContext):
     """
     Lambda entry point that routes between API Gateway and Step Functions invocations and returns account transactions.
-    
+
     If invoked by API Gateway (detected by presence of "httpMethod" or "requestContext" in the event) the request is delegated to the API resolver `app.resolve`. For non-HTTP invocations (e.g. Step Functions) the event is expected to contain an "accountId"; the function will call `query_transactions` and return the original event augmented with a "transactions" field containing the query result (or result["transactions"] if present). If "accountId" is missing a 400-style dict is returned. Any exception during transaction retrieval returns a 500-style dict with an error message.
-    
+
     Parameters:
         event (dict): The Lambda event payload — either an API Gateway proxy event or an arbitrary event used by Step Functions.
         context (LambdaContext): AWS Lambda context; the function logs context.aws_request_id.
-    
+
     Returns:
         dict: For API Gateway invocations, returns whatever `app.resolve` produces. For Step Functions-like invocations, returns either:
             - a 400-style dict: {"statusCode": 400, "body": json.dumps({"error": "Missing accountId"})} when accountId is absent;
             - a 500-style dict on failure: {"statusCode": 500, "body": json.dumps({"error": "<message>"})};
             - the original event merged with "transactions" on success.
-    
+
     Raises:
         InternalServerError: If the DynamoDB table resource is not initialised.
     """

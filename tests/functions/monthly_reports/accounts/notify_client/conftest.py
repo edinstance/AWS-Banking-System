@@ -8,10 +8,9 @@ from functions.monthly_reports.accounts.notify_client.notify_client import app
 def notify_client_app_with_mocks(
     monkeypatch, mock_s3_client, magic_mock_ses_client, mock_cognito_client
 ):
-
     """
     Pytest fixture that prepares and yields the notify-client app with AWS services and environment variables mocked.
-    
+
     Sets environment variables used by the notify-client Lambda, configures provided mock clients for S3, SES and Cognito with deterministic responses (PDF content, presigned URL, email send results, and Cognito user attributes), reloads the notify_client app module to pick up the environment, injects the mocked S3 client into app.s3, and yields the configured app for tests to use.
     """
     monkeypatch.setenv("SES_NO_REPLY_EMAIL", "noreply@testbank.com")
@@ -62,7 +61,7 @@ def sample_event():
 def mock_context():
     """
     Create and return a MagicMock that simulates an AWS Lambda `context` object for tests.
-    
+
     The mock provides commonly used attributes:
     - function_name: "notify-client"
     - function_version: "$LATEST"
@@ -70,7 +69,7 @@ def mock_context():
     - memory_limit_in_mb: 128
     - remaining_time_in_millis: callable returning 30000
     - aws_request_id: "test-request-id-123"
-    
+
     Useful for passing into handler functions that inspect the Lambda context.
     """
     context = MagicMock()
@@ -89,7 +88,7 @@ def mock_context():
 def mock_user_attributes():
     """
     Return a dictionary of mocked Cognito user attributes used in tests.
-    
+
     Returns:
         dict: Contains `email`, `name` and `sub` keys representing a user's email, full name and Cognito subject id.
     """
@@ -100,9 +99,9 @@ def mock_user_attributes():
 def mock_pdf_bytes():
     """
     Return a small, mock PDF as bytes for use in tests.
-    
+
     The bytes represent a minimal PDF file header and footer suitable for tests that only need PDF-like binary content (not a full-featured document).
-    
+
     Returns:
         bytes: Mock PDF content (starts with `%PDF-1.4` and ends with `%%EOF`).
     """
@@ -113,7 +112,7 @@ def mock_pdf_bytes():
 def mock_presigned_url():
     """
     Return a fixed presigned S3 URL used in tests.
-    
+
     Returns:
         str: A deterministic presigned URL pointing to the test PDF in the test S3 bucket.
     """
@@ -124,7 +123,7 @@ def mock_presigned_url():
 def mock_dynamodb_table():
     """
     Create a MagicMock representing a DynamoDB table configured for tests.
-    
+
     The mock's `get_item` method returns a dictionary with an `"Item"` containing sample account data:
     {
         "Item": {
@@ -133,7 +132,7 @@ def mock_dynamodb_table():
             "balance": 1000.0
         }
     }
-    
+
     Returns:
         MagicMock: Mocked DynamoDB table with `get_item()` preconfigured to return the sample item.
     """
@@ -152,7 +151,7 @@ def mock_dynamodb_table():
 def api_gateway_event():
     """
     Return a mock API Gateway proxy event for testing the notify-client Lambda.
-    
+
     The event simulates an HTTP GET request to the path
     "/accounts/test-account-123/reports/2024-01" and includes headers,
     a requestContext with requestId and HTTP details, and pathParameters

@@ -96,7 +96,7 @@ class TestCreateReportLambdaHandler:
     ):
         """
         Verify the Lambda handler re-raises ReportTemplateError from PDF generation and does not perform any S3 operations.
-        
+
         This test mocks generate_transactions_pdf to raise ReportTemplateError("Template not found"), invokes the handler with a valid event/context, asserts the same exception is propagated, and confirms that neither S3 put_object nor presigned URL generation are called.
         """
         app = create_report_app_with_mocks

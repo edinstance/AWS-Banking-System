@@ -4,7 +4,7 @@ import datetime
 def get_statement_period():
     """
     Return the statement period for the previous month as "YYYY-MM".
-    
+
     Uses the current UTC date/time to determine the first day of the current month at 00:00 UTC, subtracts one day to obtain the last day of the previous month, and returns that date formatted as "%Y-%m".
     """
     today = datetime.datetime.now(datetime.UTC)

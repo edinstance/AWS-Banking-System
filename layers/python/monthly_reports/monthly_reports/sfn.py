@@ -10,21 +10,21 @@ def start_sfn_execution_with_retry(
 ):
     """
     Start an AWS Step Functions execution, retrying on transient service errors.
-    
+
     Attempts to start the specified state machine execution using the provided Step Functions client.
     On transient errors (ThrottlingException, ServiceUnavailable, InternalFailure) the call is retried
     with exponential backoff plus jitter up to max_retries. If an execution with the same name already
     exists, the function returns immediately.
-    
+
     Parameters:
         sf_input: The payload for the execution; will be JSON-serialized before being sent.
         max_retries (int): Maximum number of attempts (default 3). The function will perform up to
             `max_retries` calls before giving up.
-    
+
     Returns:
         str: "processed" when the execution was started successfully, or "already_exists" if an
         execution with the same name already exists.
-    
+
     Raises:
         botocore.exceptions.ClientError: Propagated when a non-retryable AWS error occurs or when
         the retry attempts are exhausted.

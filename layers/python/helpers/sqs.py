@@ -7,16 +7,16 @@ from aws_lambda_powertools import Logger
 def get_sqs_client(sqs_endpoint: str, aws_region: str, logger: Logger):
     """
     Initialise and return a boto3 SQS client for the given AWS region and optional custom endpoint.
-    
+
     If sqs_endpoint is provided the client is created with that endpoint_url; otherwise the default AWS endpoint for the region is used.
-    
+
     Parameters:
         sqs_endpoint (str): Custom SQS endpoint URL, or falsy to use the default endpoint.
         aws_region (str): AWS region name for the SQS client.
-    
+
     Returns:
         boto3.client: An SQS client configured for the specified region/endpoint.
-    
+
     Raises:
         Exception: Re-raises any exception raised while creating the boto3 client.
     """
@@ -43,16 +43,16 @@ def send_message_to_sqs(
 ):
     """
     Send a JSON-serialised message with attributes to an Amazon SQS queue.
-    
+
     The provided `message` is serialised to JSON and sent to the queue identified by `sqs_url`. If `sqs_endpoint` is supplied a client is initialised against that endpoint; otherwise the default AWS SQS endpoint for `aws_region` is used. The function logs failures and returns a boolean status rather than raising.
-    
+
     Parameters:
         message (dict): Payload to send; will be JSON-serialised for the SQS MessageBody.
         message_attributes (dict): Optional SQS MessageAttributes mapping (e.g. {"attr": {"StringValue": "value", "DataType": "String"}}).
         sqs_endpoint (str): Optional custom SQS endpoint URL (e.g. for local testing).
         sqs_url (str): Full SQS QueueUrl to which the message will be sent.
         aws_region (str): AWS region name used when creating the SQS client.
-    
+
     Returns:
         bool: True if the message was successfully sent; False if preconditions fail or sending fails.
     """

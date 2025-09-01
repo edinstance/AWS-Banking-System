@@ -115,7 +115,7 @@ class TestReportExceptions:
     def test_exception_raising_and_catching(self):
         """
         Verify that each custom report exception can be raised and caught and that its string representation matches the provided message.
-        
+
         This test raises ReportGenerationError, ReportTemplateError and ReportUploadError inside pytest.raises contexts using the same error message and asserts that the captured exception's str() equals that message for each exception type.
         """
         error_message = "Test error message"
@@ -141,9 +141,9 @@ class TestReportExceptions:
         def function_that_raises_generation_error():
             """
             Raise a ReportGenerationError with the message "Generation failed".
-            
+
             This test helper always raises ReportGenerationError and is intended for use in tests that verify catching and re‑raising of generation failures.
-            
+
             Raises:
                 ReportGenerationError: always raised with message "Generation failed".
             """
@@ -152,9 +152,9 @@ class TestReportExceptions:
         def function_that_raises_template_error():
             """
             Raise a ReportTemplateError with the fixed message "Template failed".
-            
+
             This helper unconditionally raises a ReportTemplateError; it is intended for use in tests that verify exception handling.
-            
+
             Raises:
                 ReportTemplateError: Always raised with message "Template failed".
             """
@@ -163,7 +163,7 @@ class TestReportExceptions:
         def function_that_raises_upload_error():
             """
             Raise a ReportUploadError indicating an upload failure.
-            
+
             This function unconditionally raises a ReportUploadError with the message "Upload failed".
             """
             raise ReportUploadError("Upload failed")

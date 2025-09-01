@@ -44,11 +44,11 @@ class TestGenerateTransactionsPDF:
     def mock_template_content(self):
         """
         Return a mock HTML Jinja2 template used for rendering account transaction statements in tests.
-        
+
         The template includes placeholders expected by generate_transactions_pdf:
         - accountId, statementPeriod, accountBalance, generationDate
         - an iterable `transactions` where each item exposes `id`, `amount`, `description` and `date`.
-        
+
         Returns:
             str: Multiline HTML template string suitable for Jinja2 rendering in tests.
         """

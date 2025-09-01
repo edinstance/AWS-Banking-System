@@ -48,22 +48,22 @@ else:
 def lambda_handler(event, context: LambdaContext):
     """
     Handle SQS continuation messages for monthly account report processing.
-    
+
     Processes each record in the incoming SQS event, routes messages by their
     `continuation_type` (`"accounts_scan"` or `"batch_continuation"`) to the
     appropriate continuation handler, aggregates returned metrics and returns a
     completion response. Malformed messages or unknown continuation types are
     optionally sent to a configured dead-letter queue (DLQ). Critical errors are
     re-raised after attempting to publish error details to the DLQ.
-    
+
     Parameters:
         event (dict): Lambda event containing SQS records. Each record is expected
             to have a JSON body and optional `messageAttributes.continuation_type`.
         context (LambdaContext): AWS Lambda context object.
-    
+
     Returns:
         dict: Response produced by `create_response(metrics, "COMPLETED", logger)`.
-    
+
     Raises:
         Exception: Any unexpected exception raised during processing is propagated
         after an attempt is made to publish error details to the DLQ.

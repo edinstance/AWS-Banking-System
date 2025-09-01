@@ -45,12 +45,12 @@ cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 def lambda_handler(event, _context: LambdaContext):
     """
     Handle DynamoDB stream INSERT events for transaction records, process each transaction, and route failures to a dead‑letter queue as needed.
-    
+
     Processes only records with eventName "INSERT" from a DynamoDB stream event, invoking process_single_transaction for each. Business logic failures attempt to mark the transaction as FAILED (when an idempotency key is available) and fall back to sending a formatted message to the configured SQS DLQ; system or unknown errors are sent to the DLQ. Returns a summary of the batch processing counts.
-    
+
     Parameters:
         event (dict): A DynamoDB Streams event payload containing a "Records" list; only records with "eventName" == "INSERT" are processed.
-    
+
     Returns:
         dict: HTTP-style summary with keys:
             - statusCode (int): 200 on successful batch handling.
@@ -58,7 +58,7 @@ def lambda_handler(event, _context: LambdaContext):
             - successful (int): Count of successfully processed transactions.
             - businessLogicFailures (int): Count of records that failed business validation.
             - systemFailures (int): Count of records that failed due to system/unknown errors.
-    
+
     Raises:
         TransactionSystemError: If required DynamoDB tables are not initialised, or if one or more records could not be processed or delivered to the DLQ (critical failures).
     """

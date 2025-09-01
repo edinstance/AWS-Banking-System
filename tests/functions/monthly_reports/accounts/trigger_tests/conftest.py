@@ -11,7 +11,7 @@ def monthly_accounts_reports_app_with_mocks(
 ):
     """
     Pytest fixture that provides the monthly accounts reports application configured with mocked AWS resources and environment.
-    
+
     Sets environment variables required by the app (accounts table name, SQS URLs, state machine ARN, environment name, log level, AWS region and DLQ URL), patches boto3.resource to return the provided mocked DynamoDB resource, reloads the application module so the environment and patch take effect, attaches the mocked DynamoDB Table to app.accounts_table, and yields the configured app instance for use in tests.
     """
     accounts_table_name = mock_accounts_dynamo_table
