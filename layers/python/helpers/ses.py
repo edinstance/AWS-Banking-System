@@ -10,7 +10,16 @@ from email.mime.text import MIMEText
 
 def get_ses_client(aws_region: str, logger: Logger):
     """
-    Initialise and return an AWS SES client for the specified region.
+    Return an AWS SES client configured for the given AWS region.
+
+    Parameters:
+        aws_region (str): AWS region name (for example "eu-west-1") used to configure the SES client.
+
+    Returns:
+        botocore.client.BaseClient: A boto3 SES client instance configured for the specified region.
+
+    Raises:
+        Exception: Re-raises any exception raised while creating the client.
     """
     try:
         logger.info("Initialized SES client with default endpoint")
@@ -38,7 +47,34 @@ def send_user_email(
     tags: Optional[List[Dict[str, str]]] = None,
 ):
     """
-    Send a simple email (text and/or HTML) using AWS SES.
+    Send an email (plain text and/or HTML) via AWS Simple Email Service (SES).
+
+    At least one of `text_body_data` or `html_body_data` must be provided; otherwise the function raises an Exception.
+    Optional recipients in `cc_addresses` and `bcc_addresses` will be added to the destination. Optional fields
+    `reply_to_addresses`, `return_path` and `tags` are included in the SES request when provided.
+
+    Parameters:
+        aws_region (str): AWS region name to create the SES client in.
+        sender_email (str): The email address that appears as the sender (Source).
+        to_addresses (List[str]): Primary recipient email addresses.
+        subject_data (str): Email subject text (charset controlled by `subject_charset`).
+        subject_charset (str): Charset for the subject (default "UTF-8").
+        text_body_data (Optional[str]): Plain text body of the email.
+        text_body_charset (str): Charset for the plain text body (default "UTF-8").
+        html_body_data (Optional[str]): HTML body of the email.
+        html_body_charset (str): Charset for the HTML body (default "UTF-8").
+        cc_addresses (Optional[List[str]]): CC recipient addresses.
+        bcc_addresses (Optional[List[str]]): BCC recipient addresses.
+        reply_to_addresses (Optional[List[str]]): Reply-To addresses to include.
+        return_path (Optional[str]): Return-Path address for bounce handling.
+        tags (Optional[List[Dict[str, str]]]): List of tags (Name/Value dicts) to apply to the SES message.
+
+    Returns:
+        dict: The SES send_email response (includes 'MessageId' on success).
+
+    Raises:
+        Exception: If neither `text_body_data` nor `html_body_data` is provided.
+        Exception: Re-raises exceptions from the SES client if the send operation fails.
     """
     ses_client = get_ses_client(aws_region=aws_region, logger=logger)
 
@@ -101,7 +137,21 @@ def send_user_email_with_attachment(
     bcc_addresses: Optional[List[str]] = None,
 ):
     """
-    Send an email with a single attachment using AWS SES (send_raw_email).
+    Send an email with a single attachment via AWS SES using send_raw_email.
+
+    Constructs a multipart MIME message with a plain-text body and one attachment, sets To/Cc/Bcc headers,
+    and sends the raw message through SES. Cc and Bcc recipients (if provided) are added to the SES
+    Destinations list so they receive the message.
+
+    Parameters:
+        attachment_bytes (bytes): Raw bytes of the attachment to include.
+        attachment_filename (str): Filename used in the attachment's Content-Disposition header.
+
+    Returns:
+        dict: The SES send_raw_email response (contains 'MessageId' on success).
+
+    Raises:
+        Exception: Re-raises any exception from the SES client on failure.
     """
     ses_client = get_ses_client(aws_region=aws_region, logger=logger)
 

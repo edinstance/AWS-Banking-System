@@ -44,18 +44,23 @@ cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 @logger.inject_lambda_context
 def lambda_handler(event, _context: LambdaContext):
     """
-    Processes DynamoDB stream INSERT events for transaction records, handling business and system errors with DLQ fallback.
+    Handle DynamoDB stream INSERT events for transaction records, process each transaction, and route failures to a dead‑letter queue as needed.
 
-    This AWS Lambda handler filters incoming DynamoDB stream events for new transaction inserts, processes each transaction, and manages error handling by updating transaction status or sending failed records to a dead-letter queue (DLQ) as appropriate. It returns a summary of processing results, including counts of successful and failed records.
+    Processes only records with eventName "INSERT" from a DynamoDB stream event, invoking process_single_transaction for each. Business logic failures attempt to mark the transaction as FAILED (when an idempotency key is available) and fall back to sending a formatted message to the configured SQS DLQ; system or unknown errors are sent to the DLQ. Returns a summary of the batch processing counts.
 
     Parameters:
-        event (dict): The DynamoDB stream event payload.
+        event (dict): A DynamoDB Streams event payload containing a "Records" list; only records with "eventName" == "INSERT" are processed.
 
     Returns:
-        dict: A summary containing the status code, number of processed records, and counts of successful, business logic, and system failures.
+        dict: HTTP-style summary with keys:
+            - statusCode (int): 200 on successful batch handling.
+            - processedRecords (int): Number of INSERT records processed.
+            - successful (int): Count of successfully processed transactions.
+            - businessLogicFailures (int): Count of records that failed business validation.
+            - systemFailures (int): Count of records that failed due to system/unknown errors.
 
     Raises:
-        TransactionSystemError: If critical failures occur that prevent records from being processed or sent to the DLQ.
+        TransactionSystemError: If required DynamoDB tables are not initialised, or if one or more records could not be processed or delivered to the DLQ (critical failures).
     """
     logger.info("Processing DynamoDB stream event")
 

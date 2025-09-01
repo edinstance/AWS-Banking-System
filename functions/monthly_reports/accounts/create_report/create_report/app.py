@@ -18,6 +18,33 @@ s3 = get_s3_client(AWS_REGION, logger)
 
 
 def lambda_handler(event, _context: LambdaContext):
+    """
+    Lambda handler that generates a transactions PDF for an account, uploads it to S3 and returns a presigned URL.
+
+    The function expects `event` to contain the following keys: `accountId`, `userId`, `statementPeriod`, `transactions`, and `accountBalance`. It will:
+    - validate the presence of required keys,
+    - generate a PDF from the transactions,
+    - upload the PDF to the S3 bucket configured by the REPORTS_BUCKET environment variable at key "<accountId>/<statementPeriod>.pdf",
+    - create a presigned URL (expiry 3600s) for the uploaded object,
+    - and return a dictionary with `reportUrl`, `accountId`, `userId` and `statementPeriod`.
+
+    Parameters:
+        event (dict): Event payload containing account and statement data. Required keys are listed above.
+        _context (LambdaContext): AWS Lambda context object (not used).
+
+    Returns:
+        dict: {
+            "reportUrl": str,         # presigned URL to download the PDF
+            "accountId": str,
+            "userId": str,
+            "statementPeriod": str
+        }
+
+    Raises:
+        ReportGenerationError: If required event fields are missing or PDF generation fails.
+        ReportTemplateError: If the PDF template processing fails.
+        ReportUploadError: If uploading to S3 or generating the presigned URL fails.
+    """
     logger.info(f"Received event: {event}")
 
     try:

@@ -20,6 +20,28 @@ def process_report(
     logger: Logger,
     s3_client,
 ):
+    """
+    Process and send a monthly account statement to a user either as a PDF attachment or as a presigned link.
+
+    Builds the S3 key for the requested statement, fetches the recipient's email and name from Cognito, checks the PDF size via S3 head_object and chooses between sending the file as an attachment (if size <= max_attachment_size) or sending a presigned URL. The function delegates actual email delivery to send_report_as_attachment or send_report_as_link and returns the result from that helper.
+
+    Parameters:
+        account_id: Account identifier used to construct the S3 key.
+        user_id: Cognito username for the recipient.
+        statement_period: Statement period string (used in S3 key and email subject).
+        cognito_user_pool_id: Cognito user pool id to look up user attributes.
+        aws_region: AWS region used for Cognito/S3 operations.
+        reports_bucket: S3 bucket name where PDFs are stored.
+        max_attachment_size: Maximum file size in bytes allowed for sending as an attachment.
+        ses_no_reply_email: Sender (no-reply) email address used for SES.
+
+    Returns:
+        The return value from send_report_as_attachment or send_report_as_link (delegated delivery helper).
+
+    Raises:
+        botocore.exceptions.ClientError: If S3 head_object (or other AWS call) fails; this exception is logged and re-raised.
+        Exception: Any other exception encountered while processing is logged and re-raised.
+    """
     s3_key = f"{account_id}/{statement_period}.pdf"
     subject = f"Your Account Statement for {statement_period}"
 

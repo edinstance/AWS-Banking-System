@@ -231,6 +231,13 @@ class TestLambdaHandlerConfiguration:
     def test_transactions_table_not_initialized(
         self, mock_context, step_functions_event
     ):
+        """
+        Ensure the handler raises InternalServerError with the exact message "Server configuration error"
+        when the transactions table is not initialised and a Step Functions-style event is received.
+
+        This patches the app.table to None, invokes the lambda_handler with a step functions event,
+        and asserts that an InternalServerError is raised with the precise error message.
+        """
         with patch(
             "functions.accounts.get_account_transactions.get_account_transactions.app.table",
             None,
