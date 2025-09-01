@@ -5,8 +5,9 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from dynamodb import get_dynamodb_resource
-from sqs import send_dynamodb_record_to_dlq
+from sqs import send_message_to_sqs
 from .exceptions import BusinessLogicError, TransactionSystemError
+from .sqs import format_sqs_message, get_message_attributes
 from .transaction_helpers import process_single_transaction, update_transaction_status
 
 ENVIRONMENT_NAME = os.environ.get("ENVIRONMENT_NAME", "dev")
@@ -43,18 +44,23 @@ cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 @logger.inject_lambda_context
 def lambda_handler(event, _context: LambdaContext):
     """
-    Processes DynamoDB stream INSERT events for transaction records, handling business and system errors with DLQ fallback.
+    Handle DynamoDB stream INSERT events for transaction records, process each transaction, and route failures to a dead‑letter queue as needed.
 
-    This AWS Lambda handler filters incoming DynamoDB stream events for new transaction inserts, processes each transaction, and manages error handling by updating transaction status or sending failed records to a dead-letter queue (DLQ) as appropriate. It returns a summary of processing results, including counts of successful and failed records.
+    Processes only records with eventName "INSERT" from a DynamoDB stream event, invoking process_single_transaction for each. Business logic failures attempt to mark the transaction as FAILED (when an idempotency key is available) and fall back to sending a formatted message to the configured SQS DLQ; system or unknown errors are sent to the DLQ. Returns a summary of the batch processing counts.
 
     Parameters:
-        event (dict): The DynamoDB stream event payload.
+        event (dict): A DynamoDB Streams event payload containing a "Records" list; only records with "eventName" == "INSERT" are processed.
 
     Returns:
-        dict: A summary containing the status code, number of processed records, and counts of successful, business logic, and system failures.
+        dict: HTTP-style summary with keys:
+            - statusCode (int): 200 on successful batch handling.
+            - processedRecords (int): Number of INSERT records processed.
+            - successful (int): Count of successfully processed transactions.
+            - businessLogicFailures (int): Count of records that failed business validation.
+            - systemFailures (int): Count of records that failed due to system/unknown errors.
 
     Raises:
-        TransactionSystemError: If critical failures occur that prevent records from being processed or sent to the DLQ.
+        TransactionSystemError: If required DynamoDB tables are not initialised, or if one or more records could not be processed or delivered to the DLQ (critical failures).
     """
     logger.info("Processing DynamoDB stream event")
 
@@ -121,23 +127,36 @@ def lambda_handler(event, _context: LambdaContext):
                     logger.error(
                         f"Failed to update transaction status to FAILED: {update_error}"
                     )
-                    if not send_dynamodb_record_to_dlq(
-                        record=record,
-                        sqs_url=SQS_ENDPOINT,
-                        dlq_url=TRANSACTION_PROCESSING_DLQ_URL,
+                    if not send_message_to_sqs(
+                        message=format_sqs_message(
+                            record,
+                            f"Failed to update status after business logic error: {e}",
+                        ),
+                        message_attributes=get_message_attributes(
+                            error_type="StatusUpdateError",
+                            environment_name=ENVIRONMENT_NAME,
+                            idempotency_key=idempotency_key,
+                        ),
+                        sqs_endpoint=SQS_ENDPOINT,
+                        sqs_url=TRANSACTION_PROCESSING_DLQ_URL,
                         aws_region=AWS_REGION,
-                        error_message=f"Failed to update status after business logic error: {e}",
                         logger=logger,
                     ):
                         critical_failures += 1
             else:
                 logger.error(f"No idempotency key found for business logic error: {e}")
-                if not send_dynamodb_record_to_dlq(
-                    record=record,
-                    sqs_url=SQS_ENDPOINT,
-                    dlq_url=TRANSACTION_PROCESSING_DLQ_URL,
+                if not send_message_to_sqs(
+                    message=format_sqs_message(
+                        record, f"Business logic error without idempotency key: {e}"
+                    ),
+                    message_attributes=get_message_attributes(
+                        error_type="BusinessLogicError",
+                        environment_name=ENVIRONMENT_NAME,
+                        idempotency_key=idempotency_key,
+                    ),
+                    sqs_endpoint=SQS_ENDPOINT,
+                    sqs_url=TRANSACTION_PROCESSING_DLQ_URL,
                     aws_region=AWS_REGION,
-                    error_message=f"Business logic error without idempotency key: {e}",
                     logger=logger,
                 ):
                     critical_failures += 1
@@ -146,12 +165,15 @@ def lambda_handler(event, _context: LambdaContext):
             system_failures += 1
             logger.error(f"System error for record {sequence_number}: {e}")
 
-            if not send_dynamodb_record_to_dlq(
-                record=record,
-                sqs_url=SQS_ENDPOINT,
-                dlq_url=TRANSACTION_PROCESSING_DLQ_URL,
+            if not send_message_to_sqs(
+                message=format_sqs_message(record, str(e)),
+                message_attributes=get_message_attributes(
+                    error_type="TransactionSystemError",
+                    environment_name=ENVIRONMENT_NAME,
+                ),
+                sqs_endpoint=SQS_ENDPOINT,
+                sqs_url=TRANSACTION_PROCESSING_DLQ_URL,
                 aws_region=AWS_REGION,
-                error_message=str(e),
                 logger=logger,
             ):
                 critical_failures += 1
@@ -165,12 +187,14 @@ def lambda_handler(event, _context: LambdaContext):
                 f"Unknown error for record {sequence_number}: {e}", exc_info=True
             )
 
-            if not send_dynamodb_record_to_dlq(
-                record=record,
-                sqs_url=SQS_ENDPOINT,
-                dlq_url=TRANSACTION_PROCESSING_DLQ_URL,
+            if not send_message_to_sqs(
+                message=format_sqs_message(record, f"Unknown error: {str(e)}"),
+                message_attributes=get_message_attributes(
+                    error_type="UnknownError", environment_name=ENVIRONMENT_NAME
+                ),
+                sqs_endpoint=SQS_ENDPOINT,
+                sqs_url=TRANSACTION_PROCESSING_DLQ_URL,
                 aws_region=AWS_REGION,
-                error_message=f"Unknown error: {str(e)}",
                 logger=logger,
             ):
                 critical_failures += 1

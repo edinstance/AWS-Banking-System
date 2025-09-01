@@ -38,6 +38,7 @@ Globals:
         ENVIRONMENT_NAME: !Ref Environment
         SES_ENABLED: !Ref SesEnabled
         SES_SENDER_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesSenderEmail}}'
+        SES_NO_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesNoReplyEmail}}'
         SES_REPLY_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SesReplyEmail}}'
         SES_BOUNCE_EMAIL: !Sub '{{resolve:ssm:/banking-app/${Environment}/SESBounceEmail}}'
 
@@ -187,7 +188,9 @@ Resources:
         Variables:
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable
           TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          TRANSACTION_PROCESSING_DLQ_URL: !Ref TransactionProcessingDLQ
           DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
       Layers:
         - !Ref PythonHelpersLambdaLayer
@@ -268,6 +271,34 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref AccountsTable
 
+  GetAccountTransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-get-account-transactions
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: GetAccountTransactionsFunction
+      CodeUri: functions/accounts/get_account_transactions
+      Handler: get_account_transactions.app.lambda_handler
+      Environment:
+        Variables:
+          TRANSACTIONS_TABLE_NAME: !Ref TransactionsTable
+          DYNAMODB_ENDPOINT: ''
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+      Events:
+        ApiGetAccountTransactionsEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}/transactions
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TransactionsTable
+
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -337,6 +368,176 @@ Resources:
                 - ses:SendRawEmail
               Resource: '*'
 
+  MonthlyAccountReportsTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-monthly-account-reports-trigger-function
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: MonthlyAccountReportsTriggerFunction
+      CodeUri: functions/monthly_reports/accounts/trigger/
+      Handler: trigger.app.lambda_handler
+      Timeout: 300
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          STATE_MACHINE_ARN: !Ref StateMachine
+          CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
+          DLQ_URL: !Ref MonthlyAccountReportsContinuationDLQ
+          DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
+      Events:
+        MonthlySchedule:
+          Type: Schedule
+          Properties:
+            Name: !Sub ${AWS::StackName}-monthly-accounts-reports-trigger
+            Schedule: cron(0 0 1 * ? *)
+            Description: !Sub Monthly accounts reports trigger for ${Environment}
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonMonthlyReportsLambdaLayer
+      ReservedConcurrentExecutions: 1
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt StateMachine.Name
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
+
+  MonthlyAccountReportsProcessPendingReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-monthly-accounts-reports-continuation
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: MonthlyAccountReportsProcessPendingReportsFunction
+      CodeUri: functions/monthly_reports/accounts/process_pending_reports/
+      Handler: process_pending_reports.app.lambda_handler
+      Timeout: 150
+      Environment:
+        Variables:
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          STATE_MACHINE_ARN: !Ref StateMachine
+          CONTINUATION_QUEUE_URL: !Ref MonthlyAccountReportsContinuationQueue
+          DLQ_URL: !Ref MonthlyAccountReportsContinuationDLQ
+          DYNAMODB_ENDPOINT: ''
+          SQS_ENDPOINT: ''
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+            BatchSize: 1
+            Enabled: true
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonMonthlyReportsLambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AccountsTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt StateMachine.Name
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
+
+  CreateAccountsReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-create-accounts-report
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: CreateAccountsReportFunction
+      CodeUri: functions/monthly_reports/accounts/create_report
+      Handler: create_report.app.lambda_handler
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref MonthlyReportsBucket
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref MonthlyReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: !Sub ${MonthlyReportsBucket.Arn}/*
+
+  AccountsReportsNotifyClientFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-account-reports-notify-client
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName} for Stage ${Environment}
+        - ResourceName: AccountsReportsNotifyClientFunction
+      CodeUri: functions/monthly_reports/accounts/notify_client
+      Handler: notify_client.app.lambda_handler
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref MonthlyReportsBucket
+          COGNITO_USER_POOL_ID: !Ref BankingUserPool
+          COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
+          ACCOUNTS_TABLE_NAME: !Ref AccountsTable
+          DYNAMODB_ENDPOINT: ''
+      Events:
+        ApiRequestNewMonthlyAccountReportEvent:
+          Type: Api
+          Properties:
+            Path: /accounts/{account_id}/reports/{statement_period}
+            Method: GET
+            RestApiId: !Ref BankingApiGateway
+            Auth:
+              Authorizer: CognitoAuthorizer
+      Layers:
+        - !Ref PythonHelpersLambdaLayer
+        - !Ref PythonAuthenticationLambdaLayer
+        - !Ref PythonAccountsLambdaLayer
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: !Sub ${MonthlyReportsBucket.Arn}/*
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminGetUser
+            Resource: !GetAtt BankingUserPool.Arn
+        - DynamoDBReadPolicy:
+            TableName: !Ref AccountsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+
   # --- Lambda Layers ---
   PythonHelpersLambdaLayer:
     Type: AWS::Serverless::LayerVersion
@@ -365,6 +566,17 @@ Resources:
     Properties:
       LayerName: !Sub ${AWS::StackName}-banking-python-authentication-layer
       ContentUri: layers/python/authentication
+      CompatibleRuntimes:
+        - python3.12
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: x86_64
+
+  PythonMonthlyReportsLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-banking-python-monthly-reports-layer
+      ContentUri: layers/python/monthly_reports
       CompatibleRuntimes:
         - python3.12
     Metadata:
@@ -412,6 +624,55 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${CognitoPostSignUpFunction}
       RetentionInDays: 7
 
+  GetAccountsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetAccountsFunction}
+      RetentionInDays: 7
+
+  MonthlyAccountReportsTriggerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${MonthlyAccountReportsTriggerFunction}
+      RetentionInDays: 7
+
+  MonthlyAccountReportsProcessPendingReportsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${MonthlyAccountReportsProcessPendingReportsFunction}
+      RetentionInDays: 7
+
+  GetAccountTransactionsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GetAccountTransactionsFunction}
+      RetentionInDays: 7
+
+  CreateAccountsReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CreateAccountsReportFunction}
+      RetentionInDays: 7
+
+  AccountsReportsNotifyClientLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AccountsReportsNotifyClientFunction}
+      RetentionInDays: 7
+
+
   # --- DynamoDB Table for Transactions ---
   TransactionsTable:
     Type: AWS::DynamoDB::Table
@@ -426,6 +687,10 @@ Resources:
         - AttributeName: id
           AttributeType: S
         - AttributeName: userId
+          AttributeType: S
+        - AttributeName: accountId
+          AttributeType: S
+        - AttributeName: createdAt
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
@@ -443,6 +708,14 @@ Resources:
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: AccountDateIndex
+          KeySchema:
+            - AttributeName: accountId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       TimeToLiveSpecification:
@@ -481,6 +754,27 @@ Resources:
         Enabled: true
 
   # --- SQS Queues ---
+  MonthlyAccountReportsContinuationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-continuation-queue
+      VisibilityTimeout: 200
+      MessageRetentionPeriod: 1209600 # 14 days
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt MonthlyAccountReportsContinuationDLQ.Arn
+        maxReceiveCount: 3
+
+  MonthlyAccountReportsContinuationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-dlq
+
+  MonthlyAccountReportsCreationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-monthly-account-reports-creation-dlq
+
   TransactionProcessingDLQ:
     Type: AWS::SQS::Queue
     Properties:
@@ -495,6 +789,28 @@ Resources:
       Principal: cognito-idp.amazonaws.com
       SourceArn: !GetAtt BankingUserPool.Arn
 
+  # S3 Buckets
+  MonthlyReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-monthly-reports-bucket
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 365
+                StorageClass: GLACIER
+
   # Domain Configuration
   ApiCertificate:
     Type: AWS::CertificateManager::Certificate
@@ -504,3 +820,71 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Sub '{{resolve:ssm:/banking-app/${Environment}/DomainName}}'
           HostedZoneId: !Sub '{{resolve:ssm:/banking-app/${Environment}/Route53HostedZoneId}}'
+
+  # State machines
+  StateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${AWS::StackName}-monthly-reports-creation-state-machine
+      Type: STANDARD
+      Definition:
+        StartAt: GetAccountTransactions
+        States:
+          GetAccountTransactions:
+            Type: Task
+            Resource: !GetAtt GetAccountTransactionsFunction.Arn
+            Next: CreateAccountsReport
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
+          CreateAccountsReport:
+            Type: Task
+            Resource: !GetAtt CreateAccountsReportFunction.Arn
+            Next: NotifyClient
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 5
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
+          NotifyClient:
+            Type: Task
+            Resource: !GetAtt AccountsReportsNotifyClientFunction.Arn
+            End: true
+            Retry:
+              - ErrorEquals: [ "States.ALL" ]
+                IntervalSeconds: 10
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: [ "States.ALL" ]
+                ResultPath: $.error
+                Next: SendToDLQ
+
+          SendToDLQ:
+            Type: Task
+            Resource: arn:aws:states:::sqs:sendMessage
+            Parameters:
+              QueueUrl: !Ref MonthlyAccountReportsCreationDLQ
+              MessageBody.$: $
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetAccountTransactionsFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CreateAccountsReportFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref AccountsReportsNotifyClientFunction
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt MonthlyAccountReportsCreationDLQ.QueueName

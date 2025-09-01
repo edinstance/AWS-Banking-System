@@ -1,8 +1,10 @@
+import uuid
 from unittest.mock import patch, MagicMock
 
 import pytest
+from botocore.exceptions import ClientError
 
-from dynamodb import get_dynamodb_resource
+from dynamodb import get_dynamodb_resource, get_paginated_table_data
 
 
 class TestGetDynamoDBResource:
@@ -66,3 +68,72 @@ class TestGetDynamoDBResource:
             mock_logger.error.assert_called_once_with(
                 "Failed to initialize DynamoDB resource", exc_info=True
             )
+
+
+class TestGetPaginatedTableData:
+
+    def test_success(self, magic_mock_accounts_table, mock_logger):
+        item_id = str(uuid.uuid4())
+        magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
+
+        result = get_paginated_table_data(
+            None, None, magic_mock_accounts_table, mock_logger
+        )
+
+        assert result[0] == [{"id": item_id}]
+
+    def test_success_with_scan_params(self, magic_mock_accounts_table, mock_logger):
+        item_id = str(uuid.uuid4())
+        magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
+
+        result = get_paginated_table_data(
+            {
+                "ProjectionExpression": "accountId, userId",
+            },
+            None,
+            magic_mock_accounts_table,
+            mock_logger,
+        )
+
+        assert result[0] == [{"id": item_id}]
+        assert magic_mock_accounts_table.scan.call_args[1] == {
+            "ProjectionExpression": "accountId, userId",
+            "Limit": 10,
+        }
+
+    def test_success_with_index(self, magic_mock_accounts_table, mock_logger):
+        item_id = str(uuid.uuid4())
+        magic_mock_accounts_table.scan.return_value = {"Items": [{"id": item_id}]}
+
+        result = get_paginated_table_data(
+            None, "id", magic_mock_accounts_table, mock_logger
+        )
+
+        assert result[0] == [{"id": item_id}]
+        assert magic_mock_accounts_table.scan.call_args[1] == {
+            "IndexName": "id",
+            "Limit": 10,
+        }
+
+    def test_error(self, magic_mock_accounts_table, mock_logger):
+        magic_mock_accounts_table.scan.side_effect = ClientError(
+            operation_name="scan",
+            error_response={
+                "Error": {
+                    "Code": "ResourceNotFoundException",
+                    "Message": "Requested resource not found.",
+                }
+            },
+        )
+
+        with pytest.raises(Exception) as exception_info:
+            get_paginated_table_data(
+                {
+                    "ProjectionExpression": "accountId, userId",
+                },
+                None,
+                magic_mock_accounts_table,
+                mock_logger,
+            )
+
+        assert "Requested resource not found." in str(exception_info.value)
