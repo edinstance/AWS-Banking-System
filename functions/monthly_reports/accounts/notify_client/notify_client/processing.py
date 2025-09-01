@@ -2,7 +2,7 @@ from aws_lambda_powertools import Logger
 from botocore.exceptions import ClientError
 
 from authentication.user_details import get_user_attributes
-from functions.monthly_reports.accounts.notify_client.notify_client.send_report import (
+from .send_report import (
     send_report_as_attachment,
     send_report_as_link,
 )
