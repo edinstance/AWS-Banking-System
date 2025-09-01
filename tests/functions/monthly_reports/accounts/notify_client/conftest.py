@@ -10,7 +10,7 @@ def notify_client_app_with_mocks(
 ):
 
     monkeypatch.setenv("SES_NO_REPLY_EMAIL", "noreply@testbank.com")
-    monkeypatch.setenv("REPORTS_BUCKET_NAME", "test-reports-bucket")
+    monkeypatch.setenv("REPORTS_BUCKET", "test-reports-bucket")
     monkeypatch.setenv("AWS_REGION", "eu-west-2")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "INFO")
     monkeypatch.setenv("COGNITO_USER_POOL_ID", "eu-west-2_testpool123")

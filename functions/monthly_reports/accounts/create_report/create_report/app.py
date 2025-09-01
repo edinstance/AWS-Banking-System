@@ -8,7 +8,7 @@ from .exceptions import ReportGenerationError, ReportTemplateError, ReportUpload
 from s3 import get_s3_client
 from .generate_pdf import generate_transactions_pdf
 
-REPORTS_BUCKET = os.environ.get("REPORTS_BUCKET_NAME")
+REPORTS_BUCKET = os.environ.get("REPORTS_BUCKET")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL")
 AWS_REGION = os.environ.get("AWS_REGION")
 

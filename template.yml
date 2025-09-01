@@ -477,7 +477,7 @@ Resources:
       Handler: create_report.app.lambda_handler
       Environment:
         Variables:
-          REPORTS_BUCKET_NAME: !Ref MonthlyReportsBucket
+          REPORTS_BUCKET: !Ref MonthlyReportsBucket
       Layers:
         - !Ref PythonHelpersLambdaLayer
       Policies:
@@ -500,7 +500,7 @@ Resources:
       Handler: notify_client.app.lambda_handler
       Environment:
         Variables:
-          REPORTS_BUCKET_NAME: !Ref MonthlyReportsBucket
+          REPORTS_BUCKET: !Ref MonthlyReportsBucket
           COGNITO_USER_POOL_ID: !Ref BankingUserPool
           COGNITO_CLIENT_ID: !Ref BankingUserPoolClient
           ACCOUNTS_TABLE_NAME: !Ref AccountsTable

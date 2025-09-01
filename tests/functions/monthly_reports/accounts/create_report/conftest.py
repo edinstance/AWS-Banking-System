@@ -9,7 +9,7 @@ def create_report_app_with_mocks(monkeypatch, mock_s3_client):
     """Fixture that sets up the create_report app with mocked dependencies."""
 
     # Set environment variables
-    monkeypatch.setenv("REPORTS_BUCKET_NAME", "test-reports-bucket")
+    monkeypatch.setenv("REPORTS_BUCKET", "test-reports-bucket")
     monkeypatch.setenv("POWERTOOLS_LOG_LEVEL", "INFO")
     monkeypatch.setenv("AWS_REGION", "eu-west-2")
 

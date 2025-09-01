@@ -21,7 +21,7 @@ from .date_helpers import period_is_in_future
 from .processing import process_report
 
 SES_NO_REPLY_EMAIL = os.environ.get("SES_NO_REPLY_EMAIL")
-REPORTS_BUCKET = os.environ.get("REPORTS_BUCKET_NAME")
+REPORTS_BUCKET = os.environ.get("REPORTS_BUCKET")
 AWS_REGION = os.environ.get("AWS_REGION")
 POWERTOOLS_LOG_LEVEL = os.environ.get("POWERTOOLS_LOG_LEVEL")
 COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
