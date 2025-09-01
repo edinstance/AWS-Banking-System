@@ -211,7 +211,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_business_logic_error_without_idempotency_key(
         self,
@@ -268,7 +268,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq",
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs",
         return_value=False,
     )
     def test_error_without_idempotency_key_and_dlq_fails(
@@ -315,7 +315,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_business_logic_error_and_update_status_fails(
         self,
@@ -327,9 +327,9 @@ class TestLambdaHandler:
         environment_variables,
     ):
         """
-        Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler reports a business logic failure.
+        Test that when a business logic error occurs and updating transaction status fails, the record is sent to the DLQ and the handler monthly_reports a business logic failure.
 
-        Simulates `process_single_transaction` raising a `BusinessLogicError`, `update_transaction_status` raising an exception, and `send_dynamodb_record_to_dlq` succeeding. Verifies the handler returns a 200 response with one business logic failure and that the DLQ function is called once.
+        Simulates `process_single_transaction` raising a `BusinessLogicError`, `update_transaction_status` raising an exception, and `send_message_to_sqs` succeeding. Verifies the handler returns a 200 response with one business logic failure and that the DLQ function is called once.
         """
         mock_process_single_transaction.side_effect = BusinessLogicError(
             "Test business logic error"
@@ -363,7 +363,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_business_logic_error_and_dlq_fails(
         self,
@@ -405,7 +405,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_transaction_system_error(
         self,
@@ -446,7 +446,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_transaction_system_error_and_dlq_fails(
         self,
@@ -486,7 +486,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_lambda_handler_generic_exception(
         self,
@@ -527,7 +527,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.process_single_transaction"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_generic_exception_and_dlq_fails(
         self,
@@ -568,7 +568,7 @@ class TestLambdaHandler:
         "functions.transactions.process_transactions.process_transactions.app.update_transaction_status"
     )
     @patch(
-        "functions.transactions.process_transactions.process_transactions.app.send_dynamodb_record_to_dlq"
+        "functions.transactions.process_transactions.process_transactions.app.send_message_to_sqs"
     )
     def test_lambda_handler_success_and_failure(
         self,

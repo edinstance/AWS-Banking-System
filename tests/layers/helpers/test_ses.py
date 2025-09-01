@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from ses import get_ses_client, send_user_email
+from ses import get_ses_client, send_user_email, send_user_email_with_attachment
 
 
 class TestGetSesClient:
@@ -77,6 +77,10 @@ class TestSendEmail:
 
         Verifies that the SES client's send_email method is called with the correct arguments, the logger records a success message, and the function returns True.
         """
+        # Prepare a mock SES response
+        mock_response = {"MessageId": "test-message-id-123"}
+        self.mock_ses_client.send_email.return_value = mock_response
+
         result = send_user_email(
             aws_region=self.aws_region,
             logger=self.mock_logger,
@@ -113,46 +117,127 @@ class TestSendEmail:
         )
 
         self.mock_logger.info.assert_called_once_with(
-            f"Successfully sent email to users: {json.dumps(self.to_addresses)}"
+            f"Successfully sent email to {json.dumps(self.to_addresses)}, MessageId={mock_response['MessageId']}"
         )
-        assert result is True
+        assert result == mock_response
 
     def test_send_user_email_exception(self, mock_ses_client):
         mock_exception = Exception("Simulated SES send error")
         self.mock_ses_client.send_email.side_effect = mock_exception
 
-        result = send_user_email(
-            aws_region=self.aws_region,
-            logger=self.mock_logger,
-            sender_email=self.sender_email,
-            to_addresses=self.to_addresses,
-            subject_data=self.subject_data,
-            subject_charset=self.subject_charset,
-            text_body_data=self.text_body_data,
-        )
+        with pytest.raises(Exception) as exc_info:
+            send_user_email(
+                aws_region=self.aws_region,
+                logger=self.mock_logger,
+                sender_email=self.sender_email,
+                to_addresses=self.to_addresses,
+                subject_data=self.subject_data,
+                subject_charset=self.subject_charset,
+                text_body_data=self.text_body_data,
+            )
 
+        assert "Simulated SES send error" in str(exc_info.value)
         self.mock_ses_client.send_email.assert_called_once()
 
         self.mock_logger.error.assert_called_once_with(
-            f"Failed to send email: {mock_exception}"
+            f"Failed to send email: {mock_exception}", exc_info=True
         )
-        assert result is False
 
     def test_send_user_email_no_body(self, mock_ses_client):
         """
         Test that send_user_email returns False and logs an error when neither text nor HTML body is provided.
         """
-        result = send_user_email(
-            aws_region=self.aws_region,
-            logger=self.mock_logger,
-            sender_email=self.sender_email,
-            to_addresses=self.to_addresses,
-            subject_data=self.subject_data,
-            subject_charset=self.subject_charset,
-        )
+        with pytest.raises(Exception) as exc_info:
+            send_user_email(
+                aws_region=self.aws_region,
+                logger=self.mock_logger,
+                sender_email=self.sender_email,
+                to_addresses=self.to_addresses,
+                subject_data=self.subject_data,
+                subject_charset=self.subject_charset,
+            )
 
         self.mock_ses_client.send_email.assert_not_called()
         self.mock_logger.error.assert_called_once_with(
             "Email must contain at least a text or HTML body."
         )
-        assert result is False
+
+        assert str(exc_info.value) == "Email must contain at least a text or HTML body."
+
+
+class TestSendEmailWithAttachment:
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_get_ses_client):
+        self.mock_logger = MagicMock()
+        self.aws_region = "eu-west-2"
+        self.sender_email = "sender@example.com"
+        self.to_addresses = ["recipient@example.com"]
+        self.cc_addresses = ["cc@example.com"]
+        self.bcc_addresses = ["bcc@example.com"]
+        self.subject_data = "Monthly Report"
+        self.body_text = "Please find the report attached."
+        self.attachment_bytes = b"dummy-bytes"
+        self.attachment_filename = "report.pdf"
+        self.mock_get_client, self.mock_ses_client = mock_get_ses_client
+
+    def test_send_user_email_with_attachment_success(self):
+        mock_response = {"MessageId": "raw-123"}
+        self.mock_ses_client.send_raw_email.return_value = mock_response
+
+        result = send_user_email_with_attachment(
+            aws_region=self.aws_region,
+            logger=self.mock_logger,
+            sender_email=self.sender_email,
+            to_addresses=self.to_addresses,
+            subject_data=self.subject_data,
+            body_text=self.body_text,
+            attachment_bytes=self.attachment_bytes,
+            attachment_filename=self.attachment_filename,
+            cc_addresses=self.cc_addresses,
+            bcc_addresses=self.bcc_addresses,
+        )
+
+        assert self.mock_ses_client.send_raw_email.call_count == 1
+        kwargs = self.mock_ses_client.send_raw_email.call_args.kwargs
+
+        assert kwargs["Source"] == self.sender_email
+        assert set(kwargs["Destinations"]) == set(
+            self.to_addresses + self.cc_addresses + self.bcc_addresses
+        )
+
+        assert isinstance(kwargs["RawMessage"]["Data"], str)
+        raw_data = kwargs["RawMessage"]["Data"]
+        assert self.subject_data in raw_data
+        assert self.body_text in raw_data
+        assert f'filename="{self.attachment_filename}"' in raw_data
+
+        assert self.subject_data in raw_data
+        assert self.body_text in raw_data
+        assert f'filename="{self.attachment_filename}"' in raw_data
+
+        self.mock_logger.info.assert_called_once_with(
+            f"Successfully sent email with attachment to {json.dumps(self.to_addresses)}, "
+            f"MessageId={mock_response['MessageId']}"
+        )
+        assert result == mock_response
+
+    def test_send_user_email_with_attachment_exception(self):
+        err = Exception("attachment send fail")
+        self.mock_ses_client.send_raw_email.side_effect = err
+
+        with pytest.raises(Exception) as exc:
+            send_user_email_with_attachment(
+                aws_region=self.aws_region,
+                logger=self.mock_logger,
+                sender_email=self.sender_email,
+                to_addresses=self.to_addresses,
+                subject_data=self.subject_data,
+                body_text=self.body_text,
+                attachment_bytes=self.attachment_bytes,
+                attachment_filename=self.attachment_filename,
+            )
+
+        assert "attachment send fail" in str(exc.value)
+        self.mock_logger.error.assert_called_once_with(
+            f"Failed to send email with attachment: {err}", exc_info=True
+        )

@@ -255,6 +255,39 @@ def mock_sqs_client():
 
 
 @pytest.fixture
+def mock_sfn_client():
+    with mock_aws():
+        client = boto3.client("stepfunctions", region_name=AWS_REGION)
+
+        yield client
+
+
+@pytest.fixture
+def magic_mock_ses_client():
+    mock_client = MagicMock()
+    return mock_client
+
+
+@pytest.fixture
+def mock_s3_client():
+    """Mock S3 client for testing."""
+    mock_client = MagicMock()
+    return mock_client
+
+
+@pytest.fixture
+def mock_cognito_client():
+    """Mock Cognito client for testing."""
+    mock_client = MagicMock()
+    return mock_client
+
+
+@pytest.fixture(scope="function")
+def magic_mock_sfn_client():
+    return MagicMock()
+
+
+@pytest.fixture
 def mock_context():
     """
     Create a mocked AWS Lambda context object with a fixed request ID.

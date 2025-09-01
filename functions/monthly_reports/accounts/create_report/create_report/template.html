@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Statement</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            color: white;
+            padding: 24px 32px;
+        }
+
+        .header-text {
+            font-size: 60px;
+            color: black;
+        }
+
+        .info-label {
+            opacity: 0.7;
+            margin-right: 8px;
+        }
+
+        .info-value {
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #000000;
+            font-weight: 600;
+            text-align: left;
+            padding: 16px 12px;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .transaction-id {
+            font-size: 14px;
+            color: #000000;
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status.processed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .description {
+            font-weight: 500;
+            line-height: 1.4;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .amount {
+            text-align: right;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .total-row {
+            background: #f8fafc;
+            border-top: 2px solid #1e40af;
+        }
+
+        .total-row td {
+            font-weight: 700;
+            border-bottom: none;
+            padding: 20px 12px;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #000000;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .account-info {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+                padding: 16px 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            th, td {
+                padding: 12px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header class="header">
+        <h1 class="header-text">Account Statement for {{ accountId }}</h1>
+    </header>
+
+
+    <div>
+        <span class="info-label">Period:</span>
+        <span class="info-value">{{ statementPeriod }}</span>
+    </div>
+
+    <main class="content">
+        <div class="table-container">
+            <table>
+                <thead>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>Status</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for txn in transactions %}
+                <tr>
+                    <td>
+                        <span class="transaction-id">{{ txn.id[:8] }}...</span>
+                    </td>
+                    <td>
+                        <span class="status {{ txn.status.lower() }}">{{ txn.status }}</span>
+                    </td>
+                    <td class="description">{{ txn.description }}</td>
+                    <td>{{ txn.createdAt[:10] }}</td>
+                    <td>
+                        <span class="type-badge">{{ txn.type }}</span>
+                    </td>
+                    <td class="amount">£{{ "%.2f"|format(txn.amount) }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right;"><strong>Total Balance</strong></td>
+                    <td class="amount"><strong>£{{ "%.2f"|format(accountBalance) }}</strong></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="footer">
+            <p>Statement generated on {{ generationDate[:10] }}</p>
+        </footer>
+    </main>
+</div>
+</body>
+</html>

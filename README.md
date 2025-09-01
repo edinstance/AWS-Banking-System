@@ -85,6 +85,11 @@ aws ssm put-parameter \
     --name "/banking-app/dev/SesSenderEmail" \
     --value "sender@yourdomain.co.uk" \
     --type "String"
+    
+aws ssm put-parameter \
+    --name "/banking-app/dev/SesNoReplyEmail" \
+    --value "no-reply@yourdomain.co.uk" \
+    --type "String"
 
 aws ssm put-parameter \
     --name "/banking-app/dev/SesReplyEmail" \
