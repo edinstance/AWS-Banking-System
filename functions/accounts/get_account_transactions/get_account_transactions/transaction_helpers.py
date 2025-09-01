@@ -1,7 +1,7 @@
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key
 
-from .date_helpers import get_date_range
+from . import date_helpers
 
 
 def query_transactions(
@@ -13,7 +13,9 @@ def query_transactions(
     end: str = None,
     descending=False,
 ):
-    statement_period, start_iso, end_iso = get_date_range(period, start, end)
+    statement_period, start_iso, end_iso = date_helpers.get_date_range(
+        period, start, end
+    )
 
     logger.info(
         f"Querying transactions for account {account_id} "

@@ -6,7 +6,10 @@ from aws_lambda_powertools.event_handler import (
     APIGatewayRestResolver,
     CORSConfig,
 )
-from aws_lambda_powertools.event_handler.exceptions import InternalServerError
+from aws_lambda_powertools.event_handler.exceptions import (
+    InternalServerError,
+    BadRequestError,
+)
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from dynamodb import get_dynamodb_resource
@@ -53,7 +56,7 @@ def get_account_transactions(account_id: str):
 
     except ValidationError as ve:
         logger.warning(f"Validation error: {ve}")
-        return {"statusCode": 400, "body": {"error": str(ve)}}
+        raise BadRequestError(str(ve))
     except Exception as e:
         logger.error(f"Error fetching transactions: {e}", exc_info=True)
         raise InternalServerError("Internal server error")
