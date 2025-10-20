@@ -454,7 +454,5 @@ String idempotencyKey = UUID.randomUUID().toString();
 
 ## TODO
 
-- Once an account is updated, notify the user using SES, SNS, or other channels
 - Create a set of GraphQL APIs using AppSync
 - Experiment with AppSync events
-- Add an SQS queue
