@@ -37,6 +37,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libcairo2-dev pkg-config
 
       - name: Upgrade pip and install AWS SAM CLI
         run: |
